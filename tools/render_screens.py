@@ -206,6 +206,9 @@ uint32_t flightLastOkMs() { return clockMs - 4000; }
 bool flightProviderPaused() { return false; }
 int flightLastHttp() { return 200; }
 uint32_t flightWaitSec() { return 0; }
+float flightLiveDistanceKm(const FlightSnapshot& f) { return f.distanceKm; }
+int32_t flightLiveAltitudeFt(const FlightSnapshot& f) { return f.altitudeFt; }
+uint32_t flightPollIntervalMs() { return 30000; }
 static TrackedFlightSnapshot tf = {};
 const TrackedFlightSnapshot& trackedFlightData() { return tf; }
 '''
