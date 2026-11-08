@@ -6,9 +6,9 @@
 Bought as a small Wi-Fi cube with a rather modest stock firmware – and from day one with the plan to turn it into something of my own.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.1--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.2--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
-![Hardware test](https://img.shields.io/badge/hardware%20test-v0.5.0%20pending-yellow)
+![Hardware test](https://img.shields.io/badge/hardware%20test-v0.5.2%20pending-yellow)
 ![Hobby project](https://img.shields.io/badge/hobby%20project-non--commercial-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
@@ -40,7 +40,7 @@ Plus night mode, brightness down to 1 %, place search with a map, Greek and Cyri
 | <img src="docs/screens/en/abfahrten.png" width="260" alt="Departures"><br><sub><b>Departures</b> · Dresden Hauptbahnhof with a delay (yellow) and a cancellation (✕)</sub> | <img src="docs/screens/en/wetter.png" width="260" alt="Weather"><br><sub><b>Weather</b> · Brooklyn in °F</sub> | <img src="docs/screens/en/flugradar.png" width="260" alt="Flight radar"><br><sub><b>Flight radar</b> · Emirates A380 from Dubai to Frankfurt</sub> |
 | <img src="docs/screens/en/flugtracker.png" width="260" alt="Flight tracker"><br><sub><b>Flight tracker</b> · one flight with scheduled and actual times</sub> | <img src="docs/screens/en/vorhersage.png" width="260" alt="3-day forecast"><br><sub><b>Forecast</b> · the next three days</sub> | <img src="docs/screens/en/countdown-tage.png" width="260" alt="Countdown"><br><sub><b>Countdown</b> · in days or as a timer</sub> |
 
-## Status: v0.5.1-dev
+## Status: v0.5.2-dev
 
 | Area | Status |
 | --- | --- |
@@ -49,7 +49,8 @@ Plus night mode, brightness down to 1 %, place search with a map, Greek and Cyri
 | Radar only while visible, daily budget without a key | ✅ running on hardware (v0.4.14.8), long-term observation ongoing |
 | Backlight at 1 % without flashes | ✅ much improved (v0.4.14.6) |
 | German/English language switch, abbreviated destinations | ✅ confirmed on hardware (v0.5.0) |
-| 3-day forecast, tidier web interface, “Show now” | ⏳ hardware test pending |
+| 3-day forecast, tidier web interface, “Show now”, town of the stop | ✅ confirmed on hardware (v0.5.1) |
+| Radar: distance and altitude continued between requests, status dot | ⏳ hardware test pending |
 | Flight tracker with your own aviationstack key | ⏳ not fully tested on hardware |
 
 All changes are listed in [`CHANGELOG.md`](CHANGELOG.md) (German), open checks in [`ROADMAP.md`](ROADMAP.md).
@@ -68,7 +69,7 @@ All changes are listed in [`CHANGELOG.md`](CHANGELOG.md) (German), open checks i
                                    └──────────────────────────────────┘
 ```
 
-The cube queries the services itself and draws the views directly. Place search runs in the browser so that the ESP8266's scarce memory stays free. The flight radar only polls while it is on screen (plus shortly before it appears) and budgets adsb.lol's daily quota by itself when no key is set.
+The cube queries the services itself and draws the views directly. Place search runs in the browser so that the ESP8266's scarce memory stays free. The flight radar only polls while it is on screen (plus shortly before it appears) and budgets adsb.lol's daily quota by itself when no key is set. Between two requests it continues distance and altitude from speed, track and vertical rate, so the values stay alive even with rare requests.
 
 ## Supported device
 
@@ -99,26 +100,46 @@ The screenshots in this README are produced from the real display code by `pytho
 | --- | --- | --- |
 | **VVO** | Departures | Dresden / Upper Elbe region |
 | **Open-Meteo** | Weather | free API for non-commercial use |
-| **adsb.lol** | Radar positions, routes | limited requests per day and connection without a key; key optional |
+| **adsb.lol** | Radar positions, routes | data under ODbL; limited requests without a key, a free key is recommended (see below) |
 | **adsbdb** | Airline, aircraft type, routes | separate reuse terms for route data |
 | **aviationstack** | Flight tracker | your own key, plan limits |
 | **OpenStreetMap / Nominatim** | Map, place names | manual search only, via the browser |
 
 Radar routes come from additional databases and can be wrong or incomplete despite a position check; unsuitable routes are not replaced by guessed airports. `N/A` means missing data, `GND` an aircraft explicitly reported on the ground. Altitudes are flight altitudes, not height above ground. More in [`THIRD_PARTY_SERVICES.md`](THIRD_PARTY_SERVICES.md).
 
+### Key for adsb.lol
+
+adsb.lol hands out free keys; with a key every device gets its own quota. Enter the key in the **Flight radar** tab, where the links are shown as well.
+
+| Way | For whom |
+| --- | --- |
+| [Anonymous key](https://www.adsb.lol/pow/challenge) | no account, no email: a small puzzle in the browser, valid for about a month, then simply get a new one |
+| [Receiver key](https://www.adsb.lol/receiver) | if you run an ADS-B receiver that feeds adsb.lol; long-lived |
+| [Key on request](https://www.adsb.lol/request) | for all other projects, reviewed by hand |
+
+All ways are listed at [adsb.lol/mmb](https://www.adsb.lol/mmb). If adsb.lol rejects a key, it has usually expired; the web interface then points this out.
+
 | Radar footer | Meaning |
 | --- | --- |
-| `ADSB.LOL LIVE 4s` | last successful update 4 seconds ago |
+| `● ADSB.LOL LIVE 4s` | last successful update 4 seconds ago |
 | `LAST DATA 16s` | update failed, previous data is shown for a short while |
 | `PAUSED 46s` | adsb.lol asks for a pause; age of the last update |
 | `NO AIRCRAFT` | request succeeded, but nothing within the radius |
 | `ADSB.LOL / Access denied` | adsb.lol rejects requests (401/403/426); long pause instead of constant retries |
+
+| Footer dot | Meaning |
+| --- | --- |
+| ⚪ briefly white | new data just arrived |
+| 🟢 green | updates on schedule; distance and altitude are continued in between |
+| 🟡 yellow | update overdue, failed or provider pause; values are estimated |
+| ⚫ grey | no data for too long; distance and altitude stand still |
 
 ## Plans
 
 - **More regions:** departures not only from VVO but selectable per transport association or Germany-wide (planned for v0.6.0).
 - **Custom destination replacements** in the web interface.
 - English diagnostics texts.
+- **Fallback sources for the radar** (airplanes.live, adsb.fi) when adsb.lol pauses or the quota is used up.
 
 ## Diagnostics and bug reports
 
