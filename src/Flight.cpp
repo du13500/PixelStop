@@ -40,6 +40,8 @@ static uint32_t g_lastEnrichmentMs=0;
 static const char* g_routeStatus="nicht geprüft";
 static const char* g_routeSource="keine";
 static int g_routeHttp=0;
+static float g_homeLat=NAN,g_homeLon=NAN;
+static uint32_t g_intervalMs=0;
 
 static uint16_t adsbLolRx() {
   if (g_adsbLolRx) return g_adsbLolRx;
@@ -66,9 +68,7 @@ static void trimTail(char* s) {
 }
 
 static float distanceKm(float lat1, float lon1, float lat2, float lon2) {
-  float dLat = (lat2 - lat1) * 111.0f;
-  float dLon = (lon2 - lon1) * 111.0f * cosf(lat1 * (float)PI / 180.0f);
-  return sqrtf(dLat*dLat + dLon*dLon);
+  return radarFlatDistanceKm(lat1, lon1, lat2, lon2);
 }
 
 // Fallback names for common airlines and aircraft types. The tables live in
@@ -283,10 +283,20 @@ bool flightPollDue(uint16_t pollSec, float visibleShare) {
   if(interval<minimum)interval=minimum;
   uint32_t budget=adsbLolBudgetIntervalMs(visibleShare);
   if(interval<budget)interval=budget;
+  g_intervalMs=interval;
   return (uint32_t)(millis()-g_lastPollMs)>=interval;
 }
 
 const FlightSnapshot& flightData() { return g_f; }
+uint32_t flightPollIntervalMs() { return g_intervalMs ? g_intervalMs : RADAR_MOTION_MIN_MS; }
+float flightLiveDistanceKm(const FlightSnapshot& f) {
+  if(!f.valid||!f.motion.hasMotion||isnan(g_homeLat)||isnan(g_homeLon))return f.distanceKm;
+  return radarMotionDistanceKm(f.motion,g_homeLat,g_homeLon,millis(),radarMotionLimitMs(flightPollIntervalMs()));
+}
+int32_t flightLiveAltitudeFt(const FlightSnapshot& f) {
+  if(!f.valid||!f.altitudeKnown||f.onGround)return f.altitudeFt;
+  return radarMotionAltitudeFt(f.motion,f.altitudeFt,millis(),radarMotionLimitMs(flightPollIntervalMs()));
+}
 uint32_t flightLastOkMs() { return g_lastOkMs; }
 bool flightProviderPaused() { return g_providerPaused; }
 const char* flightStageName() { return g_stage; }
@@ -373,6 +383,7 @@ bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm) {
     JsonObject f = filter["ac"][0].to<JsonObject>();
     f["flight"] = true; f["r"] = true; f["t"] = true; f["category"] = true;
     f["lat"] = true; f["lon"] = true; f["alt_baro"] = true; f["hex"] = true;
+    f["gs"] = true; f["track"] = true; f["baro_rate"] = true; f["geom_rate"] = true; f["seen_pos"] = true;
     JsonDocument doc(networkJsonAllocator());
     trace.stage(DS_JSON);
     if(!jsonFilterReady(filter,trace)){http.end();client.stop();return flightFailure("JSON-Speicher knapp");}
@@ -407,12 +418,26 @@ bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm) {
     if (a["lon"].is<float>() || a["lon"].is<int>()) acLon = a["lon"].as<float>();
     if(!isfinite(acLat)||!isfinite(acLon)||acLat<-90||acLat>90||acLon<-180||acLon>180){trace.stage(DS_SCHEMA);return flightFailure("Positionsdaten fehlen");}
     if (!isnan(acLat) && !isnan(acLon)) next.distanceKm = distanceKm(homeLat, homeLon, acLat, acLon);
+    // Motion for estimates until the next request (not on the ground).
+    RadarMotion& m = next.motion;
+    m.lat = acLat; m.lon = acLon;
+    float seen = a["seen_pos"] | 0.0f;
+    if (!(seen >= 0.0f) || seen > 60.0f) seen = 0.0f;
+    m.sampleMs = millis() - (uint32_t)(seen * 1000.0f);
+    float gs = a["gs"] | -1.0f, track = a["track"] | -1.0f;
+    m.hasMotion = !next.onGround && gs >= 0.0f && gs <= 800.0f && track >= 0.0f && track <= 360.0f;
+    m.speedKt = m.hasMotion ? gs : 0.0f;
+    m.trackDeg = m.hasMotion ? track : 0.0f;
+    JsonVariantConst rate = a["baro_rate"].is<float>() ? a["baro_rate"] : a["geom_rate"];
+    m.hasRate = !next.onGround && next.altitudeKnown && rate.is<float>() && fabsf(rate.as<float>()) <= 8000.0f;
+    m.rateFpm = m.hasRate ? rate.as<float>() : 0.0f;
     next.valid = true;
     next.error = false;
   }
 
   flightSuccess(); // age belongs to position data, not slow enrichment requests
   g_position={acLat,acLon};
+  g_homeLat=homeLat;g_homeLon=homeLon;
   enrichFlight(next,g_position);
 
   next.error=serviceWaitMs(SERVICE_ADSB_LOL)>0;

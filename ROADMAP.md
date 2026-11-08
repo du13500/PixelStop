@@ -1,11 +1,11 @@
 # Roadmap
 
-Stand: 06.11.2026. Erledigtes steht in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: 08.11.2026. Erledigtes steht in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Nächste Prüfungen auf dem Gerät
 
-- **v0.5.1-dev:** 3-Tage-Vorhersage (Seitenwechsel, Wochentage, Fahrenheit), „Jetzt anzeigen“, ungespeichert-Hinweis, Haltestelle neu wählen und Ortsnamen prüfen (z. B. S-Bahnhof Reick).
-- **Flugradar:** Langzeittest über mehrere Tage mit Rotation; Anfragezähler „adsb.lol heute“ beobachten. Budgetwerte (`src/RadarBudget.h`) anpassen, sobald adsb.lol genaue Zahlen nennt (Limit, Reset-Zeitpunkt, Zählung von Fehlern und Routen). Freien Speicher während der Abfrage im Blick behalten (ca. 5 KB bei 4-KB-TLS-Puffer).
+- **v0.5.2-dev:** Radar-Werte zwischen den Abrufen (Entfernung zählt flüssig mit, Höhe bei Steig-/Sinkflug), Statuspunkt in allen Farben, Meldung bei „Jetzt anzeigen“, Hinweis bei abgelaufenem adsb.lol-Schlüssel. Anonymen Schlüssel holen und einige Tage testen.
+- **Flugradar:** Langzeittest über mehrere Tage mit Rotation; Anfragezähler „adsb.lol heute“ beobachten. adsb.lol nennt keine festen Zahlen (kostenlose Schlüssel: festes Budget pro Schlüssel, ohne Garantie); Budgetwerte (`src/RadarBudget.h`) anhand des Verbrauchs im adsb.lol-Dashboard prüfen. Freien Speicher während der Abfrage im Blick behalten (ca. 5 KB bei 4-KB-TLS-Puffer).
 - **Wetter:** Exception 29 beim Programmwechsel ist seit den Speicherkorrekturen nicht wieder aufgetreten; im Langzeittest weiter beobachten.
 - **Zeitzone, Sommerzeit, Nachtmodus:** gezielt prüfen, spätestens bei der Zeitumstellung Ende März.
 - **Abfahrten:** zehn Abfahrten mit Seitenwechsel 5+5, Verhalten bei Verbindungsproblemen.
@@ -17,9 +17,10 @@ Stand: 06.11.2026. Erledigtes steht in [`CHANGELOG.md`](CHANGELOG.md).
 | Version | Inhalt |
 | --- | --- |
 | **v0.5.0** | PixelStop, Deutsch/Englisch, Fahrtziele, neue README – auf Hardware bestätigt |
-| **v0.5.1** | Webinterface aufgeräumt, „Jetzt anzeigen“, 3-Tage-Vorhersage, Ort der Haltestelle aus der VVO-Suche, Texte im Flash – in Arbeit, nach dem Hardwaretest taggen |
-| **v0.5.2** | Warnungen: Bevölkerungsschutz (NINA) und DWD-Wetterwarnungen, einzeln aktivierbar, regional gefiltert, mehrere nacheinander; optional Unterbrechung der Rotation |
-| **v0.6.0** | Abfahrten über Anbieter: VVO, Transitous (deutschlandweit inkl. Bahn), danach weitere Verbünde; Haltestellensuche im Browser |
+| **v0.5.1** | Webinterface aufgeräumt, „Jetzt anzeigen“, 3-Tage-Vorhersage, Ort der Haltestelle aus der VVO-Suche, Texte im Flash – auf Hardware bestätigt |
+| **v0.5.2** | Radar-Werte zwischen den Abrufen weitergerechnet, Statuspunkt, Hilfen zum adsb.lol-Schlüssel – in Arbeit, nach dem Hardwaretest als Release taggen |
+| **v0.5.3** | Warnungen: Bevölkerungsschutz (NINA) und DWD-Wetterwarnungen, einzeln aktivierbar, regional gefiltert, mehrere nacheinander; optional Unterbrechung der Rotation |
+| **v0.6.0** | Abfahrten über Anbieter: VVO, Transitous (deutschlandweit inkl. Bahn), danach weitere Verbünde; Haltestellensuche im Browser. Dazu Ausweichquellen fürs Radar (airplanes.live, adsb.fi), wenn adsb.lol pausiert oder das Kontingent aufgebraucht ist |
 | **v0.7.0** | Optionaler moderner Anzeigestil mit echten Schriften und neuem Layout, vorher als Entwurf mit `tools/render_screens.py` |
 
 ## Ideen für später

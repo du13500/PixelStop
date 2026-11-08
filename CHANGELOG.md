@@ -1,6 +1,16 @@
 # Änderungen
 
+## v0.5.2-dev
+
+- **Radar weitergerechnet:** Entfernung und Höhe werden zwischen zwei Abrufen jede Sekunde aus Geschwindigkeit über Grund, Kurs und Steig-/Sinkrate fortgeschrieben (`src/RadarMotion.h`). Jeder echte Abruf setzt die Werte neu. Die Höhe folgt der Steigrate höchstens 45 s, die Position höchstens bis kurz nach dem nächsten erwarteten Abruf (mindestens 1, höchstens 4 Minuten); danach bleiben die Werte stehen. Am Boden wird nicht gerechnet. Die auswählbaren Abrufintervalle bleiben unverändert.
+- **Statuspunkt in der Radar-Fußzeile:** kurz weiß bei neuen Daten, grün im normalen Takt, gelb bei überfälligem oder fehlgeschlagenem Abruf und bei Anbieterpausen, grau, wenn die Werte stehen. Text und Sekundenzähler rücken dafür 10 Pixel nach rechts.
+- **„Jetzt anzeigen“:** Die Meldung nennt jetzt die Anzeigedauer, z. B. „Wird für 30 s angezeigt · danach geht die Rotation weiter“; ist nur eine Ansicht aktiv, bleibt sie bis zum nächsten Speichern stehen.
+- **adsb.lol-Schlüssel:** Unter dem Eingabefeld stehen Quellenangabe (ODbL) und Links zum kostenlosen anonymen Schlüssel und zu den weiteren Wegen. Lehnt adsb.lol ab, erscheint ein Hinweis: mit Schlüssel „vermutlich abgelaufen“, ohne Schlüssel „mit kostenlosem Key geht es weiter“. README mit Abschnitt zu den Schlüsseln.
+
 ## v0.5.1-dev
+
+Auf Hardware bestätigt: 3-Tage-Vorhersage, „Jetzt anzeigen“, Hinweis auf ungespeicherte Änderungen, Fahrtziele am Dresdner Hauptbahnhof („Flughafen“, „Leipzig, Hbf“).
+
 
 - **Ortsname bei Fahrtzielen:** Der Ort einer Haltestelle kommt jetzt aus der VVO-Suche und wird gespeichert. Bisher galt das erste Wort des Haltestellennamens als Ort; bei „S-Bahnhof Reick“ wurde so „S-Bahnhof“ als Ort angenommen, „Dresden Flughafen“ blieb ungekürzt und der Titel lautete nur „Reick“. Ohne gespeicherten Ort gilt weiter Dresden. Wer die Haltestelle vor v0.5.1 gewählt hat, sucht sie einmal neu aus, damit auch Haltestellen außerhalb Dresdens den richtigen Ort bekommen.
 - **3-Tage-Vorhersage:** Die Wetteransicht wechselt alle 8 Sekunden zwischen heute und den nächsten drei Tagen (Wochentag, Symbol, Höchst-/Tiefstwert, Regen). Abschaltbar im Wetter-Reiter.

@@ -28,6 +28,7 @@ pre=r'''
 #include "AircraftLabel.h"
 #include "WeatherVisual.h"
 #include "DestinationFormat.h"
+#include "RadarMotion.h"
 #define PSTR(x) (x)
 #define FPSTR(x) (x)
 #define PGM_P const char*
@@ -61,7 +62,7 @@ Gfx* gfx=&display;
 const double PI=3.14159265358979323846;
 const int C_BLACK=0,C_WHITE=1,C_YELLOW=2,C_GRAY=3,C_RED=4,C_GREEN=5,C_CYAN=6,C_DGRAY=7,TFT_W=240;
 void centerText(const String& s,int y,int size,int color){draws.push_back({s,y,size,-1,color});}
-void drawFooter(const String& s,bool=true){footer=s;}
+void drawFooter(const String& s,bool=true,int=8){footer=s;}
 void printDisplayTextAt(int,int,const String& s,uint8_t size,uint16_t);
 String displayAscii(String s){return s;}
 String flightStatusGerman(const char*){return "STATUS";}
@@ -100,7 +101,7 @@ TrackedFlightSnapshot data={};FlightSnapshot plane={};FlightSnapshot lastPlaneRe
 const TrackedFlightSnapshot& trackedFlightData(){return data;}
 const FlightSnapshot& flightData(){return plane;}
 uint32_t clockMs=100000,lastOkMs=65000;bool providerPaused=false;
-uint32_t millis(){return clockMs;}uint32_t flightLastOkMs(){return lastOkMs;}bool flightProviderPaused(){return providerPaused;}static int lastHttp=0;int flightLastHttp(){return lastHttp;}static bool adsbLolAccessDenied(int c){return c==401||c==403||c==426;}
+uint32_t millis(){return clockMs;}float flightLiveDistanceKm(const FlightSnapshot& f){return f.distanceKm;}int32_t flightLiveAltitudeFt(const FlightSnapshot& f){return f.altitudeFt;}uint32_t flightPollIntervalMs(){return 30000;}uint32_t flightLastOkMs(){return lastOkMs;}bool flightProviderPaused(){return providerPaused;}static int lastHttp=0;int flightLastHttp(){return lastHttp;}static bool adsbLolAccessDenied(int c){return c==401||c==403||c==426;}
 String trackedFlightDuration(const TrackedFlightSnapshot&){return "01:30";}
 void clearDraws(){draws.clear();rects.clear();circles.clear();lines.clear();fullScreens=0;footer="not drawn";}
 '''
@@ -137,7 +138,14 @@ int main(){
  plane.valid=true;strcpy(plane.hex,"abc123");strcpy(plane.callsign,"THY1JU");strcpy(plane.registration,"TC-JRS");
  strcpy(plane.origin,"OSL");strcpy(plane.destination,"IST");plane.distanceKm=12.8f;plane.altitudeFt=33000;plane.altitudeKnown=true;
  clearDraws();drawPlane();assert(fullScreens==1&&footer=="ADSB.LOL LIVE");
- clearDraws();drawPlane(false);assert(fullScreens==0&&rects.empty()&&draws.empty()&&footer=="not drawn");
+ assert(circles.size()==1&&circles[0].x==11&&circles[0].y==229&&circles[0].color==C_GREEN);
+ clearDraws();drawPlane(false);assert(fullScreens==0&&rects.empty()&&draws.empty()&&circles.empty()&&footer=="not drawn");
+ // Status dot: only the dot changes with the data age (interval 30 s, limit 60 s).
+ clockMs=lastOkMs+50000;clearDraws();drawPlane(false);assert(fullScreens==0&&rects.size()==1&&rects[0].y==223&&circles.size()==1&&circles[0].color==C_YELLOW);
+ clockMs=lastOkMs+60000;clearDraws();drawPlane(false);assert(circles.size()==1&&circles[0].color==C_GRAY);
+ clockMs=lastOkMs+500;clearDraws();drawPlane(false);assert(circles.size()==1&&circles[0].color==C_WHITE);
+ clockMs=lastOkMs+2000;clearDraws();drawPlane(false);assert(circles.size()==1&&circles[0].color==C_GREEN);
+ clockMs=100000;clearDraws();drawPlane(false);assert(circles.empty()&&fullScreens==0);
  plane.distanceKm=9.7f;clearDraws();drawPlane(false);assert(fullScreens==0&&rects.size()==1&&draws.size()==1);
  assert(rects[0].x==8&&rects[0].y==190&&rects[0].w==112&&rects[0].h==24);assert(draws[0].text=="9.7 km");
  plane.altitudeFt=30000;clearDraws();drawPlane(false);assert(fullScreens==0&&rects.size()==1&&rects[0].x==120);
@@ -149,22 +157,22 @@ int main(){
  plane.error=false;clearDraws();drawPlane(false);assert(fullScreens==1&&footer=="ADSB.LOL");
  // Pause ticks touch only the number box; all aircraft content stays frozen.
  plane.valid=true;plane.error=true;providerPaused=true;lastOkMs=65000;clockMs=100000;
- clearDraws();drawPlane(false);assert(footer=="ABRUFPAUSE");assert(8+textW(footer+" ",1)==74);
+ clearDraws();drawPlane(false);assert(footer=="ABRUFPAUSE");assert(18+textW(footer+" ",1)==84);
  viewFresh=false;clockMs=101000;clearDraws();drawPlaneAge();
- assert(fullScreens==0&&rects.size()==1&&rects[0].x==74&&rects[0].y==223&&rects[0].w==48&&rects[0].h==14);
- assert(draws.size()==1&&draws[0].x==74&&draws[0].text=="36s"&&footer=="not drawn");
+ assert(fullScreens==0&&rects.size()==1&&rects[0].x==84&&rects[0].y==223&&rects[0].w==48&&rects[0].h==14);
+ assert(draws.size()==1&&draws[0].x==84&&draws[0].text=="36s"&&footer=="not drawn");
  clearDraws();drawPlaneAge();assert(draws.empty()&&rects.empty());
- for(uint32_t age:{9,10,99,100,999,1000,4294967}){clockMs=lastOkMs+age*1000UL;clearDraws();drawPlaneAge();assert(fullScreens==0&&rects.size()==1&&rects[0].x==74&&rects[0].w==48);assert(draws.size()==1&&draws[0].x==74&&74+textW(draws[0].text,1)<=194);}
+ for(uint32_t age:{9,10,99,100,999,1000,4294967}){clockMs=lastOkMs+age*1000UL;clearDraws();drawPlaneAge();assert(fullScreens==0&&rects.size()==1&&rects[0].x==84&&rects[0].w==48);assert(draws.size()==1&&draws[0].x==84&&84+textW(draws[0].text,1)<=194);}
  lastOkMs=0xfffffff0U;clockMs=34984;clearDraws();drawPlaneAge();assert(draws[0].text=="35s");
  providerPaused=false;plane.error=false;clearDraws();drawPlane(false);assert(fullScreens==0&&footer=="ADSB.LOL LIVE");
  clearDraws();drawPlaneAge();assert(rects.empty()&&draws.empty());
  // Successful reception and ordinary stale states count too, directly after label.
- clockMs=lastOkMs+4000;clearDraws();drawPlaneAge();assert(draws.size()==1&&draws[0].text=="4s"&&draws[0].x==92&&rects.size()==1);
- plane.error=true;clockMs=lastOkMs+16000;clearDraws();drawPlane(false);assert(footer=="LETZTER STAND");assert(draws.back().text=="16s"&&draws.back().x==92);
+ clockMs=lastOkMs+4000;clearDraws();drawPlaneAge();assert(draws.size()==1&&draws[0].text=="4s"&&draws[0].x==102&&rects.size()==1);
+ plane.error=true;clockMs=lastOkMs+16000;clearDraws();drawPlane(false);assert(footer=="LETZTER STAND");assert(draws.back().text=="16s"&&draws.back().x==102);
  cfg.planeShowAge=false;clearDraws();drawPlane(false);assert(footer=="LETZTER STAND");for(auto d:draws)assert(d.text!="16s");
  clockMs+=1000;clearDraws();drawPlaneAge();assert(draws.empty()&&rects.empty());
  providerPaused=true;clearDraws();drawPlane(false);assert(footer=="ABRUFPAUSE"&&draws.empty());
- cfg.planeShowAge=true;clearDraws();drawPlane(false);assert(draws.back().text=="17s"&&draws.back().x==74);
+ cfg.planeShowAge=true;clearDraws();drawPlane(false);assert(draws.back().text=="17s"&&draws.back().x==84);
  plane.valid=false;clearDraws();drawPlaneAge();assert(draws.empty()&&rects.empty());
  providerPaused=false;plane.valid=true;plane.error=false;
  // Weather motifs: night partly clouded must have a moon; fog has no cloud.
@@ -225,8 +233,8 @@ int main(){
  puts("Real display: selective radar/new aircraft, stale states, tracker footer, weather motifs and Unicode bounds OK");
 }
 '''
-pre+='\nstatic bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;\n'
-names=['nextCodepoint','glyphCount','drawSpecialGlyph','textW','crop','stopTown','departureText','beginView','visibleText','visibleCenter','planePlaceTitle','drawPlaneHeader','routePart','drawFlightRoute','samePlane','planeDistance','planeAltitude','compactType','planeFooterLabel','drawPlaneAge','drawPlaneFooter','drawPlane','drawTrackedFlight','wxLen','drawCloud','drawSun','drawMoon','drawSnowflake','drawWeatherIconAt','drawWeatherIcon','drawSunEventIcon','centerTextIn','drawForecast','drawWeather','drawDepartures','segMask','drawSevenDigit','sevenUnit','sevenCharWidth','drawSevenString','drawCountdown','drawClock']
+pre+='\nstatic bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;\nstatic String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;static const int PLANE_FOOTER_X=18;\n'
+names=['nextCodepoint','glyphCount','drawSpecialGlyph','textW','crop','stopTown','departureText','beginView','visibleText','visibleCenter','planePlaceTitle','drawPlaneHeader','routePart','drawFlightRoute','samePlane','planeDistance','planeAltitude','compactType','planeFooterLabel','drawPlaneAge','drawPlaneDot','drawPlaneFooter','drawPlane','drawTrackedFlight','wxLen','drawCloud','drawSun','drawMoon','drawSnowflake','drawWeatherIconAt','drawWeatherIcon','drawSunEventIcon','centerTextIn','drawForecast','drawWeather','drawDepartures','segMask','drawSevenDigit','sevenUnit','sevenCharWidth','drawSevenString','drawCountdown','drawClock']
 with tempfile.TemporaryDirectory() as t:
  p=Path(t);(p/'test.cpp').write_text(pre+'\n'+'\n'.join(fn(name) for name in names)+'\n'+post)
  subprocess.run(['g++','-std=c++11','-Wall','-Wextra','-Werror','-I'+str(root/'src'),str(p/'test.cpp'),'-o',str(p/'test')],check=True)

@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include "FlightRoute.h"
+#include "RadarMotion.h"
 
 struct FlightSnapshot {
   bool valid;
@@ -19,6 +20,7 @@ struct FlightSnapshot {
   int32_t altitudeFt;
   bool altitudeKnown;
   bool onGround;
+  RadarMotion motion; // for estimates between requests
 };
 
 void flightReset();
@@ -26,6 +28,11 @@ void flightReset();
 bool flightPollDue(uint16_t pollSec, float visibleShare = 1.0f);
 bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm);
 const FlightSnapshot& flightData();
+// Distance and altitude continued from speed, track and vertical rate.
+float flightLiveDistanceKm(const FlightSnapshot& f);
+int32_t flightLiveAltitudeFt(const FlightSnapshot& f);
+// Current request interval (selection, minimum interval and daily budget).
+uint32_t flightPollIntervalMs();
 uint32_t flightLastOkMs();
 bool flightProviderPaused();
 const char* flightStageName();

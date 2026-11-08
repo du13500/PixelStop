@@ -34,7 +34,7 @@ static uint32_t budgetInterval=0;static float lastShare=0;
 uint32_t adsbLolBudgetIntervalMs(float share){lastShare=share;return budgetInterval;}
 const int SERVICE_ADSB_LOL=0;
 struct Snapshot {bool valid,error;} g_f={};
-static uint32_t g_lastPollMs=0,g_lastOkMs=0,g_firstFailureMs=0;
+static uint32_t g_lastPollMs=0,g_lastOkMs=0,g_firstFailureMs=0,g_intervalMs=0;
 static bool g_hasPolled=false,g_providerPaused=false;
 static uint8_t g_consecutiveFailures=0;
 static int g_lastHttp=0;
@@ -55,7 +55,7 @@ tests='''int main(){
  assert(g_f.valid&&g_f.error);assert(!strcmp(g_stage,"übersprungen: Heap"));
  assert(!flightPollDue(5,1.0f));clockMs=20001;assert(flightPollDue(5,1.0f));
  minimumInterval=15000;clockMs=29999;assert(!flightPollDue(5,1.0f));clockMs=30000;assert(flightPollDue(5,1.0f));minimumInterval=0;
- budgetInterval=12000;clockMs=26999;assert(!flightPollDue(5,0.25f)&&lastShare==0.25f);clockMs=27000;assert(flightPollDue(5,0.25f));budgetInterval=0;
+ budgetInterval=12000;clockMs=26999;assert(!flightPollDue(5,0.25f)&&lastShare==0.25f);clockMs=27000;assert(flightPollDue(5,0.25f)&&g_intervalMs==12000);budgetInterval=0;
  clockMs=39999;assert(!flightExpire());clockMs=40000;assert(flightExpire());assert(!g_f.valid&&g_f.error);assert(!flightExpire());
  ESP.heap=25768;ESP.block=13192;g_adsbLolRx=512;assert(flightFetch(51,13,25));
  g_f={true,false};flightSuccess();assert(!g_consecutiveFailures&&g_lastOkMs==40000);

@@ -62,9 +62,17 @@ EXACT = {
  "Standortname Wechselintervall": "Location name interval", "Kein Wechsel": "No switching", "Radius": "Radius",
  "Zeit seit letztem Abruf anzeigen": "Show time since last update",
  "Zeigt die Sekunden seit dem letzten erfolgreichen Positionsabruf.": "Shows the seconds since the last successful position update.",
+ "Entfernung und Höhe werden zwischen den Abrufen aus Geschwindigkeit, Kurs und Steigrate weitergerechnet. Der Punkt unten links zeigt den Stand: kurz weiß bei neuen Daten, grün im normalen Takt, gelb Abruf überfällig, grau Werte angehalten.":
+   "Between updates, distance and altitude are continued from speed, track and vertical rate. The dot at the bottom left shows the state: briefly white on new data, green on schedule, yellow update overdue, grey values frozen.",
+ "Flugdaten:": "Flight data:", "adsb.lol": "adsb.lol", "(ODbL) · Kostenlosen Key holen:": "(ODbL) · Get a free key:",
+ "anonym, ca. 1 Monat gültig": "anonymous, valid for about a month", "weitere Wege": "other ways",
+ "adsb.lol lehnt den Key ab – vermutlich ist er abgelaufen. Neuen Key holen und hier eintragen.":
+   "adsb.lol rejects the key – it has probably expired. Get a new key and enter it here.",
+ "adsb.lol lehnt Anfragen ohne Key ab. Mit einem kostenlosen Key geht es weiter.":
+   "adsb.lol rejects requests without a key. A free key gets it working again.",
  "adsb.lol API-Key": "adsb.lol API key", "optional": "optional",
- "Ohne Schlüssel erlaubt adsb.lol nur eine begrenzte Zahl von Anfragen pro Tag und Internetanschluss; für den Dauerbetrieb ohne Schlüssel 3 min wählen. Schlüssel gibt es über die Anfrageseite von adsb.lol. „-“ eintragen und speichern entfernt einen gespeicherten Schlüssel.":
-   "Without a key adsb.lol only allows a limited number of requests per day and internet connection; for continuous use without a key choose 3 min. Keys are available via the adsb.lol request page. Enter “-” and save to remove a stored key.",
+ "Ohne Schlüssel erlaubt adsb.lol nur eine begrenzte Zahl von Anfragen pro Tag und Internetanschluss; für den Dauerbetrieb ohne Schlüssel 3 min wählen. „-“ eintragen und speichern entfernt einen gespeicherten Schlüssel.":
+   "Without a key adsb.lol only allows a limited number of requests per day and internet connection; for continuous use without a key choose 3 min. Enter “-” and save to remove a stored key.",
  "adsb.lol kann Abfragen je nach Serverauslastung vorübergehend begrenzen. Während einer Anbieterpause bleibt das zuletzt empfangene Flugzeug stehen. Nach einer Anbieterbegrenzung verlängert sich das Aktualisierungsintervall automatisch. Nach 10 Minuten ohne erneute Begrenzung gilt wieder das ausgewählte Intervall.":
    "adsb.lol may temporarily limit requests depending on server load. During a provider pause the last received aircraft stays on screen. After a limit the refresh interval is extended automatically; after 10 minutes without another limit the selected interval applies again.",
  # Tracker
@@ -81,7 +89,7 @@ EXACT = {
  "Stunden": "Hours", "Minuten": "Minutes", "Sekunden": "Seconds", "Countdown-Farbe": "Countdown colour", "Farbe": "Colour",
  "inaktiv": "inactive", "aktiv": "active", "Start / aktivieren": "Start / activate", "Stoppen": "Stop", "z. B. URLAUB": "e.g. VACATION",
  "Countdown gestartet": "Countdown started",
- "Jetzt anzeigen": "Show now", "Wird jetzt angezeigt": "Showing now", "Koordinaten": "Coordinates", "ⓘ Mehr dazu": "ⓘ More info", "Countdown gestoppt": "Countdown stopped",
+ "Jetzt anzeigen": "Show now", "Wird angezeigt · bleibt stehen, bis du wieder speicherst": "Showing · stays until you save again", "Koordinaten": "Coordinates", "ⓘ Mehr dazu": "ⓘ More info", "Countdown gestoppt": "Countdown stopped",
  # System
  "Netzwerke suchen": "Scan networks", "SSID": "SSID", "Passwort": "Password", "Hostname": "Hostname",
  "leer = gespeichertes Passwort behalten": "empty = keep stored password", "Log laden": "Load log", "Log kopieren": "Copy log",
@@ -136,13 +144,14 @@ EXACT = {
 }
 
 PREFIX = {
- "Anfrage fehlgeschlagen (": "Request failed (", "Ausgewählt: ": "Selected: ", "Kartenposition übernommen: ": "Map position applied: ",
+ "Anfrage fehlgeschlagen (": "Request failed (", "Wird für ": "Showing for ", "Ausgewählt: ": "Selected: ", "Kartenposition übernommen: ": "Map position applied: ",
  "Ortsdaten © ": "Place data © ", "Ortsdienst antwortet mit HTTP ": "Place service answered HTTP ", "Position ausgewählt · ": "Position selected · ",
 }
 
 FRAGMENTS = {
  " · Marker auf Ortsmitte gesetzt": " · marker set to place centre", " · Ortsname wird ermittelt…": " · looking up place name…",
  " Optional einen Anzeigenamen eingeben.": " Optionally enter a display name.",
+ " s angezeigt · danach geht die Rotation weiter": " s · then the rotation continues",
 }
 
 LINES = {

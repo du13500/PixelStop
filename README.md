@@ -6,9 +6,9 @@
 Gekauft als kleiner WLAN-Würfel mit eher bescheidener Werksfirmware – und von Anfang an mit dem Plan, etwas Eigenes daraus zu machen.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.1--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.2--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
-![Hardwaretest](https://img.shields.io/badge/hardwaretest-v0.5.0%20offen-yellow)
+![Hardwaretest](https://img.shields.io/badge/hardwaretest-v0.5.2%20offen-yellow)
 ![Hobbyprojekt](https://img.shields.io/badge/hobbyprojekt-nicht%20kommerziell-lightgrey)
 ![Lizenz](https://img.shields.io/badge/lizenz-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
@@ -40,7 +40,7 @@ Dazu kommen Nachtmodus, Helligkeit ab 1 %, Ortssuche mit Karte, griechische und 
 | <img src="docs/screens/abfahrten.png" width="260" alt="Abfahrten"><br><sub><b>Abfahrten</b> · Dresden Hauptbahnhof, mit Verspätung (gelb) und Ausfall (✕)</sub> | <img src="docs/screens/wetter.png" width="260" alt="Wetter"><br><sub><b>Wetter</b> · Brooklyn in °F</sub> | <img src="docs/screens/flugradar.png" width="260" alt="Flugradar"><br><sub><b>Flugradar</b> · Emirates A380 von Dubai nach Frankfurt</sub> |
 | <img src="docs/screens/flugtracker.png" width="260" alt="Flug-Tracker"><br><sub><b>Flug-Tracker</b> · ein Flug mit Plan- und Ist-Zeiten</sub> | <img src="docs/screens/vorhersage.png" width="260" alt="3-Tage-Vorhersage"><br><sub><b>Vorhersage</b> · die nächsten drei Tage</sub> | <img src="docs/screens/countdown-tage.png" width="260" alt="Countdown"><br><sub><b>Countdown</b> · in Tagen oder als Timer</sub> |
 
-## Entwicklungsstand: v0.5.1-dev
+## Entwicklungsstand: v0.5.2-dev
 
 | Bereich | Stand |
 | --- | --- |
@@ -49,7 +49,8 @@ Dazu kommen Nachtmodus, Helligkeit ab 1 %, Ortssuche mit Karte, griechische und 
 | Radar nur bei sichtbarer Ansicht, Tagesbudget ohne Schlüssel | ✅ läuft auf Hardware (v0.4.14.8), Langzeitbeobachtung läuft |
 | Hintergrundbeleuchtung bei 1 % ohne Aufblitzen | ✅ deutlich besser (v0.4.14.6) |
 | Sprachumschaltung Deutsch/Englisch, abgekürzte Fahrtziele | ✅ auf Hardware bestätigt (v0.5.0) |
-| 3-Tage-Vorhersage, aufgeräumtes Webinterface, „Jetzt anzeigen“ | ⏳ Hardwaretest offen |
+| 3-Tage-Vorhersage, aufgeräumtes Webinterface, „Jetzt anzeigen“, Ort der Haltestelle | ✅ auf Hardware bestätigt (v0.5.1) |
+| Radar: Entfernung und Höhe zwischen den Abrufen weitergerechnet, Statuspunkt | ⏳ Hardwaretest offen |
 | Flug-Tracker mit eigenem aviationstack-Schlüssel | ⏳ nicht vollständig auf Hardware getestet |
 
 Alle Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md), offene Prüfungen in [`ROADMAP.md`](ROADMAP.md).
@@ -68,7 +69,7 @@ Alle Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md), offene Prüfungen in 
                                    └──────────────────────────────────┘
 ```
 
-Der Würfel fragt die Dienste selbst ab und zeichnet die Ansichten direkt. Die Ortssuche läuft über den Browser, damit der knappe Arbeitsspeicher des ESP8266 frei bleibt. Das Flugradar fragt nur, solange es auf dem Display steht (plus kurz vor dem Wechsel), und teilt sich ohne eigenen Schlüssel das Tageskontingent von adsb.lol selbst ein.
+Der Würfel fragt die Dienste selbst ab und zeichnet die Ansichten direkt. Die Ortssuche läuft über den Browser, damit der knappe Arbeitsspeicher des ESP8266 frei bleibt. Das Flugradar fragt nur, solange es auf dem Display steht (plus kurz vor dem Wechsel), und teilt sich ohne eigenen Schlüssel das Tageskontingent von adsb.lol selbst ein. Zwischen zwei Abrufen rechnet es Entfernung und Höhe aus Geschwindigkeit, Kurs und Steigrate weiter, sodass die Werte auch bei seltenen Abrufen lebendig bleiben.
 
 ## Unterstütztes Gerät
 
@@ -99,26 +100,46 @@ Die Screenshots dieser README erzeugt `python3 tools/render_screens.py docs/scre
 | --- | --- | --- |
 | **VVO** | Abfahrten | Region Dresden/Oberelbe |
 | **Open-Meteo** | Wetter | kostenlose API für nichtkommerzielle Nutzung |
-| **adsb.lol** | Radarpositionen, Routen | ohne Schlüssel begrenzte Anfragen pro Tag und Anschluss; Schlüssel optional |
+| **adsb.lol** | Radarpositionen, Routen | Daten unter ODbL; ohne Schlüssel begrenzte Anfragen, kostenloser Schlüssel empfohlen (siehe unten) |
 | **adsbdb** | Airline, Flugzeugtyp, Routen | eigene Weiterverwendungsbedingungen für Routen |
 | **aviationstack** | Flug-Tracker | eigener Schlüssel, Tarifgrenzen |
 | **OpenStreetMap / Nominatim** | Karte, Ortsnamen | nur manuelle Suche, über den Browser |
 
 Radar-Routen stammen aus Zusatzdatenbanken und können trotz Positionsprüfung falsch oder unvollständig sein; unpassende Routen werden nicht durch geratene Flughäfen ersetzt. `N/A` steht für fehlende Daten, `GND` für ein ausdrücklich gemeldetes Flugzeug am Boden. Höhen sind Flughöhen, keine Höhe über Grund. Weitere Hinweise in [`THIRD_PARTY_SERVICES.md`](THIRD_PARTY_SERVICES.md).
 
+### Schlüssel für adsb.lol
+
+adsb.lol vergibt kostenlose Schlüssel; mit Schlüssel hat jedes Gerät sein eigenes Kontingent. Den Schlüssel im Reiter **Flugradar** eintragen, dort stehen auch die Links.
+
+| Weg | Für wen |
+| --- | --- |
+| [Anonymer Schlüssel](https://www.adsb.lol/pow/challenge) | ohne Konto und ohne Mail: kleine Rechenaufgabe im Browser, gilt etwa einen Monat, danach einfach neu holen |
+| [Schlüssel für Empfänger](https://www.adsb.lol/receiver) | wer selbst einen ADS-B-Empfänger betreibt und an adsb.lol liefert; lange gültig |
+| [Schlüssel auf Antrag](https://www.adsb.lol/request) | für alle anderen Projekte, wird von Hand geprüft |
+
+Eine Übersicht aller Wege gibt es unter [adsb.lol/mmb](https://www.adsb.lol/mmb). Lehnt adsb.lol einen Schlüssel ab, ist er meist abgelaufen; das Webinterface weist dann darauf hin.
+
 | Radar-Fußzeile | Bedeutung |
 | --- | --- |
-| `ADSB.LOL LIVE 4s` | letzter erfolgreicher Abruf vor 4 Sekunden |
+| `● ADSB.LOL LIVE 4s` | letzter erfolgreicher Abruf vor 4 Sekunden |
 | `LETZTER STAND 16s` | Abruf fehlgeschlagen, vorheriger Stand wird kurz weiter gezeigt |
 | `ABRUFPAUSE 46s` | adsb.lol bittet um eine Pause; Alter des letzten Abrufs |
 | `KEIN FLUGZEUG` | Abfrage erfolgreich, aber nichts im Umkreis |
 | `ADSB.LOL / Zugriff abgelehnt` | adsb.lol lehnt ab (401/403/426); lange Pause statt ständiger Wiederholung |
+
+| Punkt in der Fußzeile | Bedeutung |
+| --- | --- |
+| ⚪ kurz weiß | gerade neue Daten empfangen |
+| 🟢 grün | Abrufe im normalen Takt; Entfernung und Höhe werden dazwischen weitergerechnet |
+| 🟡 gelb | Abruf überfällig, fehlgeschlagen oder Anbieterpause; Werte sind geschätzt |
+| ⚫ grau | zu lange keine Daten; Entfernung und Höhe stehen still |
 
 ## Pläne
 
 - **Mehr Regionen:** Abfahrten nicht nur vom VVO, sondern auswählbar je Verkehrsverbund bzw. deutschlandweit (geplant für v0.6.0).
 - **Eigene Ersetzungen für Fahrtziele** im Webinterface.
 - Englische Diagnosetexte.
+- **Ausweichquellen fürs Radar** (airplanes.live, adsb.fi), wenn adsb.lol pausiert oder das Kontingent aufgebraucht ist.
 
 ## Diagnose und Fehlerberichte
 
