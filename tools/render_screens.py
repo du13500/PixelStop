@@ -295,23 +295,24 @@ int main(int argc, char** argv) {
     strlcpy(fl.registration, reg, 16); strlcpy(fl.typeName, type, 80); strlcpy(fl.typeCode, "BSG", 8);
     strlcpy(fl.origin, "BS75", 5); strlcpy(fl.destination, to, 5);
     if (strcmp(to, "N/A")) { char r[12]; snprintf(r, sizeof r, "BS75-%s", to); parseFlightRoute(r, fl.route); }
-    fl.distanceKm = km; fl.altitudeFt = (int32_t)lroundf(m / 0.3048f); fl.altitudeKnown = true; fl.military = mil;
+    fl.distanceKm = km; fl.altitudeKnown = m >= 0; fl.altitudeFt = m >= 0 ? (int32_t)lroundf(m / 0.3048f) : 0; fl.military = mil; // m < 0: no altitude in space
   };
-  bsg("COLONE", "Colonial Fleet", "BS62", "Colonial Heavy 798", "COL-ONE", 12.4f, 9800, false);
+  bsg("COLONE", "Colonial Fleet", "BS62", "Colonial Heavy 798", "COL-ONE", 12.4f, -1, false);
   fl.speedKnown = true; fl.speedKt = 860 / 1.852f; cfg.planeSpeed = 1; clockMs = 999000; // speed phase
   drawPlane(); dump((out + "/radar-colone.ppm").c_str());
   cfg.planeSpeed = 0;
-  bsg("APOLLO", "Col. Fleet / Viper", "N/A", "Viper MK II", "N7242C", 1.2f, 1200, true);
+  bsg("APOLLO", "Col. Fleet / Viper", "N/A", "Viper MK II", "N7242C", 0.4f, -1, true);
   clockMs = 1002000; drawPlane(); dump((out + "/radar-apollo.ppm").c_str());
   cfg.planeShowPlace = true; cfg.planeDisplayName = "CIC BSG75"; cfg.planePlaceToggleSec = 0; planePlacePhase = true;
   bsg("KARMA", "Colonial Fleet", "N/A", "Raptor", "BS75-R1", 98.7f, 98700, true);
   fl.motion.hasRate = true; fl.motion.rateFpm = -3000; cfg.planeTrend = true; strlcpy(fl.squawk, "7700", 5);
   // Six frames, one per second: 3 s route, 3 s squawk, the age counts on and the
-  // Raptor falls 1.4 km per second; seen from the CIC, distance equals altitude.
+  // Raptor falls towards the planet at 1.4 km/s and drifts away from the CIC,
+  // staying just inside the 100 km radius.
   for (int i = 0; i < 6; i++) {
     clockMs = 1002000 + i * 1000; okAgeMs = 33000 + i * 1000;
     const int32_t m = 98700 - 1400 * i;
-    fl.altitudeFt = (int32_t)lroundf(m / 0.3048f); fl.distanceKm = m / 1000.0f;
+    fl.altitudeFt = (int32_t)lroundf(m / 0.3048f); fl.distanceKm = 92.7f + 1.4f * i;
     drawPlane(); char name[64]; snprintf(name, sizeof name, "/gif-radar-karma-%d.ppm", i); dump((out + name).c_str());
   }
   planeSourceLabel = "ADSB.LOL"; okAgeMs = 4000; clockMs = 1000000; cfg.planeTrend = false; cfg.planeShowPlace = false; cfg.planeDisplayName = "";
