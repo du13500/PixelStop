@@ -12,7 +12,7 @@
 - **Filter:** Hubschrauber, Kleinflugzeuge, Segler/Ballone/Ultraleicht/Drohnen und Flugzeuge am Boden ausblendbar. Mit Filter fragt PixelStop alle Flugzeuge im Radius ab und liest sie einzeln ein (`src/RadarScan.h`), damit der Speicherbedarf nicht mit der Zahl der Flugzeuge wächst.
 - **Diagnose:** Erfolgreiche Radarabrufe stehen als eine Zeile im Log (mit dem kleinsten freien Speicher während des Abrufs), Fehler weiter mit allen Schritten; der Log reicht damit etwa fünfmal so lange. Zusatzabfragen melden „leer“ (keine Daten zum Flugzeug) oder „übersprungen“ mit Grund. Im Status: aktuelles Flugzeug und Zahl der geprüften Flugzeuge.
 - **Dimmverfahren (Test):** Unter „Anzeige“ wählbar zwischen Standard (PWM) und Sigma-Delta. Sigma-Delta nutzt einen eigenen Baustein des Chips und soll das gelegentliche Aufblitzen bei geringer Helligkeit beseitigen.
-- **README:** aufklappbare „Mehr Beispiele“ je Programm, beim Flugradar mit fiktiven Daten aus dem Battlestar-Galactica-Universum (Quelle „DRADIS“); der Renderer kann den Quellnamen in der Fußzeile dafür setzen.
+- **README:** aufklappbare „Mehr Beispiele“ mit realistischen Daten unter der Galerie; neuer Abschnitt „Flugradar: Darstellung und Einstellungen“ mit Beispielen aus dem Battlestar-Galactica-Universum (Quelle „DRADIS“); der Renderer kann den Quellnamen in der Fußzeile dafür setzen.
 - Workflow-Bausteine auf Node-24-Versionen (checkout v5, setup-node v5, setup-python v6, upload-artifact v6).
 
 ## v0.5.2-dev

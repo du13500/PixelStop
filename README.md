@@ -59,17 +59,6 @@ Dazu kommen Nachtmodus, Helligkeit ab 1 %, Ortssuche mit Karte, griechische und 
 
 </details>
 
-<details><summary><b>Flugradar – Beispiele aus dem CIC der Galactica</b></summary>
-
-| | |
-| :---: | :---: |
-| <img src="docs/screens/radar-colone.png" width="260" alt="COLONE"><br><sub><b>Geschwindigkeit</b> im Wechsel mit dem Kennzeichen, 4-stellige Codes</sub> | <img src="docs/screens/radar-apollo.png" width="260" alt="APOLLO"><br><sub><b>MIL</b>-Markierung, Betreiber als „Oberbegriff / Einheit“</sub> |
-| <img src="docs/screens/radar-karma.png" width="260" alt="KARMA"><br><sub><b>Sinkflug ▼</b>, eigener Anzeigename in der Kopfzeile</sub> | <img src="docs/screens/radar-karma-notfall.png" width="260" alt="KARMA Notfall"><br><sub><b>Notfall</b> · Squawk 7700 im Wechsel mit der Route, Rufzeichen rot</sub> |
-
-<sub>Fiktive Beispieldaten in Anlehnung an Battlestar Galactica, ohne Verbindung zu den Rechteinhabern. Für diese Bilder heißt die Quelle in der Fußzeile „DRADIS“ statt „ADSB.LOL“; alles andere ist unveränderte Firmware-Ausgabe.</sub>
-
-</details>
-
 ## Entwicklungsstand: v0.5.3-dev
 
 | Bereich | Stand |
@@ -164,6 +153,26 @@ Eine Übersicht aller Wege gibt es unter [adsb.lol/mmb](https://www.adsb.lol/mmb
 | 🟢 grün | Abrufe im normalen Takt; Entfernung und Höhe werden dazwischen weitergerechnet |
 | 🟡 gelb | Abruf überfällig, fehlgeschlagen oder Anbieterpause; Werte sind geschätzt |
 | ⚫ grau | zu lange keine Daten; Entfernung und Höhe stehen still |
+
+### Flugradar: Darstellung und Einstellungen
+
+Im Reiter **Flugradar** lässt sich die Anzeige anpassen:
+
+- **Betreiber:** Name zum Rufzeichen (Standard), Oberbegriff oder beides, z. B. „US Air Force / AMC“ – für bekannte Militär-Rufzeichen.
+- **Geschwindigkeit** in km/h oder Knoten, alle 3 Sekunden im Wechsel mit dem Kennzeichen.
+- **▲▼** zwischen Entfernung und Höhe bei Steig- oder Sinkflug ab 300 ft/min.
+- **MIL** neben dem Rufzeichen für Militärflugzeuge.
+- **Ausblenden:** Hubschrauber, Kleinflugzeuge, Segler/Ballone/Ultraleicht/Drohnen, Flugzeuge am Boden.
+- **Immer aktiv:** Notfälle (Squawk 7500/7600/7700) mit rotem Rufzeichen und „SQUAWK 7700“ im Wechsel mit der Route; Flughäfen mit 3-stelligem IATA- oder 4-stelligem ICAO-Code.
+
+Zur Veranschaulichung ein Blick aus dem CIC der Galactica:
+
+| | |
+| :---: | :---: |
+| <img src="docs/screens/radar-colone.png" width="260" alt="COLONE"><br><sub><b>Geschwindigkeit</b> im Wechsel mit dem Kennzeichen, 4-stellige Codes</sub> | <img src="docs/screens/radar-apollo.png" width="260" alt="APOLLO"><br><sub><b>MIL</b>-Markierung, Betreiber als „Oberbegriff / Einheit“</sub> |
+| <img src="docs/screens/radar-karma.png" width="260" alt="KARMA"><br><sub><b>Sinkflug ▼</b>, eigener Anzeigename in der Kopfzeile</sub> | <img src="docs/screens/radar-karma-notfall.png" width="260" alt="KARMA Notfall"><br><sub><b>Notfall</b> · Squawk 7700 im Wechsel mit der Route, Rufzeichen rot</sub> |
+
+<sub>Fiktive Beispieldaten in Anlehnung an Battlestar Galactica, ohne Verbindung zu den Rechteinhabern. Für diese Bilder heißt die Quelle in der Fußzeile „DRADIS“ statt „ADSB.LOL“; alles andere ist unveränderte Firmware-Ausgabe.</sub>
 
 ## Pläne
 

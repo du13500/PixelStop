@@ -59,17 +59,6 @@ Plus night mode, brightness down to 1 %, place search with a map, Greek and Cyri
 
 </details>
 
-<details><summary><b>Flight radar – examples from Galactica’s CIC</b></summary>
-
-| | |
-| :---: | :---: |
-| <img src="docs/screens/en/radar-colone.png" width="260" alt="COLONE"><br><sub><b>Speed</b> alternating with the registration, 4-character codes</sub> | <img src="docs/screens/en/radar-apollo.png" width="260" alt="APOLLO"><br><sub><b>MIL</b> marking, operator as “branch / unit”</sub> |
-| <img src="docs/screens/en/radar-karma.png" width="260" alt="KARMA"><br><sub><b>Descent ▼</b>, custom display name in the header</sub> | <img src="docs/screens/en/radar-karma-notfall.png" width="260" alt="KARMA emergency"><br><sub><b>Emergency</b> · squawk 7700 alternating with the route, callsign in red</sub> |
-
-<sub>Fictional sample data inspired by Battlestar Galactica, not affiliated with the rights holders. For these images the footer source reads “DRADIS” instead of “ADSB.LOL”; everything else is unchanged firmware output.</sub>
-
-</details>
-
 ## Status: v0.5.3-dev
 
 | Area | Status |
@@ -164,6 +153,26 @@ All ways are listed at [adsb.lol/mmb](https://www.adsb.lol/mmb). If adsb.lol rej
 | 🟢 green | updates on schedule; distance and altitude are continued in between |
 | 🟡 yellow | update overdue, failed or provider pause; values are estimated |
 | ⚫ grey | no data for too long; distance and altitude stand still |
+
+### Flight radar: display and settings
+
+The **Flight radar** tab lets you adjust the view:
+
+- **Operator:** name of the callsign (default), branch, or both, e.g. “US Air Force / AMC” – for known military callsigns.
+- **Speed** in km/h or knots, alternating with the registration every 3 seconds.
+- **▲▼** between distance and altitude when climbing or descending faster than 300 ft/min.
+- **MIL** next to the callsign for military aircraft.
+- **Hide:** helicopters, light aircraft, gliders/balloons/ultralights/drones, aircraft on the ground.
+- **Always on:** emergencies (squawk 7500/7600/7700) with a red callsign and “SQUAWK 7700” alternating with the route; airports with 3-letter IATA or 4-character ICAO codes.
+
+For illustration, a view from Galactica’s CIC:
+
+| | |
+| :---: | :---: |
+| <img src="docs/screens/en/radar-colone.png" width="260" alt="COLONE"><br><sub><b>Speed</b> alternating with the registration, 4-character codes</sub> | <img src="docs/screens/en/radar-apollo.png" width="260" alt="APOLLO"><br><sub><b>MIL</b> marking, operator as “branch / unit”</sub> |
+| <img src="docs/screens/en/radar-karma.png" width="260" alt="KARMA"><br><sub><b>Descent ▼</b>, custom display name in the header</sub> | <img src="docs/screens/en/radar-karma-notfall.png" width="260" alt="KARMA emergency"><br><sub><b>Emergency</b> · squawk 7700 alternating with the route, callsign in red</sub> |
+
+<sub>Fictional sample data inspired by Battlestar Galactica, not affiliated with the rights holders. For these images the footer source reads “DRADIS” instead of “ADSB.LOL”; everything else is unchanged firmware output.</sub>
 
 ## Plans
 
