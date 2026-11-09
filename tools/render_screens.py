@@ -306,8 +306,12 @@ int main(int argc, char** argv) {
   cfg.planeShowPlace = true; cfg.planeDisplayName = "CIC BSG75"; cfg.planePlaceToggleSec = 0; planePlacePhase = true;
   bsg("KARMA", "Colonial Fleet", "N/A", "Raptor", "BS75-R1", 98.7f, 98700, true);
   fl.motion.hasRate = true; fl.motion.rateFpm = -3000; cfg.planeTrend = true; strlcpy(fl.squawk, "7700", 5);
-  clockMs = 1002000; drawPlane(); dump((out + "/radar-karma.ppm").c_str());           // phase 1: route
-  clockMs = 999000; drawPlane(); dump((out + "/radar-karma-notfall.ppm").c_str());     // phase 2: squawk
+  // Six frames, one per second: 3 s route, 3 s squawk, the age counts on and the altitude falls.
+  for (int i = 0; i < 6; i++) {
+    clockMs = 1002000 + i * 1000; okAgeMs = 33000 + i * 1000;
+    fl.altitudeFt = (int32_t)lroundf((98700 - 15 * i) / 0.3048f);
+    drawPlane(); char name[64]; snprintf(name, sizeof name, "/gif-radar-karma-%d.ppm", i); dump((out + name).c_str());
+  }
   planeSourceLabel = "ADSB.LOL"; okAgeMs = 4000; clockMs = 1000000; cfg.planeTrend = false; cfg.planeShowPlace = false; cfg.planeDisplayName = "";
 
   // Uhr
@@ -350,6 +354,28 @@ with tempfile.TemporaryDirectory() as tmp:
     subprocess.run([str(exe), str(t / 'de'), 'de'], check=True)
     subprocess.run([str(exe), str(t / 'en'), 'en'], check=True)
     from PIL import Image
+    # Animated example: frames named gif-<name>-<n>.ppm become <name>.gif (1 s per frame).
+    for lang_dir in [t / 'de', t / 'en']:
+        dest = out if lang_dir.name == 'de' else out / 'en'
+        dest.mkdir(parents=True, exist_ok=True)
+        groups = {}
+        for ppm in sorted(lang_dir.glob('gif-*.ppm')):
+            groups.setdefault(ppm.stem.rsplit('-', 1)[0][4:], []).append(ppm)
+        for name, frames in groups.items():
+            imgs = []
+            for ppm in sorted(frames, key=lambda f: int(f.stem.rsplit('-', 1)[1])):
+                img = Image.open(ppm).convert('RGB')
+                if args.scale > 1:
+                    img = img.resize((240 * args.scale, 240 * args.scale), Image.NEAREST)
+                if args.frame:
+                    pad = 12 * args.scale
+                    framed = Image.new('RGB', (img.width + 2 * pad, img.height + 2 * pad), (24, 26, 29))
+                    framed.paste(img, (pad, pad)); img = framed
+                imgs.append(img); ppm.unlink()
+            palette = imgs[0].quantize(colors=64)
+            frames_q = [im.quantize(palette=palette) for im in imgs]
+            frames_q[0].save(dest / (name + '.gif'), save_all=True, append_images=frames_q[1:], duration=1000, loop=0, optimize=False)
+            print(dest / (name + '.gif'))
     for ppm in sorted(t.glob('*/*.ppm')):
         dest = out if ppm.parent.name == 'de' else out / 'en'
         dest.mkdir(parents=True, exist_ok=True)

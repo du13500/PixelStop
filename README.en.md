@@ -170,7 +170,8 @@ For illustration, a view from Galactica’s CIC:
 | | |
 | :---: | :---: |
 | <img src="docs/screens/en/radar-colone.png" width="260" alt="COLONE"><br><sub><b>Speed</b> alternating with the registration, 4-character codes</sub> | <img src="docs/screens/en/radar-apollo.png" width="260" alt="APOLLO"><br><sub><b>MIL</b> marking, operator as “branch / unit”</sub> |
-| <img src="docs/screens/en/radar-karma.png" width="260" alt="KARMA"><br><sub><b>Emergency, phase 1</b> · route in red, descent ▼, custom display name in the header</sub> | <img src="docs/screens/en/radar-karma-notfall.png" width="260" alt="KARMA emergency"><br><sub><b>Emergency, phase 2</b> · after 3 s “SQUAWK 7700” instead of the route</sub> |
+
+<p align="center"><img src="docs/screens/en/radar-karma.gif" width="260" alt="KARMA"><br><sub><b>Emergency</b> · callsign and route line in red; route and “SQUAWK 7700” alternate every 3 s, with descent ▼, altitude and age counting on, custom display name in the header</sub></p>
 
 <sub>Fictional sample data inspired by Battlestar Galactica, not affiliated with the rights holders. For these images the footer source reads “DRADIS” instead of “ADSB.LOL”; everything else is unchanged firmware output.</sub>
 
