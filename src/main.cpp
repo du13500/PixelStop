@@ -1,5 +1,6 @@
 
 #include <Arduino.h>
+#include <sigma_delta.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
@@ -26,6 +27,8 @@
 #include "TimeZones.h"
 #include "WeatherVisual.h"
 #include "AircraftLabel.h"
+#include "MilitaryOperator.h"
+#include "RadarFilter.h"
 #include "DestinationFormat.h"
 #include "webui_en.h"
 
@@ -55,6 +58,7 @@
 #define C_DGRAY   0x4208
 #define C_BLUE    0x041F
 #define C_CYAN    0x07FF
+#define C_KHAKI   0xBDAD
 
 enum AppMode : uint8_t {
   MODE_DEPARTURES = 0,
@@ -65,7 +69,14 @@ enum AppMode : uint8_t {
   MODE_COUNTDOWN1 = 5,
   MODE_COUNTDOWN2 = 6,
   MODE_COUNTDOWN3 = 7,
-  MODE_COUNTDOWN4 = 8
+  MODE_COUNTDOWN4 = 8,
+  MODE_FORECAST   = 9   // three-day forecast; appended so stored masks keep their bits
+};
+static const uint8_t MODE_COUNT = 10;
+// Rotation follows the order of the list in the web interface.
+static const uint8_t ROTATION_ORDER[MODE_COUNT] = {
+  MODE_DEPARTURES, MODE_WEATHER, MODE_FORECAST, MODE_PLANE, MODE_TRACKED_FLIGHT, MODE_CLOCK,
+  MODE_COUNTDOWN1, MODE_COUNTDOWN2, MODE_COUNTDOWN3, MODE_COUNTDOWN4
 };
 
 enum Language : uint8_t { LANG_DE = 0, LANG_EN = 1 };
@@ -96,8 +107,9 @@ struct Settings {
 
   uint8_t mode = MODE_DEPARTURES; // current runtime view
   uint16_t rotationMask = (1U << MODE_DEPARTURES);
-  uint16_t rotationSec[9] = {30,20,20,15,20,20,20,20,20};
+  uint16_t rotationSec[MODE_COUNT] = {30,20,20,15,20,20,20,20,20,15};
   uint8_t brightness = 70;
+  uint8_t backlightMode = 0;         // 0 = PWM, 1 = sigma-delta (test against flashes)
   String timeZone = "Europe/Berlin";
 
   bool nightEnabled = true;
@@ -114,7 +126,6 @@ struct Settings {
   bool departureCompactDestinations = false;
   bool departureAbbreviate = true;   // Hbf, Str., Pl. ...
   bool departureDropTown = true;     // "Dresden Bühlau" -> "Bühlau"
-  bool weatherForecast = true;       // alternate with a three-day forecast page
 
   String weatherCity = "Dresden"; // selected real place / fallback title
   String weatherDisplayName = ""; // optional display-only title
@@ -134,6 +145,11 @@ struct Settings {
   bool planeShowPlace = false;
   bool planeShowAge = true;
   uint16_t planePlaceToggleSec = 10;
+  uint8_t planeOperator = 0;         // 0 = name of the callsign, 1 = branch, 2 = both
+  uint8_t planeSpeed = 0;            // 0 = off, 1 = km/h, 2 = knots
+  bool planeTrend = false;           // climb/descent arrow
+  bool planeMarkMilitary = true;     // "MIL" next to the callsign
+  uint8_t planeHide = 0;             // RadarFilter.h bits
 
   String trackedFlightNo = "";
   String aviationstackKey = "";
@@ -154,7 +170,6 @@ static uint32_t lastModeSwitchMs = 0;
 static String lastCountdownRendered[4];
 static uint8_t departurePage = 0;
 static uint8_t weatherPage = 0;            // 0 = today, 1 = three-day forecast
-static uint32_t lastWeatherPageSwitchMs = 0;
 static bool departurePagingReady = false;
 static uint32_t lastDeparturePageSwitchMs = 0;
 static bool planePlacePhase = false;
@@ -200,25 +215,25 @@ static const char WEBUI[] PROGMEM = R"HTML(
 <style>
 :root{--bg:#17191c;--card:#24272b;--card2:#2e3237;--text:#f4f4f4;--muted:#aeb4bb;--accent:#f3ce00;--red:#ff5d56;--green:#5dd78b;--border:#3b4047}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:760px;margin:auto;padding:18px}.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}h1{font-size:24px;margin:0}.chip{font-size:12px;color:#111;background:var(--accent);padding:6px 9px;border-radius:99px;font-weight:700}
-nav{display:flex;gap:6px;margin:0 -16px 14px;padding:0 16px 4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}nav::-webkit-scrollbar{display:none}.tab{flex:0 0 auto;border:0;background:var(--card);color:var(--muted);padding:10px 13px;border-radius:10px;font-size:13px;white-space:nowrap}.tab.on{background:var(--accent);color:#111;font-weight:700}.page{display:none}.page.on{display:block}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin:10px 0}h2{font-size:18px;margin:0 0 14px}.hint{font-size:12px;color:var(--muted);line-height:1.45}.mini{font-size:11px;color:var(--muted);margin-top:8px}label{display:block;font-size:13px;color:var(--muted);margin:11px 0 5px}input,select{width:100%;background:#16181b;color:var(--text);border:1px solid #4a5058;border-radius:9px;padding:11px;font-size:16px}.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.row>div,.colorrow>div,.triple>div{min-width:0}input,select{min-width:0;max-width:100%}input[type=time],input[type=date]{display:block;appearance:none;-webkit-appearance:none;width:100%;min-width:0;max-width:100%;min-height:44px;height:44px;padding:9px 11px}input::-webkit-date-and-time-value{min-width:0;text-align:left}input::-webkit-datetime-edit{min-width:0;padding:0}.triple{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.colorrow{display:grid;grid-template-columns:1fr 76px;gap:10px;align-items:end}
+.head{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0;gap:12px}.htitle{flex:1;min-width:0}.htitle h1{line-height:1.1}.pagename{font-size:13px;color:var(--accent);font-weight:700;margin-top:2px}.menuBtn{border:1px solid var(--border);background:var(--card);color:var(--text);width:44px;height:44px;border-radius:12px;font-size:22px;line-height:1;padding:0;flex:0 0 auto}.menu-backdrop{position:fixed;inset:0;z-index:50;background:#000a;display:flex;align-items:flex-start}.menu-backdrop.hidden{display:none}.menu-panel{background:var(--card);width:min(82vw,300px);margin-top:66px;border:1px solid var(--border);border-left:0;border-radius:0 16px 16px 0;box-shadow:6px 16px 45px #000a;padding:10px 8px;max-height:calc(100dvh - 80px);overflow:auto}.tab{display:block;width:100%;border:0;background:transparent;color:var(--text);padding:13px 14px;border-radius:10px;font-size:16px;text-align:left}.tab.on{background:var(--card2);color:var(--accent);font-weight:700}.pw{position:relative}.pw input{padding-right:46px}.eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);font-size:18px;padding:6px 8px;line-height:1}.eye.hidden{display:none}.page{display:none}.page.on{display:block}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin:10px 0}h2{font-size:18px;margin:0 0 14px}.hint{font-size:12px;color:var(--muted);line-height:1.45}.mini{font-size:11px;color:var(--muted);margin-top:8px}label{display:block;font-size:13px;color:var(--muted);margin:11px 0 5px}input,select{width:100%;background:#16181b;color:var(--text);border:1px solid #4a5058;border-radius:9px;padding:11px;font-size:16px}.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.row>div,.colorrow>div,.triple>div{min-width:0}input,select{min-width:0;max-width:100%}input[type=time],input[type=date]{display:block;appearance:none;-webkit-appearance:none;width:100%;min-width:0;max-width:100%;min-height:44px;height:44px;padding:9px 11px}input::-webkit-date-and-time-value{min-width:0;text-align:left}input::-webkit-datetime-edit{min-width:0;padding:0}.triple{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.colorrow{display:grid;grid-template-columns:1fr 76px;gap:10px;align-items:end}
 button.action,a.action{display:inline-block;border:0;border-radius:10px;background:var(--accent);color:#111;padding:11px 15px;font-family:inherit;font-size:14px;line-height:1.3;font-weight:750;text-decoration:none;min-height:42px}button.sec,a.sec{background:var(--card2);color:var(--text)}button.danger{background:var(--red);color:#111}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.serviceList{padding-left:20px}.serviceList li{margin:12px 0;overflow-wrap:anywhere}summary{cursor:pointer;font-weight:750}details h3{margin-top:16px}.sticky{position:sticky;bottom:10px;padding-top:12px}.sticky button{width:100%;font-size:16px}#saveBtn:disabled{background:#45494f;color:#aeb3ba;cursor:wait}.status{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap;color:#cdd2d8}.pickres{display:block;width:100%;text-align:left;margin:6px 0;padding:10px;border:1px solid var(--border);border-radius:9px;background:var(--card2);color:var(--text)}input[type=range]{padding:4px}input[type=color]{padding:3px;height:44px}.val{color:var(--accent);font-weight:700}.hidden{display:none}.checks{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}.check{display:flex;align-items:center;gap:8px;background:#1d2024;border:1px solid var(--border);border-radius:9px;padding:9px;color:var(--text);margin:0}.check input{width:auto;margin:0}.modeRow{display:grid;grid-template-columns:1fr 84px 42px;gap:8px;align-items:center;border-bottom:1px solid var(--border);padding:6px 0}.modeRow select{padding:8px 6px;font-size:15px}.showNow{border:0;border-radius:9px;background:var(--card2);color:var(--accent);height:40px;font-size:15px}.modeRow:last-child{border-bottom:0}.modeLeft{display:flex;align-items:center;gap:9px}.modeLeft input{width:auto}.wifirow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.sig{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);float:right}.ok{color:var(--green)}.err{color:var(--red)}.mapwrap{margin-top:10px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#16181b}.map{height:300px;width:100%}.mapnote{padding:8px 10px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)}.footer{text-align:center;color:var(--muted);font-size:11px;line-height:1.5;padding:18px 6px 6px}a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}a:active{color:#fff3a6}.footer a{color:var(--accent)}details.more{margin:6px 0}details.more>summary,details.adv>summary{cursor:pointer;color:var(--accent);font-size:13px;list-style:none;padding:6px 0}details.more>summary::-webkit-details-marker,details.adv>summary::-webkit-details-marker{display:none}details.adv>summary::before{content:"▸ "}details.adv[open]>summary::before{content:"▾ "}.cdcard h2.fold{cursor:pointer;display:flex;justify-content:space-between;align-items:center}.cdcard h2.fold::after{content:"▾";color:var(--muted)}.cdcard.collapsed h2.fold::after{content:"▸"}.cdcard.collapsed>*:not(h2){display:none}.cdbadge{margin-left:auto;margin-right:10px;font-size:12px;font-weight:400;color:var(--muted)}#saveBtn.dirty{background-image:radial-gradient(circle at calc(100% - 20px) 50%,#c0392b 5px,transparent 6px)}.toast{position:fixed;z-index:9999;top:18px;left:50%;transform:translate(-50%,-18px);opacity:0;pointer-events:none;min-width:220px;max-width:min(90vw,520px);padding:14px 18px;border-radius:12px;font-weight:800;text-align:center;box-shadow:0 8px 28px #0008;transition:opacity .18s ease,transform .18s ease}.toast.show{opacity:1;transform:translate(-50%,0)}.toast.ok{background:var(--green);color:#0b1a10}.toast.err{background:var(--red);color:#200}.toast.warn{background:var(--accent);color:#111}.subhead{font-size:13px;font-weight:400;color:var(--muted);margin:18px 0 5px}.depblock{transition:opacity .15s ease}.depblock.disabled{opacity:.42}.depblock.disabled label{color:var(--muted)}select:disabled,input:disabled{cursor:not-allowed;opacity:.58}
 @media(max-width:560px){.row,.wifirow{grid-template-columns:1fr}.triple{grid-template-columns:repeat(3,1fr)}.checks{grid-template-columns:1fr}}
 </style></head><body><div class="wrap">
-<div class="head"><h1>PixelStop</h1><span class="chip">v)HTML" FW_VERSION R"HTML(</span></div>
-<nav><button class="tab on" data-p="anzeige">Anzeige</button><button class="tab" data-p="abfahrten">Abfahrten</button><button class="tab" data-p="wetter">Wetter</button><button class="tab" data-p="flugradar">Flugradar</button><button class="tab" data-p="flugtracker">Flug-Tracker</button><button class="tab" data-p="countdown">Countdown</button><button class="tab" data-p="system">System</button></nav>
+<div class="head"><button type="button" class="menuBtn" id="menuBtn" aria-controls="mainMenu" aria-expanded="false" aria-label="Menü öffnen">☰</button><div class="htitle"><h1>PixelStop</h1><div class="pagename" id="pageName">Anzeige</div></div><span class="chip">v)HTML" FW_VERSION R"HTML(</span></div>
+<div class="menu-backdrop hidden" id="mainMenu"><nav class="menu-panel" aria-label="Hauptnavigation"><button class="tab on" data-p="anzeige">Anzeige</button><button class="tab" data-p="abfahrten">Abfahrten</button><button class="tab" data-p="wetter">Wetter</button><button class="tab" data-p="flugradar">Flugradar</button><button class="tab" data-p="flugtracker">Flug-Tracker</button><button class="tab" data-p="countdown">Countdown</button><button class="tab" data-p="system">System</button></nav></div>
 
 <section id="anzeige" class="page on">
 <div class="card"><h2>Anzeigerotation</h2><p class="hint">Programme anhaken und je Ansicht die Anzeigedauer festlegen. Mit nur einem Haken bleibt die Ansicht dauerhaft stehen.</p><div id="modeRows"></div>
-<label>Helligkeit: <span class="val" id="brv"></span>%</label><input id="brightness" type="range" min="1" max="100"></div>
+<label>Helligkeit: <span class="val" id="brv"></span>%</label><input id="brightness" type="range" min="1" max="100"><label>Dimmverfahren</label><select id="backlightMode"><option value="0">Standard (PWM)</option><option value="1">Sigma-Delta (Test gegen Aufblitzen)</option></select><p class="mini">Sigma-Delta dimmt über einen eigenen Baustein des Chips und wird nicht von WLAN-Aufgaben unterbrochen. Bitte nachts bei geringer Helligkeit vergleichen.</p></div>
 <div class="card"><h2>Zeitzone</h2><label for="timeZone">Lokale Zeit</label><select id="timeZone"><option value="Europe/Berlin">Europe/Berlin</option><option value="Europe/London">Europe/London</option><option value="Europe/Paris">Europe/Paris</option><option value="Europe/Madrid">Europe/Madrid</option><option value="Europe/Rome">Europe/Rome</option><option value="Europe/Prague">Europe/Prague</option><option value="Europe/Warsaw">Europe/Warsaw</option><option value="Europe/Athens">Europe/Athens</option><option value="Europe/Helsinki">Europe/Helsinki</option><option value="Europe/Bucharest">Europe/Bucharest</option><option value="Europe/Kyiv">Europe/Kyiv</option><option value="Europe/Istanbul">Europe/Istanbul</option><option value="Europe/Moscow">Europe/Moscow</option><option value="Atlantic/Reykjavik">Atlantic/Reykjavik</option><option value="Atlantic/Canary">Atlantic/Canary</option><option value="Atlantic/Azores">Atlantic/Azores</option><option value="Africa/Cairo">Africa/Cairo</option><option value="Africa/Johannesburg">Africa/Johannesburg</option><option value="Africa/Nairobi">Africa/Nairobi</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option><option value="America/Phoenix">America/Phoenix</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/Anchorage">America/Anchorage</option><option value="Pacific/Honolulu">Pacific/Honolulu</option><option value="America/Toronto">America/Toronto</option><option value="America/Vancouver">America/Vancouver</option><option value="America/Mexico_City">America/Mexico_City</option><option value="America/Bogota">America/Bogota</option><option value="America/Sao_Paulo">America/Sao_Paulo</option><option value="America/Argentina/Buenos_Aires">America/Argentina/Buenos_Aires</option><option value="America/St_Johns">America/St_Johns</option><option value="Asia/Jerusalem">Asia/Jerusalem</option><option value="Asia/Dubai">Asia/Dubai</option><option value="Asia/Kolkata">Asia/Kolkata</option><option value="Asia/Kathmandu">Asia/Kathmandu</option><option value="Asia/Bangkok">Asia/Bangkok</option><option value="Asia/Singapore">Asia/Singapore</option><option value="Asia/Shanghai">Asia/Shanghai</option><option value="Asia/Tokyo">Asia/Tokyo</option><option value="Asia/Seoul">Asia/Seoul</option><option value="Australia/Perth">Australia/Perth</option><option value="Australia/Darwin">Australia/Darwin</option><option value="Australia/Adelaide">Australia/Adelaide</option><option value="Australia/Brisbane">Australia/Brisbane</option><option value="Australia/Sydney">Australia/Sydney</option><option value="Pacific/Auckland">Pacific/Auckland</option><option value="Pacific/Fiji">Pacific/Fiji</option><option value="UTC">UTC</option></select><p class="hint">Gilt für Uhr, Footer, Nachtmodus, Wetter-Zeitangaben und Tages-Countdowns. Sommer- und Winterzeit werden nach den Regeln der ausgewählten Zone umgestellt.</p></div>
 <div class="card"><h2>Nachtmodus</h2><label class="check"><input id="nightEnabled" type="checkbox"> nachts dimmen</label><div class="row"><div><label for="nightStart">Beginn</label><input id="nightStart" type="time"></div><div><label for="nightEnd">Ende</label><input id="nightEnd" type="time"></div></div><label>Nacht-Helligkeit: <span class="val" id="nbv"></span>%</label><input id="nightBrightness" type="range" min="1" max="100"></div>
 </section>
 
 <section id="abfahrten" class="page"><div class="card"><h2>Abfahrtsmonitor</h2><p class="hint">Live vom Verkehrsverbund Oberelbe (VVO). Haltestelle suchen, Treffer wählen und Verkehrsmittel auswählen.</p><label>Haltestelle</label><input id="stopName" placeholder="z. B. Pohlandplatz"><input id="stopPlace" type="hidden"><div class="actions"><button class="action sec" type="button" id="searchStopBtn">Haltestelle suchen</button></div><div id="stopResults"></div><label>VVO-Haltestellen-ID</label><input id="stopId" readonly placeholder="noch keine Haltestelle gewählt"><label>Verkehrsmittel</label><div class="checks"><label class="check"><input type="checkbox" id="motTrain"> Zug</label><label class="check"><input type="checkbox" id="motSuburban"> S-Bahn</label><label class="check"><input type="checkbox" id="motTram"> Straßenbahn</label><label class="check"><input type="checkbox" id="motBus"> Bus</label><label class="check"><input type="checkbox" id="motCable"> Seil-/Schwebebahn</label><label class="check"><input type="checkbox" id="motFerry"> Fähre</label><label class="check"><input type="checkbox" id="motTaxi"> AST / Rufbus</label></div><div class="row"><div><label>Anzahl Abfahrten</label><select id="departureCount"><option>3</option><option>4</option><option>5</option><option>10</option></select></div><div><label>Aktualisierung</label><select id="departurePoll"><option value="15">15 s</option><option value="30">30 s</option><option value="60">60 s</option></select></div></div><div class="subhead">Darstellung Fahrziel</div><label class="check"><input id="departureCompactDestinations" type="checkbox"> Lange Ziele kompakt darstellen</label><label class="check"><input id="departureAbbreviate" type="checkbox" checked> Ziele abkürzen (Hbf, Bf, Str., Pl., St.)</label><label class="check"><input id="departureDropTown" type="checkbox" checked> Ortsnamen der Haltestelle weglassen</label><p class="mini">Beispiel: „Dresden Bühlau“ wird zu „Bühlau“, wenn die Haltestelle in Dresden liegt.</p></div></section>
 
-<section id="wetter" class="page"><div class="card"><h2>Wetter</h2><p class="hint">Live von Open-Meteo. Ort suchen und den Beobachtungspunkt auf der Karte exakt setzen. Standort gilt nur für dieses Programm.</p><label>Ort suchen</label><input id="weatherSearch" placeholder="z. B. Dresden oder 01237"><div class="actions"><button class="action sec" type="button" id="weatherSearchBtn">Suchen</button><button class="action sec" type="button" id="weatherMapBtn">Auf Karte auswählen</button></div><div id="weatherResults"></div><div id="weatherMapWrap" class="mapwrap hidden"><div id="weatherMap" class="map"></div><div class="mapnote">Kartenmaterial © OpenStreetMap-Mitwirkende. Auf die gewünschte Position tippen, um den Standort exakt zu setzen.</div></div><label>Ausgewählter Standort</label><input id="weatherCity" readonly><label>Anzeigename <span class="mini">optional, leer = gefundener Ortsname</span></label><input id="weatherDisplayName" placeholder="z. B. ZUHAUSE"><div class="subhead">Ortsnamen</div><label class="check"><input id="weatherGeoGerman" type="checkbox"> Auf Deutsch anzeigen, wenn verfügbar</label><details class="adv"><summary>Koordinaten</summary><div class="row"><div><label>Breitengrad</label><input id="weatherLat" inputmode="decimal"></div><div><label>Längengrad</label><input id="weatherLon" inputmode="decimal"></div></div></details><div class="row"><div><label>Temperatureinheit</label><select id="weatherUnit"><option value="C">Celsius (°C)</option><option value="F">Fahrenheit (°F)</option></select></div><div><label>Aktualisierung</label><select id="weatherPoll"><option value="300">5 min</option><option value="600">10 min</option><option value="900">15 min</option></select></div></div><div class="subhead">Farbige Darstellung</div><label class="check"><input id="weatherTempColor" type="checkbox"> Aktuelle Temperatur farbig darstellen</label><label class="check"><input id="weatherForecast" type="checkbox" checked> 3-Tage-Vorhersage im Wechsel anzeigen</label></div></section>
+<section id="wetter" class="page"><div class="card"><h2>Wetter</h2><p class="hint">Live von Open-Meteo. Ort suchen und den Beobachtungspunkt auf der Karte exakt setzen. Standort gilt nur für dieses Programm.</p><label>Ort suchen</label><input id="weatherSearch" placeholder="z. B. Dresden oder 01237"><div class="actions"><button class="action sec" type="button" id="weatherSearchBtn">Suchen</button><button class="action sec" type="button" id="weatherMapBtn">Auf Karte auswählen</button></div><div id="weatherResults"></div><div id="weatherMapWrap" class="mapwrap hidden"><div id="weatherMap" class="map"></div><div class="mapnote">Kartenmaterial © OpenStreetMap-Mitwirkende. Auf die gewünschte Position tippen, um den Standort exakt zu setzen.</div></div><label>Ausgewählter Standort</label><input id="weatherCity" readonly><label>Anzeigename <span class="mini">optional, leer = gefundener Ortsname</span></label><input id="weatherDisplayName" placeholder="z. B. ZUHAUSE"><div class="subhead">Ortsnamen</div><label class="check"><input id="weatherGeoGerman" type="checkbox"> Auf Deutsch anzeigen, wenn verfügbar</label><details class="adv"><summary>Koordinaten</summary><div class="row"><div><label>Breitengrad</label><input id="weatherLat" inputmode="decimal"></div><div><label>Längengrad</label><input id="weatherLon" inputmode="decimal"></div></div></details><div class="row"><div><label>Temperatureinheit</label><select id="weatherUnit"><option value="C">Celsius (°C)</option><option value="F">Fahrenheit (°F)</option></select></div><div><label>Aktualisierung</label><select id="weatherPoll"><option value="300">5 min</option><option value="600">10 min</option><option value="900">15 min</option></select></div></div><div class="subhead">Farbige Darstellung</div><label class="check"><input id="weatherTempColor" type="checkbox"> Aktuelle Temperatur farbig darstellen</label><p class="mini">Die 3-Tage-Vorhersage ist eine eigene Ansicht in der Rotation unter „Anzeige“ und nutzt Ort und Einstellungen dieser Seite.</p></div></section>
 
-<section id="flugradar" class="page"><div class="card"><h2>Flugradar</h2><p class="hint">Live von adsb.lol. Ort suchen und den Beobachtungspunkt auf der Karte exakt setzen. Standort gilt nur für dieses Programm.</p><label>Ort suchen</label><input id="planeSearch" placeholder="z. B. Schönefeld"><div class="actions"><button class="action sec" type="button" id="planeSearchBtn">Suchen</button><button class="action sec" type="button" id="planeMapBtn">Auf Karte auswählen</button></div><div id="planeResults"></div><div id="planeMapWrap" class="mapwrap hidden"><div id="planeMap" class="map"></div><div class="mapnote">Kartenmaterial © OpenStreetMap-Mitwirkende. Auf die gewünschte Position tippen, um den Standort exakt zu setzen.</div></div><label>Ausgewählter Standort</label><input id="planePlace" readonly><label>Anzeigename <span class="mini">optional, leer = gefundener Ortsname</span></label><input id="planeDisplayName" placeholder="z. B. ZUHAUSE"><div class="subhead">Ortsnamen</div><label class="check"><input id="planeGeoGerman" type="checkbox"> Auf Deutsch anzeigen, wenn verfügbar</label><div class="subhead">Standortname Darstellung</div><label class="check"><input id="planeShowPlace" type="checkbox"> Auf dem Display anzeigen</label><div id="planePlaceToggleBlock" class="depblock"><label>Standortname Wechselintervall</label><select id="planePlaceToggleSec"><option value="0">Kein Wechsel</option><option value="5">5 s</option><option value="10">10 s</option><option value="15">15 s</option><option value="30">30 s</option></select></div><details class="adv"><summary>Koordinaten</summary><div class="row"><div><label>Breitengrad</label><input id="planeLat" inputmode="decimal"></div><div><label>Längengrad</label><input id="planeLon" inputmode="decimal"></div></div></details><div class="row"><div><label>Radius</label><select id="planeRadiusKm"><option value="10">10 km</option><option value="25">25 km</option><option value="50">50 km</option><option value="100">100 km</option></select></div><div><label>Aktualisierung</label><select id="planePoll"><option value="5">5 s</option><option value="10">10 s</option><option value="15">15 s</option><option value="30">30 s</option><option value="60">1 min</option><option value="180">3 min</option></select></div></div><label class="check"><input id="planeShowAge" type="checkbox" checked> Zeit seit letztem Abruf anzeigen</label><p class="mini">Zeigt die Sekunden seit dem letzten erfolgreichen Positionsabruf.</p><p class="mini">Entfernung und Höhe werden zwischen den Abrufen aus Geschwindigkeit, Kurs und Steigrate weitergerechnet. Der Punkt unten links zeigt den Stand: kurz weiß bei neuen Daten, grün im normalen Takt, gelb Abruf überfällig, grau Werte angehalten.</p><label>adsb.lol API-Key <span class="mini">optional</span></label><input id="adsbLolKey" type="password" autocomplete="off" placeholder="API-Key eintragen"><p class="mini">Flugdaten: <a href="https://www.adsb.lol" target="_blank" rel="noopener">adsb.lol</a> (ODbL) · Kostenlosen Key holen: <a href="https://www.adsb.lol/pow/challenge" target="_blank" rel="noopener">anonym, ca. 1 Monat gültig</a> · <a href="https://www.adsb.lol/mmb" target="_blank" rel="noopener">weitere Wege</a></p><p class="mini err hidden" id="adsbKeyExpired">adsb.lol lehnt den Key ab – vermutlich ist er abgelaufen. Neuen Key holen und hier eintragen.</p><p class="mini err hidden" id="adsbKeyNeeded">adsb.lol lehnt Anfragen ohne Key ab. Mit einem kostenlosen Key geht es weiter.</p><details class="more"><summary>ⓘ Mehr dazu</summary><p class="mini">Ohne Schlüssel erlaubt adsb.lol nur eine begrenzte Zahl von Anfragen pro Tag und Internetanschluss; für den Dauerbetrieb ohne Schlüssel 3 min wählen. „-“ eintragen und speichern entfernt einen gespeicherten Schlüssel.</p><p class="mini">adsb.lol kann Abfragen je nach Serverauslastung vorübergehend begrenzen. Während einer Anbieterpause bleibt das zuletzt empfangene Flugzeug stehen. Nach einer Anbieterbegrenzung verlängert sich das Aktualisierungsintervall automatisch. Nach 10 Minuten ohne erneute Begrenzung gilt wieder das ausgewählte Intervall.</p></details></div></section>
+<section id="flugradar" class="page"><div class="card"><h2>Flugradar</h2><p class="hint">Live von adsb.lol. Ort suchen und den Beobachtungspunkt auf der Karte exakt setzen. Standort gilt nur für dieses Programm.</p><label>Ort suchen</label><input id="planeSearch" placeholder="z. B. Schönefeld"><div class="actions"><button class="action sec" type="button" id="planeSearchBtn">Suchen</button><button class="action sec" type="button" id="planeMapBtn">Auf Karte auswählen</button></div><div id="planeResults"></div><div id="planeMapWrap" class="mapwrap hidden"><div id="planeMap" class="map"></div><div class="mapnote">Kartenmaterial © OpenStreetMap-Mitwirkende. Auf die gewünschte Position tippen, um den Standort exakt zu setzen.</div></div><label>Ausgewählter Standort</label><input id="planePlace" readonly><label>Anzeigename <span class="mini">optional, leer = gefundener Ortsname</span></label><input id="planeDisplayName" placeholder="z. B. ZUHAUSE"><div class="subhead">Ortsnamen</div><label class="check"><input id="planeGeoGerman" type="checkbox"> Auf Deutsch anzeigen, wenn verfügbar</label><div class="subhead">Standortname Darstellung</div><label class="check"><input id="planeShowPlace" type="checkbox"> Auf dem Display anzeigen</label><div id="planePlaceToggleBlock" class="depblock"><label>Standortname Wechselintervall</label><select id="planePlaceToggleSec"><option value="0">Kein Wechsel</option><option value="5">5 s</option><option value="10">10 s</option><option value="15">15 s</option><option value="30">30 s</option></select></div><details class="adv"><summary>Koordinaten</summary><div class="row"><div><label>Breitengrad</label><input id="planeLat" inputmode="decimal"></div><div><label>Längengrad</label><input id="planeLon" inputmode="decimal"></div></div></details><div class="row"><div><label>Radius</label><select id="planeRadiusKm"><option value="10">10 km</option><option value="25">25 km</option><option value="50">50 km</option><option value="100">100 km</option></select></div><div><label>Aktualisierung</label><select id="planePoll"><option value="5">5 s</option><option value="10">10 s</option><option value="15">15 s</option><option value="30">30 s</option><option value="60">1 min</option><option value="180">3 min</option></select></div></div><label class="check"><input id="planeShowAge" type="checkbox" checked> Zeit seit letztem Abruf anzeigen</label><p class="mini">Zeigt die Sekunden seit dem letzten erfolgreichen Positionsabruf.</p><p class="mini">Entfernung und Höhe werden zwischen den Abrufen aus Geschwindigkeit, Kurs und Steigrate weitergerechnet. Der Punkt unten links zeigt den Stand: kurz weiß bei neuen Daten, grün im normalen Takt, gelb Abruf überfällig, grau Werte angehalten.</p><div class="subhead">Darstellung</div><label>Betreiber</label><select id="planeOperator"><option value="0">Name zum Rufzeichen (z. B. Air Mobility Command)</option><option value="1">Oberbegriff (z. B. US Air Force)</option><option value="2">Beides (z. B. US Air Force / AMC)</option></select><p class="mini">Oberbegriff und „Beides“ gelten für bekannte Militär-Rufzeichen; sonst bleibt der Name zum Rufzeichen.</p><label>Geschwindigkeit</label><select id="planeSpeed"><option value="0">nicht anzeigen</option><option value="1">km/h</option><option value="2">Knoten (kt)</option></select><p class="mini">Im Wechsel mit dem Kennzeichen, alle 3 Sekunden.</p><label class="check"><input id="planeTrend" type="checkbox"> Steig- und Sinkflug als ▲▼ anzeigen</label><label class="check"><input id="planeMarkMilitary" type="checkbox" checked> Militär mit „MIL“ markieren</label><div class="subhead">Ausblenden</div><div class="checks"><label class="check"><input id="hideHeli" type="checkbox"> Hubschrauber</label><label class="check"><input id="hideLight" type="checkbox"> Kleinflugzeuge</label><label class="check"><input id="hideSport" type="checkbox"> Segler, Ballone, Ultraleicht, Drohnen</label><label class="check"><input id="hideGround" type="checkbox"> am Boden</label></div><p class="mini">Mit Filter fragt PixelStop alle Flugzeuge im Radius ab und zeigt das nächste passende. Die Antwort ist größer, bei großem Radius dauert der Abruf etwas länger. Flugzeuge ohne Kategorie werden nie ausgeblendet. Notfälle (Squawk 7500/7600/7700) erscheinen immer rot.</p><label>adsb.lol API-Key <span class="mini">optional</span></label><input id="adsbLolKey" type="password" autocomplete="off" placeholder="API-Key eintragen"><p class="mini">Flugdaten: <a href="https://www.adsb.lol" target="_blank" rel="noopener">adsb.lol</a> (ODbL) · Kostenlosen Key holen: <a href="https://www.adsb.lol/pow/challenge" target="_blank" rel="noopener">anonym, ca. 1 Monat gültig</a> · <a href="https://www.adsb.lol/mmb" target="_blank" rel="noopener">weitere Wege</a></p><p class="mini err hidden" id="adsbKeyExpired">adsb.lol lehnt den Key ab – vermutlich ist er abgelaufen. Neuen Key holen und hier eintragen.</p><p class="mini err hidden" id="adsbKeyNeeded">adsb.lol lehnt Anfragen ohne Key ab. Mit einem kostenlosen Key geht es weiter.</p><details class="more"><summary>ⓘ Mehr dazu</summary><p class="mini">Ohne Schlüssel erlaubt adsb.lol nur eine begrenzte Zahl von Anfragen pro Tag und Internetanschluss; für den Dauerbetrieb ohne Schlüssel 3 min wählen. „-“ eintragen und speichern entfernt einen gespeicherten Schlüssel.</p><p class="mini">adsb.lol kann Abfragen je nach Serverauslastung vorübergehend begrenzen. Während einer Anbieterpause bleibt das zuletzt empfangene Flugzeug stehen. Nach einer Anbieterbegrenzung verlängert sich das Aktualisierungsintervall automatisch. Nach 10 Minuten ohne erneute Begrenzung gilt wieder das ausgewählte Intervall.</p></details></div></section>
 
 <section id="flugtracker" class="page"><div class="card"><h2>Flug-Tracker</h2><p class="hint">Verfolgt genau einen Flug. Plan-/Ist-Zeiten kommen von aviationstack; Höhe und Geschwindigkeit während des Fluges zusätzlich über adsb.lol.</p><label>Flugnummer</label><input id="trackedFlightNo" placeholder="z. B. AF1234" autocapitalize="characters"><label>aviationstack API-Key</label><input id="aviationstackKey" type="password" autocomplete="off" placeholder="API-Key eintragen"><label>Status-Aktualisierung</label><select id="trackerStatusPollMin"><option value="10">10 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">60 min</option></select><p class="mini">Statusabfragen laufen sparsam und nur, wenn der Tracker tatsächlich angezeigt wird.</p></div></section>
 
@@ -234,8 +249,8 @@ function trNode(n){if(!n)return;if(n.nodeType===3){const v=trText(n.nodeValue);i
 async function useLang(l){if(l===LANG)return;if(l!=='en'){try{localStorage.setItem('pixelstop.lang','de')}catch(e){}dirty=false;location.reload();return}try{const r=await fetch('/i18n/en.json');if(!r.ok)return;I18N=await r.json();LANG='en';document.documentElement.lang='en';try{localStorage.setItem('pixelstop.lang','en')}catch(e){}trNode(document.body);new MutationObserver(ms=>{for(const m of ms){if(m.type==='childList')m.addedNodes.forEach(trNode);else trNode(m.target)}}).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','title']})}catch(e){}}
 
 const $=id=>document.getElementById(id),clamp=(n,a,b)=>Math.max(a,Math.min(b,Number(n)||0));
-const modeNames=['Abfahrten','Wetter','Flugradar','Uhr','Flug-Tracker','Countdown 1','Countdown 2','Countdown 3','Countdown 4'];
-const modeDefaults=[30,20,20,15,20,20,20,20,20];
+const modeNames=['Abfahrten','Wetter','Flugradar','Uhr','Flug-Tracker','Countdown 1','Countdown 2','Countdown 3','Countdown 4','3-Tage-Vorhersage'];
+const modeDefaults=[30,20,20,15,20,20,20,20,20,15],modeOrder=[0,1,9,2,4,3,5,6,7,8];
 function friendly(e){if(e&&e.userMessage)return e.userMessage;if(e instanceof TypeError||String(e).includes('fetch'))return 'Verbindung zum Würfel fehlgeschlagen. Ist der Würfel eingeschaltet und mit dem WLAN verbunden?';return e?.message||'Unbekannter Fehler.'}
 async function fetchJson(url,opt){let r;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);try{r=await fetch(url,{...opt,signal:controller.signal})}catch(e){let x=new Error();x.userMessage='Verbindung zum Würfel fehlgeschlagen. Ist der Würfel eingeschaltet und mit dem WLAN verbunden?';throw x}finally{clearTimeout(timer)}let d={};try{d=await r.json()}catch(e){}if(!r.ok||d.ok===false){let x=new Error();x.userMessage=d.error||('Anfrage fehlgeschlagen ('+r.status+').');throw x}return d}
 function showBox(id,msg,err=false){const span=document.createElement('span');span.className='hint '+(err?'err':'');span.textContent=msg;$(id).replaceChildren(span)}
@@ -279,16 +294,20 @@ async function runGeo(){const kind=geoPending.weather?'weather':(geoPending.plan
 async function ensureMap(kind){await loadLeaflet();let [lat,lon]=coords(kind);if(!Number.isFinite(lat)||!Number.isFinite(lon)){lat=51.0504;lon=13.7373}if(!maps[kind]){const m=L.map(kind+'Map').setView([lat,lon],14);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap-Mitwirkende</a>'}).addTo(m);const marker=L.marker([lat,lon],{draggable:true}).addTo(m);const picked=p=>{const lon=wrapLongitude(p.lng);setMapPoint(kind,p.lat,lon,false);reversePlace(kind,p.lat,lon)};m.on('click',e=>picked(e.latlng));marker.on('dragend',()=>picked(marker.getLatLng()));maps[kind]=m;markers[kind]=marker}else{maps[kind].setView([lat,lon],maps[kind].getZoom());markers[kind].setLatLng([lat,lon])}setTimeout(()=>maps[kind].invalidateSize(),50)}
 async function toggleMap(kind){const w=$(kind+'MapWrap'),opening=w.classList.contains('hidden');if(opening&&navigator.onLine===false){showBox(kind+'Results','Internetverbindung erforderlich',true);return}w.classList.toggle('hidden',!opening);if(!opening)return;showBox(kind+'Results','Karte wird geladen…');try{await ensureMap(kind);showBox(kind+'Results','Auf die gewünschte Position in der Karte tippen.')}catch(e){w.classList.add('hidden');showBox(kind+'Results',navigator.onLine===false?'Internetverbindung erforderlich':'Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen oder Koordinaten manuell eingeben.',true)}}
 function syncMapFromInputs(kind){let [lat,lon]=coords(kind);if(Number.isFinite(lat)&&Number.isFinite(lon)&&maps[kind]){markers[kind].setLatLng([lat,lon]);maps[kind].setView([lat,lon],maps[kind].getZoom())}}
-document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab,.page').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.p).classList.add('on')}));
+function menu(open){$('mainMenu').classList.toggle('hidden',!open);$('menuBtn').setAttribute('aria-expanded',open?'true':'false')}
+$('menuBtn').addEventListener('click',()=>menu($('mainMenu').classList.contains('hidden')));$('mainMenu').addEventListener('click',e=>{if(e.target===$('mainMenu'))menu(false)});document.addEventListener('keydown',e=>{if(e.key==='Escape')menu(false)});
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab,.page').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.p).classList.add('on');$('pageName').textContent=b.textContent;menu(false);window.scrollTo(0,0)}));
+// Eye button: shows a typed key or password while typing; stored values are never sent back.
+document.querySelectorAll('input[type=password]').forEach(inp=>{const w=document.createElement('div');w.className='pw';inp.parentNode.insertBefore(w,inp);w.appendChild(inp);const e=document.createElement('button');e.type='button';e.className='eye';e.classList.add('hidden');e.textContent='👁';e.title='Eingabe anzeigen';e.setAttribute('aria-label','Eingabe anzeigen');w.appendChild(e);const sync=()=>{e.classList.toggle('hidden',!inp.value);if(!inp.value)inp.type='password'};inp.addEventListener('input',sync);e.addEventListener('click',()=>{inp.type=inp.type==='password'?'text':'password'});inp._eyeSync=sync});
 function hhmm(m){let h=Math.floor(m/60)%24,mm=m%60;return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0')}function mins(s){let p=(s||'00:00').split(':');return (+p[0])*60+(+p[1])}
-function buildModeRows(){let h='';[0,1,2,4,3,5,6,7,8].forEach(i=>h+=`<div class="modeRow"><label class="modeLeft"><input type="checkbox" id="modeOn${i}"><span>${modeNames[i]}</span></label><select id="modeSec${i}"><option value="10">10 s</option><option value="15">15 s</option><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select><button type="button" class="showNow" data-mode="${i}" title="Jetzt anzeigen" aria-label="Jetzt anzeigen">▶</button></div>`);$('modeRows').innerHTML=h;document.querySelectorAll('.showNow').forEach(b=>b.addEventListener('click',async()=>{try{let r=await fetchJson('/api/show',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:+b.dataset.mode})});toast(r.rotation?'Wird für '+r.sec+' s angezeigt · danach geht die Rotation weiter':'Wird angezeigt · bleibt stehen, bis du wieder speicherst','ok',3200)}catch(e){toast(friendly(e),'err',3500)}}))}
+function buildModeRows(){let h='';modeOrder.forEach(i=>h+=`<div class="modeRow"><label class="modeLeft"><input type="checkbox" id="modeOn${i}"><span>${modeNames[i]}</span></label><select id="modeSec${i}"><option value="10">10 s</option><option value="15">15 s</option><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select><button type="button" class="showNow" data-mode="${i}" title="Jetzt anzeigen" aria-label="Jetzt anzeigen">▶</button></div>`);$('modeRows').innerHTML=h;document.querySelectorAll('.showNow').forEach(b=>b.addEventListener('click',async()=>{try{let r=await fetchJson('/api/show',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:+b.dataset.mode})});toast(r.rotation?'Wird für '+r.sec+' s angezeigt · danach geht die Rotation weiter':'Wird angezeigt · bleibt stehen, bis du wieder speicherst','ok',3200)}catch(e){toast(friendly(e),'err',3500)}}))}
 function buildCountdownCards(){const root=$('countdownSlots');let html='';for(let i=0;i<4;i++)html+=`<div class="card cdcard collapsed" id="cdCard${i}"><h2 class="fold">Countdown ${i+1}<span class="cdbadge" id="cdBadge${i}"></span></h2><div class="colorrow"><div><label>Optionaler Titel</label><input id="cdTitle${i}" maxlength="24" placeholder="z. B. URLAUB"></div><div><label>Titelfarbe</label><input id="cdTitleColor${i}" type="color" value="#ffffff"></div></div><label>Timer-Art</label><select id="cdType${i}"><option value="0">Tage</option><option value="1">Stunden : Minuten : Sekunden</option><option value="2">Minuten : Sekunden</option></select><div id="cdDays${i}"><label>Zieltag</label><input id="cdDate${i}" type="date"></div><div id="cdHms${i}" class="triple hidden"><div><label>Stunden</label><input id="cdH${i}" type="number" min="0" max="999" value="0"></div><div><label>Minuten</label><input id="cdM${i}" type="number" min="0" max="59" value="10"></div><div><label>Sekunden</label><input id="cdS${i}" type="number" min="0" max="59" value="0"></div></div><div id="cdMs${i}" class="row hidden"><div><label>Minuten</label><input id="cdOnlyM${i}" type="number" min="0" max="9999" value="10"></div><div><label>Sekunden</label><input id="cdOnlyS${i}" type="number" min="0" max="59" value="0"></div></div><div class="colorrow"><div><label>Countdown-Farbe</label><span class="mini" id="cdStatus${i}">inaktiv</span></div><div><label>Farbe</label><input id="cdCountColor${i}" type="color" value="#ff5d56"></div></div><div class="actions"><button type="button" class="action" id="cdStart${i}">Start / aktivieren</button><button type="button" class="action sec" id="cdStop${i}">Stoppen</button></div></div>`;root.innerHTML=html;document.querySelectorAll('.cdcard h2.fold').forEach(h=>h.addEventListener('click',()=>h.parentNode.classList.toggle('collapsed')));for(let i=0;i<4;i++){$(`cdType${i}`).addEventListener('change',()=>updateCdFields(i));$(`cdStart${i}`).addEventListener('click',()=>countdownAction(i,'start'));$(`cdStop${i}`).addEventListener('click',()=>countdownAction(i,'stop'))}}
 function updateCdFields(i){let t=+$(`cdType${i}`).value;$(`cdDays${i}`).classList.toggle('hidden',t!==0);$(`cdHms${i}`).classList.toggle('hidden',t!==1);$(`cdMs${i}`).classList.toggle('hidden',t!==2)}
 function countdownPayload(i){let t=+$(`cdType${i}`).value,d=0;if(t===1)d=clamp($(`cdH${i}`).value,0,999)*3600+clamp($(`cdM${i}`).value,0,59)*60+clamp($(`cdS${i}`).value,0,59);if(t===2)d=clamp($(`cdOnlyM${i}`).value,0,9999)*60+clamp($(`cdOnlyS${i}`).value,0,59);return{title:$(`cdTitle${i}`).value,titleColor:$(`cdTitleColor${i}`).value,countColor:$(`cdCountColor${i}`).value,type:t,targetDate:$(`cdDate${i}`).value,durationSec:d}}
 function loadCountdown(i,c){$(`cdTitle${i}`).value=c.title||'';$(`cdTitleColor${i}`).value=c.titleColor||'#ffffff';$(`cdCountColor${i}`).value=c.countColor||'#ff5d56';$(`cdType${i}`).value=c.type??0;$(`cdDate${i}`).value=c.targetDate||'';let d=Number(c.durationSec||0),h=Math.floor(d/3600),m=Math.floor((d%3600)/60),sec=d%60;$(`cdH${i}`).value=h;$(`cdM${i}`).value=m;$(`cdS${i}`).value=sec;$(`cdOnlyM${i}`).value=Math.floor(d/60);$(`cdOnlyS${i}`).value=sec;$(`cdStatus${i}`).textContent=c.active?'aktiv':'inaktiv';$(`cdBadge${i}`).textContent=c.active?'aktiv':(c.title||'');$(`cdCard${i}`).classList.toggle('collapsed',!c.active);updateCdFields(i)}
 async function countdownAction(i,action){let body=countdownPayload(i);body.slot=i;body.action=action;try{await fetchJson('/api/countdown',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});await load();toast(action==='start'?'Countdown gestartet':'Countdown gestoppt')}catch(e){try{let c=await load();let wanted=action==='start';if(c?.countdowns?.[i]?.active===wanted){toast(action==='start'?'Countdown gestartet':'Countdown gestoppt');return}}catch(_){}toast(friendly(e),'err',4200)}}
 $('brightness').addEventListener('input',()=> $('brv').textContent=$('brightness').value);$('nightBrightness').addEventListener('input',()=> $('nbv').textContent=$('nightBrightness').value);
-async function load(){try{let c=await fetchJson('/api/config');$('lang').value=String(+c.lang===1?1:0);useLang(+c.lang===1?'en':'de');['ssid','hostname','timeZone','stopName','stopPlace','stopId','weatherCity','weatherDisplayName','planePlace','planeDisplayName','trackedFlightNo'].forEach(k=>{if($(k))$(k).value=c[k]??''});['brightness','departureCount','departurePoll','weatherPoll','planeRadiusKm','planePoll','planePlaceToggleSec','trackerStatusPollMin'].forEach(k=>$(k).value=c[k]);['weatherLat','weatherLon','planeLat','planeLon'].forEach(k=>$(k).value=Number(c[k]).toFixed(4));$('weatherSearch').value=c.weatherCity||'';$('planeSearch').value=c.planePlace||'';$('nightEnabled').checked=!!c.nightEnabled;$('nightStart').value=hhmm(c.nightStart);$('nightEnd').value=hhmm(c.nightEnd);$('nightBrightness').value=c.nightBrightness;$('weatherTempColor').checked=!!c.weatherTempColor;$('weatherUnit').value=c.weatherFahrenheit?'F':'C';$('departureCompactDestinations').checked=!!c.departureCompactDestinations;$('departureAbbreviate').checked=c.departureAbbreviate!==false;$('departureDropTown').checked=c.departureDropTown!==false;$('weatherForecast').checked=c.weatherForecast!==false;$('weatherGeoGerman').checked=!!c.geoGermanNames;$('planeGeoGerman').checked=!!c.geoGermanNames;$('planeShowAge').checked=c.planeShowAge!==false;$('planeShowPlace').checked=!!c.planeShowPlace;updatePlanePlaceControls();$('brv').textContent=c.brightness;$('nbv').textContent=c.nightBrightness;let mask=Number(c.rotationMask||0),secs=c.rotationSec||modeDefaults;for(let i=0;i<9;i++){$(`modeOn${i}`).checked=!!(mask&(1<<i));$(`modeSec${i}`).value=secs[i]||modeDefaults[i]}let mm=Number(c.vvoMotMask??127);$('motTrain').checked=!!(mm&1);$('motSuburban').checked=!!(mm&2);$('motTram').checked=!!(mm&4);$('motBus').checked=!!(mm&8);$('motCable').checked=!!(mm&16);$('motFerry').checked=!!(mm&32);$('motTaxi').checked=!!(mm&64);$('aviationstackKey').value='';$('aviationstackKey').placeholder=c.aviationstackKeySet?'API-Key gespeichert, leer = behalten':'API-Key eintragen';$('adsbLolKey').value='';$('adsbLolKey').placeholder=c.adsbLolKeySet?'API-Key gespeichert, leer = behalten':'API-Key eintragen';(c.countdowns||[]).forEach((x,i)=>{if(i<4)loadCountdown(i,x)});markDirty(false);statusNow();return c}catch(e){toast(friendly(e),'err',4200);throw e}}
+async function load(){try{let c=await fetchJson('/api/config');$('lang').value=String(+c.lang===1?1:0);useLang(+c.lang===1?'en':'de');['ssid','hostname','timeZone','stopName','stopPlace','stopId','weatherCity','weatherDisplayName','planePlace','planeDisplayName','trackedFlightNo'].forEach(k=>{if($(k))$(k).value=c[k]??''});['brightness','departureCount','departurePoll','weatherPoll','planeRadiusKm','planePoll','planePlaceToggleSec','trackerStatusPollMin'].forEach(k=>$(k).value=c[k]);['weatherLat','weatherLon','planeLat','planeLon'].forEach(k=>$(k).value=Number(c[k]).toFixed(4));$('weatherSearch').value=c.weatherCity||'';$('planeSearch').value=c.planePlace||'';$('nightEnabled').checked=!!c.nightEnabled;$('nightStart').value=hhmm(c.nightStart);$('nightEnd').value=hhmm(c.nightEnd);$('nightBrightness').value=c.nightBrightness;$('weatherTempColor').checked=!!c.weatherTempColor;$('weatherUnit').value=c.weatherFahrenheit?'F':'C';$('departureCompactDestinations').checked=!!c.departureCompactDestinations;$('departureAbbreviate').checked=c.departureAbbreviate!==false;$('departureDropTown').checked=c.departureDropTown!==false;$('backlightMode').value=String(+c.backlightMode===1?1:0);$('planeOperator').value=String(c.planeOperator||0);$('planeSpeed').value=String(c.planeSpeed||0);$('planeTrend').checked=!!c.planeTrend;$('planeMarkMilitary').checked=c.planeMarkMilitary!==false;{let hm=Number(c.planeHide||0);$('hideHeli').checked=!!(hm&1);$('hideLight').checked=!!(hm&2);$('hideSport').checked=!!(hm&4);$('hideGround').checked=!!(hm&8)}$('weatherGeoGerman').checked=!!c.geoGermanNames;$('planeGeoGerman').checked=!!c.geoGermanNames;$('planeShowAge').checked=c.planeShowAge!==false;$('planeShowPlace').checked=!!c.planeShowPlace;updatePlanePlaceControls();$('brv').textContent=c.brightness;$('nbv').textContent=c.nightBrightness;let mask=Number(c.rotationMask||0),secs=c.rotationSec||modeDefaults;for(let i=0;i<10;i++){$(`modeOn${i}`).checked=!!(mask&(1<<i));$(`modeSec${i}`).value=secs[i]||modeDefaults[i]}let mm=Number(c.vvoMotMask??127);$('motTrain').checked=!!(mm&1);$('motSuburban').checked=!!(mm&2);$('motTram').checked=!!(mm&4);$('motBus').checked=!!(mm&8);$('motCable').checked=!!(mm&16);$('motFerry').checked=!!(mm&32);$('motTaxi').checked=!!(mm&64);$('aviationstackKey').value='';$('aviationstackKey').placeholder=c.aviationstackKeySet?'API-Key gespeichert, leer = behalten':'API-Key eintragen';$('adsbLolKey').value='';document.querySelectorAll('.pw input').forEach(i=>i._eyeSync&&i._eyeSync());$('adsbLolKey').placeholder=c.adsbLolKeySet?'API-Key gespeichert, leer = behalten':'API-Key eintragen';(c.countdowns||[]).forEach((x,i)=>{if(i<4)loadCountdown(i,x)});markDirty(false);statusNow();return c}catch(e){toast(friendly(e),'err',4200);throw e}}
 async function searchStop(){const box=$('stopResults'),q=$('stopName').value.trim();if(q.length<2){showBox('stopResults','Bitte mindestens zwei Zeichen eingeben.');return}showBox('stopResults','suche beim VVO…');try{const d=await fetchJson('/api/vvo/search?q='+encodeURIComponent(q));if(!d.stops.length){showBox('stopResults','Keine Haltestelle gefunden.');return}box.innerHTML=d.stops.map((x,i)=>`<button class="pickres" type="button" data-i="${i}">${x.label}</button>`).join('');box.querySelectorAll('button').forEach((b,i)=>b.addEventListener('click',()=>{const x=d.stops[i];$('stopId').value=x.id;$('stopName').value=x.name;$('stopPlace').value=x.place||'';markDirty();showBox('stopResults','Ausgewählt: '+x.label)}))}catch(e){showBox('stopResults',friendly(e),true)}}
 function searchPlace(kind){if(saving)return;if(navigator.onLine===false){++geoGeneration[kind];geoPending[kind]=null;showBox(kind+'Results','Internetverbindung erforderlich',true);updateSaveGate();return}const q=$(kind+'Search').value.trim();if(q.length<2){showBox(kind+'Results','Bitte mindestens zwei Zeichen eingeben.');return}geoPending[kind]={q,generation:++geoGeneration[kind]};showBox(kind+'Results','suche Ort…');updateSaveGate();scheduleGeo()}
 function renderPlaceResults(kind,places){const box=$(kind+'Results');if(!places.length){showBox(kind+'Results','Kein Ort gefunden.');return}box.replaceChildren();places.forEach(x=>{const b=document.createElement('button'),s=document.createElement('span');b.type='button';b.className='pickres';b.textContent=x.label;s.className='sig';s.textContent=x.lat.toFixed(4)+', '+x.lon.toFixed(4);b.append(s);b.addEventListener('click',()=>{++geoGeneration[kind];geoPending[kind]=null;$(kind==='weather'?'weatherCity':'planePlace').value=x.name;setMapPoint(kind,x.lat,x.lon,true);markDirty();showBox(kind+'Results','Ausgewählt: '+x.label+(maps[kind]?' · Marker auf Ortsmitte gesetzt':''));updateSaveGate()});box.append(b)});const note=document.createElement('p'),link=document.createElement('a');note.className='mini';note.textContent='Ortsdaten © ';link.href='https://www.openstreetmap.org/copyright';link.target='_blank';link.rel='noopener';link.textContent='OpenStreetMap-Mitwirkende';note.append(link);box.append(note)}
@@ -296,8 +315,8 @@ function updatePlanePlaceControls(){const off=!$('planeShowPlace').checked;$('pl
 function syncGeoLanguage(source){const v=$(source).checked;$('weatherGeoGerman').checked=v;$('planeGeoGerman').checked=v}
 function signalBars(r){return r>=-50?'▁▂▄▆█':r>=-60?'▁▂▄▆':r>=-70?'▁▂▄':r>=-80?'▁▂':'▁'}
 async function scanWifi(){showBox('wifiResults','suche WLAN-Netze…');try{let d=await fetchJson('/api/wifi/scan'),best=new Map();(d.networks||[]).forEach(n=>{if(!n.ssid)return;let o=best.get(n.ssid);if(!o||n.rssi>o.rssi)best.set(n.ssid,n)});let a=[...best.values()].sort((x,y)=>y.rssi-x.rssi);if(!a.length){showBox('wifiResults','Keine WLAN-Netze gefunden.');return}$('wifiResults').innerHTML=a.map((n,i)=>`<button class="pickres" type="button" data-i="${i}">${n.open?'○':'●'} ${n.ssid}<span class="sig">${signalBars(n.rssi)} ${n.rssi} dBm</span></button>`).join('');$('wifiResults').querySelectorAll('button').forEach((b,i)=>b.addEventListener('click',()=>{$('ssid').value=a[i].ssid;showBox('wifiResults','Ausgewählt: '+a[i].ssid)}))}catch(e){showBox('wifiResults',friendly(e),true)}}
-async function save(){if(saving||geoBusy||geoPending.weather||geoPending.plane)return;let mask=0,rotationSec=[];for(let i=0;i<9;i++){if($(`modeOn${i}`).checked)mask|=1<<i;rotationSec.push(+$(`modeSec${i}`).value)}if(!mask){toast('Bitte mindestens ein Programm für die Anzeige auswählen.','warn',3500);return}let mot=($('motTrain').checked?1:0)|($('motSuburban').checked?2:0)|($('motTram').checked?4:0)|($('motBus').checked?8:0)|($('motCable').checked?16:0)|($('motFerry').checked?32:0)|($('motTaxi').checked?64:0);if(!mot){toast('Bitte mindestens ein Verkehrsmittel auswählen.','warn',3500);return}let [wlat,wlon]=coords('weather'),[plat,plon]=coords('plane');if(!Number.isFinite(wlat)||wlat<-90||wlat>90||!Number.isFinite(wlon)||wlon<-180||wlon>180){toast('Bitte gültige Wetter-Koordinaten eingeben.','warn',3500);return}if(!Number.isFinite(plat)||plat<-90||plat>90||!Number.isFinite(plon)||plon<-180||plon>180){toast('Bitte gültige Flugradar-Koordinaten eingeben.','warn',3500);return}let o={lang:+$('lang').value,ssid:$('ssid').value,pass:$('pass').value,hostname:$('hostname').value,rotationMask:mask,rotationSec,brightness:+$('brightness').value,timeZone:$('timeZone').value,nightEnabled:$('nightEnabled').checked,nightStart:mins($('nightStart').value),nightEnd:mins($('nightEnd').value),nightBrightness:+$('nightBrightness').value,stopName:$('stopName').value,stopPlace:$('stopPlace').value,stopId:$('stopId').value,departureCount:+$('departureCount').value,departurePoll:+$('departurePoll').value,vvoMotMask:mot,departureCompactDestinations:$('departureCompactDestinations').checked,departureAbbreviate:$('departureAbbreviate').checked,departureDropTown:$('departureDropTown').checked,weatherForecast:$('weatherForecast').checked,weatherCity:$('weatherCity').value,weatherDisplayName:$('weatherDisplayName').value,weatherLat:wlat,weatherLon:wlon,weatherPoll:+$('weatherPoll').value,weatherTempColor:$('weatherTempColor').checked,weatherFahrenheit:$('weatherUnit').value==='F',geoGermanNames:$('weatherGeoGerman').checked,planePlace:$('planePlace').value,planeDisplayName:$('planeDisplayName').value,planeLat:plat,planeLon:plon,planeRadiusKm:+$('planeRadiusKm').value,planePoll:+$('planePoll').value,planeShowAge:$('planeShowAge').checked,planeShowPlace:$('planeShowPlace').checked,planePlaceToggleSec:+$('planePlaceToggleSec').value,trackedFlightNo:$('trackedFlightNo').value,aviationstackKey:$('aviationstackKey').value,adsbLolKey:$('adsbLolKey').value,trackerStatusPollMin:+$('trackerStatusPollMin').value,countdowns:[0,1,2,3].map(countdownPayload)};saving=true;updateSaveGate();try{let r=await fetchJson('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});toast(r.reboot?'Gespeichert · PixelStop startet neu':'✓ Einstellungen gespeichert','ok',r.reboot?5500:2200);if(r.reboot){markDirty(false);setTimeout(()=>location.reload(),7000)}else await load()}catch(e){toast(friendly(e),'err',4200)}finally{saving=false;updateSaveGate()}}
-async function statusNow(){try{let s=await fetchJson('/api/status');$('adsbKeyExpired').classList.toggle('hidden',!(s.adsbDenied&&s.adsbKey));$('adsbKeyNeeded').classList.toggle('hidden',!(s.adsbDenied&&!s.adsbKey));$('status').textContent=`Firmware: ${s.fw} ${s.version}\nNetz: ${s.ssid||'-'}\nIP: ${s.ip}\nRSSI: ${s.rssi} dBm\nFreier Heap: ${s.heap} B (${s.maxBlock} B größter Block)\nFlugradar: ${s.flightStage||'-'}${s.flightHttp?` · HTTP ${s.flightHttp}`:''}${s.flightTlsRx?` · TLS RX ${s.flightTlsRx} B`:''}${s.flightTlsMinBlock?` · Blockbedarf ${s.flightTlsMinBlock} B`:''}${s.flightWaitSec?` · Pause ${s.flightWaitSec} s`:''}${s.flightMinIntervalSec?` · Mindestintervall ${s.flightMinIntervalSec} s`:''}\nadsb.lol heute: ${s.adsbToday} Anfragen${s.adsbKey?' · mit Schlüssel':` von 450 · Tagesbudget-Intervall ${s.adsbBudgetSec} s`}\nRadar-Route: ${s.routeStatus||'-'} · ${s.routeSource||'-'}${s.routeHttp?` · HTTP ${s.routeHttp}`:''}\nUptime: ${s.uptime}s\nTracker: ${s.trackerValid?'Daten vorhanden':(s.trackerError?'Fehler':'bereit')}`}catch(e){$('status').textContent='PixelStop derzeit nicht erreichbar.'}}
+async function save(){if(saving||geoBusy||geoPending.weather||geoPending.plane)return;let mask=0,rotationSec=[];for(let i=0;i<10;i++){if($(`modeOn${i}`).checked)mask|=1<<i;rotationSec.push(+$(`modeSec${i}`).value)}if(!mask){toast('Bitte mindestens ein Programm für die Anzeige auswählen.','warn',3500);return}let mot=($('motTrain').checked?1:0)|($('motSuburban').checked?2:0)|($('motTram').checked?4:0)|($('motBus').checked?8:0)|($('motCable').checked?16:0)|($('motFerry').checked?32:0)|($('motTaxi').checked?64:0);if(!mot){toast('Bitte mindestens ein Verkehrsmittel auswählen.','warn',3500);return}let [wlat,wlon]=coords('weather'),[plat,plon]=coords('plane');if(!Number.isFinite(wlat)||wlat<-90||wlat>90||!Number.isFinite(wlon)||wlon<-180||wlon>180){toast('Bitte gültige Wetter-Koordinaten eingeben.','warn',3500);return}if(!Number.isFinite(plat)||plat<-90||plat>90||!Number.isFinite(plon)||plon<-180||plon>180){toast('Bitte gültige Flugradar-Koordinaten eingeben.','warn',3500);return}let o={lang:+$('lang').value,ssid:$('ssid').value,pass:$('pass').value,hostname:$('hostname').value,rotationMask:mask,rotationSec,brightness:+$('brightness').value,timeZone:$('timeZone').value,nightEnabled:$('nightEnabled').checked,nightStart:mins($('nightStart').value),nightEnd:mins($('nightEnd').value),nightBrightness:+$('nightBrightness').value,stopName:$('stopName').value,stopPlace:$('stopPlace').value,stopId:$('stopId').value,departureCount:+$('departureCount').value,departurePoll:+$('departurePoll').value,vvoMotMask:mot,departureCompactDestinations:$('departureCompactDestinations').checked,departureAbbreviate:$('departureAbbreviate').checked,departureDropTown:$('departureDropTown').checked,backlightMode:+$('backlightMode').value,weatherCity:$('weatherCity').value,weatherDisplayName:$('weatherDisplayName').value,weatherLat:wlat,weatherLon:wlon,weatherPoll:+$('weatherPoll').value,weatherTempColor:$('weatherTempColor').checked,weatherFahrenheit:$('weatherUnit').value==='F',geoGermanNames:$('weatherGeoGerman').checked,planePlace:$('planePlace').value,planeDisplayName:$('planeDisplayName').value,planeLat:plat,planeLon:plon,planeRadiusKm:+$('planeRadiusKm').value,planePoll:+$('planePoll').value,planeShowAge:$('planeShowAge').checked,planeShowPlace:$('planeShowPlace').checked,planeOperator:+$('planeOperator').value,planeSpeed:+$('planeSpeed').value,planeTrend:$('planeTrend').checked,planeMarkMilitary:$('planeMarkMilitary').checked,planeHide:($('hideHeli').checked?1:0)|($('hideLight').checked?2:0)|($('hideSport').checked?4:0)|($('hideGround').checked?8:0),planePlaceToggleSec:+$('planePlaceToggleSec').value,trackedFlightNo:$('trackedFlightNo').value,aviationstackKey:$('aviationstackKey').value,adsbLolKey:$('adsbLolKey').value,trackerStatusPollMin:+$('trackerStatusPollMin').value,countdowns:[0,1,2,3].map(countdownPayload)};saving=true;updateSaveGate();try{let r=await fetchJson('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});toast(r.reboot?'Gespeichert · PixelStop startet neu':'✓ Einstellungen gespeichert','ok',r.reboot?5500:2200);if(r.reboot){markDirty(false);setTimeout(()=>location.reload(),7000)}else await load()}catch(e){toast(friendly(e),'err',4200)}finally{saving=false;updateSaveGate()}}
+async function statusNow(){try{let s=await fetchJson('/api/status');$('adsbKeyExpired').classList.toggle('hidden',!(s.adsbDenied&&s.adsbKey));$('adsbKeyNeeded').classList.toggle('hidden',!(s.adsbDenied&&!s.adsbKey));$('status').textContent=`Firmware: ${s.fw} ${s.version}\nNetz: ${s.ssid||'-'}\nIP: ${s.ip}\nRSSI: ${s.rssi} dBm\nFreier Heap: ${s.heap} B (${s.maxBlock} B größter Block)\nFlugradar: ${s.flightStage||'-'}${s.flightHttp?` · HTTP ${s.flightHttp}`:''}${s.flightTlsRx?` · TLS RX ${s.flightTlsRx} B`:''}${s.flightTlsMinBlock?` · Blockbedarf ${s.flightTlsMinBlock} B`:''}${s.flightWaitSec?` · Pause ${s.flightWaitSec} s`:''}${s.flightMinIntervalSec?` · Mindestintervall ${s.flightMinIntervalSec} s`:''}${s.flightScanned?` · ${s.flightScanned} Flugzeuge geprüft`:''}\nAktuelles Flugzeug: ${s.flightCall||'-'}\nadsb.lol heute: ${s.adsbToday} Anfragen${s.adsbKey?' · mit Schlüssel':` von 450 · Tagesbudget-Intervall ${s.adsbBudgetSec} s`}\nRadar-Route: ${s.routeStatus||'-'} · ${s.routeSource||'-'}${s.routeHttp?` · HTTP ${s.routeHttp}`:''}\nUptime: ${s.uptime}s\nTracker: ${s.trackerValid?'Daten vorhanden':(s.trackerError?'Fehler':'bereit')}`}catch(e){$('status').textContent='PixelStop derzeit nicht erreichbar.'}}
 async function reboot(){toast('PixelStop startet neu…','ok',5000);try{await fetch('/api/reboot',{method:'POST'})}catch(e){}setTimeout(()=>location.reload(),6000)}
 async function copyLog(){
 try{const r=await fetch('/api/log');if(!r.ok)throw new Error();const text=await r.text();$('diagnosticLog').textContent=text;
@@ -412,27 +431,37 @@ static void applyBrightness() {
   // SmallTV backlight is active-low.
   int duty = BL_PWM_RANGE - ((int)b * BL_PWM_RANGE / 100);
   // Reapplying PWM can interrupt very dim backlighting. Update only on change.
-  static int lastDuty=-1;
-  if(duty==lastDuty)return;
-  analogWrite(TFT_BL, duty);
-  lastDuty=duty;
+  static int lastDuty=-1,lastMode=-1;
+  if(duty==lastDuty&&cfg.backlightMode==lastMode)return;
+  if(cfg.backlightMode==1){
+    // Sigma-delta: the chip's own pulse generator, not interrupted by Wi-Fi.
+    // Active-low: the share of LOW (= light) is b %, at least one step.
+    uint16_t on=(uint16_t)(((uint32_t)b*256U+99U)/100U);if(on>256)on=256;
+    if(lastMode!=1){digitalWrite(TFT_BL,HIGH);sigmaDeltaEnable();sigmaDeltaSetPrescaler(255);sigmaDeltaAttachPin(TFT_BL,0);}
+    sigmaDeltaWrite(0,(uint8_t)(256-on));
+  } else {
+    if(lastMode==1)sigmaDeltaDetachPin(TFT_BL);
+    analogWrite(TFT_BL, duty);
+  }
+  lastDuty=duty;lastMode=cfg.backlightMode;
 }
 
 static bool modeEnabled(uint8_t mode) {
-  return mode < 9 && (cfg.rotationMask & (1U << mode));
+  return mode < MODE_COUNT && (cfg.rotationMask & (1U << mode));
 }
 
 static uint8_t enabledModeCount() {
-  uint8_t n=0; for(uint8_t i=0;i<9;i++) if(modeEnabled(i)) n++; return n;
+  uint8_t n=0; for(uint8_t i=0;i<MODE_COUNT;i++) if(modeEnabled(i)) n++; return n;
 }
 
 static uint8_t firstEnabledMode() {
-  for(uint8_t i=0;i<9;i++) if(modeEnabled(i)) return i;
+  for(uint8_t i=0;i<MODE_COUNT;i++) if(modeEnabled(ROTATION_ORDER[i])) return ROTATION_ORDER[i];
   return MODE_DEPARTURES;
 }
 
 static uint8_t nextEnabledMode(uint8_t current) {
-  for(uint8_t step=1;step<=9;step++) { uint8_t m=(current+step)%9; if(modeEnabled(m)) return m; }
+  uint8_t pos=0; for(uint8_t i=0;i<MODE_COUNT;i++) if(ROTATION_ORDER[i]==current) pos=i;
+  for(uint8_t step=1;step<=MODE_COUNT;step++) { uint8_t m=ROTATION_ORDER[(pos+step)%MODE_COUNT]; if(modeEnabled(m)) return m; }
   return current;
 }
 
@@ -451,7 +480,7 @@ static bool radarActive() {
 static float radarVisibleShare() {
   if(enabledModeCount()<=1) return 1.0f;
   uint32_t total=0;
-  for(uint8_t i=0;i<9;i++) if(modeEnabled(i)) total+=max((uint16_t)5,cfg.rotationSec[i]);
+  for(uint8_t i=0;i<MODE_COUNT;i++) if(modeEnabled(i)) total+=max((uint16_t)5,cfg.rotationSec[i]);
   uint32_t radar=max((uint16_t)5,cfg.rotationSec[MODE_PLANE])+RADAR_PREFETCH_MS/1000UL;
   return total?min(1.0f,(float)radar/(float)total):1.0f;
 }
@@ -469,12 +498,13 @@ static bool saveConfig() {
   JsonDocument d;
   d["ssid"] = cfg.ssid; d["pass"] = cfg.pass; d["hostname"] = cfg.hostname;
   d["timeZone"] = cfg.timeZone;
-  d["mode"] = cfg.mode; d["rotationMask"] = cfg.rotationMask; d["brightness"] = cfg.brightness;
-  JsonArray rs = d["rotationSec"].to<JsonArray>(); for(uint8_t i=0;i<9;i++) rs.add(cfg.rotationSec[i]);
+  d["mode"] = cfg.mode; d["rotationMask"] = cfg.rotationMask; d["brightness"] = cfg.brightness; d["backlightMode"] = cfg.backlightMode;
+  JsonArray rs = d["rotationSec"].to<JsonArray>(); for(uint8_t i=0;i<MODE_COUNT;i++) rs.add(cfg.rotationSec[i]);
   d["nightEnabled"] = cfg.nightEnabled; d["nightStart"] = cfg.nightStart; d["nightEnd"] = cfg.nightEnd; d["nightBrightness"] = cfg.nightBrightness;
-  d["stopName"] = cfg.stopName; d["stopPlace"] = cfg.stopPlace; d["stopId"] = cfg.stopId; d["departureCount"] = cfg.departureCount; d["departurePoll"] = cfg.departurePoll; d["vvoMotMask"] = cfg.vvoMotMask; d["lang"] = cfg.lang; d["departureCompactDestinations"] = cfg.departureCompactDestinations; d["departureAbbreviate"] = cfg.departureAbbreviate; d["departureDropTown"] = cfg.departureDropTown; d["weatherForecast"] = cfg.weatherForecast;
+  d["stopName"] = cfg.stopName; d["stopPlace"] = cfg.stopPlace; d["stopId"] = cfg.stopId; d["departureCount"] = cfg.departureCount; d["departurePoll"] = cfg.departurePoll; d["vvoMotMask"] = cfg.vvoMotMask; d["lang"] = cfg.lang; d["departureCompactDestinations"] = cfg.departureCompactDestinations; d["departureAbbreviate"] = cfg.departureAbbreviate; d["departureDropTown"] = cfg.departureDropTown;
   d["weatherCity"] = cfg.weatherCity; d["weatherDisplayName"] = cfg.weatherDisplayName; d["weatherLat"] = cfg.weatherLat; d["weatherLon"] = cfg.weatherLon; d["weatherPoll"] = cfg.weatherPoll; d["weatherTempColor"] = cfg.weatherTempColor; d["weatherFahrenheit"] = cfg.weatherFahrenheit; d["geoGermanNames"] = cfg.geoGermanNames;
   d["planePlace"] = cfg.planePlace; d["planeDisplayName"] = cfg.planeDisplayName; d["planeLat"] = cfg.planeLat; d["planeLon"] = cfg.planeLon; d["planeRadiusKm"] = cfg.planeRadiusKm; d["planePoll"] = cfg.planePoll; d["planeShowAge"] = cfg.planeShowAge; d["planeShowPlace"] = cfg.planeShowPlace; d["planePlaceToggleSec"] = cfg.planePlaceToggleSec;
+  d["planeOperator"] = cfg.planeOperator; d["planeSpeed"] = cfg.planeSpeed; d["planeTrend"] = cfg.planeTrend; d["planeMarkMilitary"] = cfg.planeMarkMilitary; d["planeHide"] = cfg.planeHide;
   d["trackedFlightNo"] = cfg.trackedFlightNo; d["aviationstackKey"] = cfg.aviationstackKey; d["trackerStatusPollMin"] = cfg.trackerStatusPollMin; d["adsbLolKey"] = cfg.adsbLolKey;
   JsonArray cds = d["countdowns"].to<JsonArray>();
   for (uint8_t i=0;i<4;i++) {
@@ -503,16 +533,20 @@ static void loadConfig() {
   JsonDocument d; if (deserializeJson(d, f)) { f.close(); return; } f.close();
   cfg.ssid = d["ssid"] | cfg.ssid; cfg.pass = d["pass"] | cfg.pass; cfg.hostname = d["hostname"] | cfg.hostname;
   if(d["timeZone"].is<const char*>() && timeZoneIndex(d["timeZone"].as<const char*>())>=0)cfg.timeZone=d["timeZone"].as<String>();
-  cfg.mode = constrain((int)(d["mode"] | cfg.mode), 0, 8);
-  if(d["rotationMask"].is<uint16_t>() || d["rotationMask"].is<int>()) cfg.rotationMask = ((uint16_t)(d["rotationMask"] | cfg.rotationMask)) & 0x01FFU;
+  cfg.mode = constrain((int)(d["mode"] | cfg.mode), 0, MODE_COUNT-1);
+  if(d["rotationMask"].is<uint16_t>() || d["rotationMask"].is<int>()) cfg.rotationMask = ((uint16_t)(d["rotationMask"] | cfg.rotationMask)) & 0x03FFU;
   else cfg.rotationMask = (1U << cfg.mode); // migrate v0.4 single-view configuration
   if(!cfg.rotationMask) cfg.rotationMask = (1U << cfg.mode);
-  JsonArrayConst rs=d["rotationSec"].as<JsonArrayConst>(); if(!rs.isNull()) for(uint8_t i=0;i<9&&i<rs.size();i++) cfg.rotationSec[i]=constrain((int)(rs[i]|cfg.rotationSec[i]),5,3600);
+  JsonArrayConst rs=d["rotationSec"].as<JsonArrayConst>(); if(!rs.isNull()) for(uint8_t i=0;i<MODE_COUNT&&i<rs.size();i++) cfg.rotationSec[i]=constrain((int)(rs[i]|cfg.rotationSec[i]),5,3600);
+  // v0.5.1/v0.5.2: the forecast alternated inside the weather view; now it is a view of its own.
+  if(!rs.isNull() && rs.size()<MODE_COUNT && (d["weatherForecast"] | true) && (cfg.rotationMask & (1U<<MODE_WEATHER))) cfg.rotationMask |= (1U<<MODE_FORECAST);
   cfg.brightness = constrain((int)(d["brightness"] | cfg.brightness), 1, 100);
+  cfg.backlightMode = (uint8_t)(d["backlightMode"] | cfg.backlightMode) == 1 ? 1 : 0;
   cfg.nightEnabled = d["nightEnabled"] | cfg.nightEnabled; cfg.nightStart = constrain((int)(d["nightStart"] | cfg.nightStart), 0, 1439); cfg.nightEnd = constrain((int)(d["nightEnd"] | cfg.nightEnd), 0, 1439); cfg.nightBrightness = constrain((int)(d["nightBrightness"] | cfg.nightBrightness), 1, 100);
-  cfg.stopName = d["stopName"] | cfg.stopName; cfg.stopPlace = d["stopPlace"] | cfg.stopPlace; cfg.stopId = d["stopId"] | cfg.stopId; {int dc=(int)(d["departureCount"] | cfg.departureCount); cfg.departureCount=(dc==10)?10:constrain(dc,3,5);} cfg.departurePoll = constrain((int)(d["departurePoll"] | cfg.departurePoll), 10, 300); cfg.vvoMotMask = ((uint8_t)(d["vvoMotMask"] | cfg.vvoMotMask)) & VVO_MOT_ALL; if(!cfg.vvoMotMask)cfg.vvoMotMask=VVO_MOT_ALL; cfg.lang = (uint8_t)(d["lang"] | cfg.lang) == LANG_EN ? LANG_EN : LANG_DE; cfg.departureCompactDestinations = d["departureCompactDestinations"] | cfg.departureCompactDestinations; cfg.departureAbbreviate = d["departureAbbreviate"] | cfg.departureAbbreviate; cfg.departureDropTown = d["departureDropTown"] | cfg.departureDropTown; cfg.weatherForecast = d["weatherForecast"] | cfg.weatherForecast;
+  cfg.stopName = d["stopName"] | cfg.stopName; cfg.stopPlace = d["stopPlace"] | cfg.stopPlace; cfg.stopId = d["stopId"] | cfg.stopId; {int dc=(int)(d["departureCount"] | cfg.departureCount); cfg.departureCount=(dc==10)?10:constrain(dc,3,5);} cfg.departurePoll = constrain((int)(d["departurePoll"] | cfg.departurePoll), 10, 300); cfg.vvoMotMask = ((uint8_t)(d["vvoMotMask"] | cfg.vvoMotMask)) & VVO_MOT_ALL; if(!cfg.vvoMotMask)cfg.vvoMotMask=VVO_MOT_ALL; cfg.lang = (uint8_t)(d["lang"] | cfg.lang) == LANG_EN ? LANG_EN : LANG_DE; cfg.departureCompactDestinations = d["departureCompactDestinations"] | cfg.departureCompactDestinations; cfg.departureAbbreviate = d["departureAbbreviate"] | cfg.departureAbbreviate; cfg.departureDropTown = d["departureDropTown"] | cfg.departureDropTown;
   cfg.weatherCity = d["weatherCity"] | cfg.weatherCity; cfg.weatherDisplayName = d["weatherDisplayName"] | cfg.weatherDisplayName; cfg.weatherLat = d["weatherLat"] | cfg.weatherLat; cfg.weatherLon = d["weatherLon"] | cfg.weatherLon; cfg.weatherPoll = constrain((int)(d["weatherPoll"] | cfg.weatherPoll), 60, 3600); cfg.weatherTempColor = d["weatherTempColor"] | cfg.weatherTempColor; cfg.weatherFahrenheit = d["weatherFahrenheit"] | cfg.weatherFahrenheit; cfg.geoGermanNames = d["geoGermanNames"] | cfg.geoGermanNames;
   cfg.planePlace = d["planePlace"] | cfg.planePlace; cfg.planeDisplayName = d["planeDisplayName"] | cfg.planeDisplayName; cfg.planeLat = d["planeLat"] | cfg.planeLat; cfg.planeLon = d["planeLon"] | cfg.planeLon; cfg.planeRadiusKm = constrain((int)(d["planeRadiusKm"] | cfg.planeRadiusKm), 1, 250); cfg.planePoll = constrain((int)(d["planePoll"] | cfg.planePoll), 3, 300); cfg.planeShowAge = d["planeShowAge"] | cfg.planeShowAge; cfg.planeShowPlace = d["planeShowPlace"] | cfg.planeShowPlace; cfg.planePlaceToggleSec = (d["planePlaceToggleSec"] | cfg.planePlaceToggleSec)==0 ? 0 : constrain((int)(d["planePlaceToggleSec"] | cfg.planePlaceToggleSec), 5, 30);
+  cfg.planeOperator = constrain((int)(d["planeOperator"] | cfg.planeOperator), 0, 2); cfg.planeSpeed = constrain((int)(d["planeSpeed"] | cfg.planeSpeed), 0, 2); cfg.planeTrend = d["planeTrend"] | cfg.planeTrend; cfg.planeMarkMilitary = d["planeMarkMilitary"] | cfg.planeMarkMilitary; cfg.planeHide = ((uint8_t)(d["planeHide"] | cfg.planeHide)) & RADAR_HIDE_ALL;
   cfg.trackedFlightNo = d["trackedFlightNo"] | cfg.trackedFlightNo; cfg.aviationstackKey = d["aviationstackKey"] | cfg.aviationstackKey; cfg.adsbLolKey = d["adsbLolKey"] | cfg.adsbLolKey; cfg.trackerStatusPollMin = constrain((int)(d["trackerStatusPollMin"] | cfg.trackerStatusPollMin), 5, 120);
   JsonArrayConst cds = d["countdowns"].as<JsonArrayConst>();
   if (!cds.isNull()) for (uint8_t i=0;i<4 && i<cds.size();i++) {
@@ -994,8 +1028,8 @@ static String planeDistance(const FlightSnapshot& f) { return String(flightLiveD
 static String planeAltitude(const FlightSnapshot& f) { return f.onGround?String("GND"):(f.altitudeKnown?String((int)lroundf(flightLiveAltitudeFt(f)*0.3048f))+" m":String("N/A")); }
 
 static String compactType(const FlightSnapshot& f) {
-  const char* stable=aircraftDisplayLabel(f.typeCode);
-  if(stable&&textW(stable,2)<=224)return String(stable);
+  char stable[19];
+  if(aircraftDisplayLabel(f.typeCode,stable,sizeof(stable))&&textW(stable,2)<=224)return String(stable);
   String full=f.typeName[0]?String(f.typeName):String(f.typeCode);
   if(!full.length())return "N/A";
   if(textW(full,2)<=224)return full;
@@ -1016,6 +1050,7 @@ static String compactType(const FlightSnapshot& f) {
 // changes each second; the status label and clock keep their own areas.
 static bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;
 static String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;
+static String lastPlaneCall,lastPlaneOperator,lastPlaneRoute,lastPlaneReg;static int8_t lastPlaneTrend=0;
 // The footer starts with a status dot; label and age follow after it.
 static const int PLANE_FOOTER_X=18;
 static String planeFooterLabel() {
@@ -1046,6 +1081,17 @@ static void drawPlaneFooter() {
   lastPlaneDot=-1;drawPlaneDot();
   drawPlaneAge();
 }
+// Second half of a 6 s cycle: squawk instead of route, speed instead of registration.
+static bool planeSecondPhase() { return (millis()/3000UL)%2UL==1UL; }
+// Operator line: name of the callsign (A), or for known military callsigns the branch (B) or branch / unit (C).
+static String planeOperatorText(const FlightSnapshot& f) {
+  char mil[24];
+  if(cfg.planeOperator&&militaryOperatorText(f.callsign,cfg.planeOperator,cfg.lang==LANG_EN,mil,sizeof(mil)))return String(mil);
+  return f.airline[0]?String(f.airline):String("N/A");
+}
+static String planeSpeedText(const FlightSnapshot& f) {
+  return cfg.planeSpeed==2?String((int)lroundf(f.speedKt))+" kt":String((int)lroundf(f.speedKt*1.852f))+" km/h";
+}
 static void drawPlane(bool force=true) {
   const FlightSnapshot& f=flightData();
   const bool paused=f.valid&&flightProviderPaused();
@@ -1061,37 +1107,61 @@ static void drawPlane(bool force=true) {
     }
     lastPlaneRendered=f;planeRendered=true;return;
   }
-  if(full||strcmp(f.callsign,lastPlaneRendered.callsign)){
+  // Emergency squawks turn the callsign red and alternate with the route
+  // (3 s each); speed alternates with the registration in the same rhythm.
+  const bool emergency=radarEmergencySquawk(f.squawk);
+  const bool second=planeSecondPhase();
+  String callKey=String(f.callsign)+(emergency?"!":"")+(cfg.planeMarkMilitary&&f.military?"M":"");
+  if(full||callKey!=lastPlaneCall){
     if(!full)gfx->fillRect(8,35,224,40,C_BLACK);
-    String cs=f.callsign[0]?String(f.callsign):String("N/A");centerText(cs,42,cs.length()<=6?4:3,C_WHITE);
+    String cs=f.callsign[0]?String(f.callsign):String("N/A");centerText(cs,42,cs.length()<=6?4:3,emergency?C_RED:C_WHITE);
+    if(cfg.planeMarkMilitary&&f.military)printDisplayTextAt(214,38,"MIL",1,C_KHAKI);
   }
-  if(full||strcmp(f.airline,lastPlaneRendered.airline)){
+  lastPlaneCall=callKey;
+  String op=planeOperatorText(f);
+  if(full||op!=lastPlaneOperator){
     if(!full)gfx->fillRect(8,78,224,20,C_BLACK);
-    String airline=f.airline[0]?String(f.airline):String("N/A");centerText(crop(airline,36),80,textW(airline,2)<=224?2:1,C_GRAY);
+    centerText(crop(op,36),80,textW(op,2)<=224?2:1,C_GRAY);
   }
-  if(full||strcmp(f.origin,lastPlaneRendered.origin)||strcmp(f.destination,lastPlaneRendered.destination)||
+  lastPlaneOperator=op;
+  const bool routeKnown=f.route.count>0||(f.origin[0]&&strcmp(f.origin,"N/A"));
+  String routeKey=emergency&&(second||!routeKnown)?String("SQUAWK ")+f.squawk:String();
+  if(full||routeKey!=lastPlaneRoute||strcmp(f.origin,lastPlaneRendered.origin)||strcmp(f.destination,lastPlaneRendered.destination)||
     f.route.count!=lastPlaneRendered.route.count||f.route.truncated!=lastPlaneRendered.route.truncated||
     memcmp(f.route.airports,lastPlaneRendered.route.airports,sizeof(f.route.airports))){
     if(!full)gfx->fillRect(8,102,224,29,C_BLACK);
-    drawFlightRoute(f.route,f.origin,f.destination,105);
+    if(routeKey.length())centerText(routeKey,105,3,C_RED);
+    else drawFlightRoute(f.route,f.origin,f.destination,105);
   }
+  lastPlaneRoute=routeKey;
   if(full||strcmp(f.typeName,lastPlaneRendered.typeName)||strcmp(f.typeCode,lastPlaneRendered.typeCode)){
     if(!full)gfx->fillRect(8,136,224,23,C_BLACK);
     centerText(compactType(f),139,2,C_WHITE);
   }
-  if(full||strcmp(f.registration,lastPlaneRendered.registration)){
+  String reg=f.registration[0]?String(f.registration):String("N/A");
+  if(cfg.planeSpeed&&f.speedKnown&&(second||!f.registration[0]))reg=planeSpeedText(f);
+  if(full||reg!=lastPlaneReg){
     if(!full)gfx->fillRect(8,161,224,24,C_BLACK);
-    centerText(f.registration[0]?String(f.registration):String("N/A"),164,2,C_GRAY);
+    centerText(reg,164,2,C_GRAY);
   }
+  lastPlaneReg=reg;
   String dist=planeDistance(f),alt=planeAltitude(f);
   if(full||dist!=lastPlaneDist){
-    if(!full)gfx->fillRect(8,190,112,24,C_BLACK);
+    if(!full)gfx->fillRect(8,190,104,24,C_BLACK);
     gfx->setTextSize(2);gfx->setTextColor(C_CYAN);gfx->setCursor(10,194);gfx->print(dist);
   }
   if(full||alt!=lastPlaneAlt){
-    if(!full)gfx->fillRect(120,190,112,24,C_BLACK);
+    if(!full)gfx->fillRect(128,190,104,24,C_BLACK);
     gfx->setTextSize(2);gfx->setTextColor(C_CYAN);gfx->setCursor(230-textW(alt,2),194);gfx->print(alt);
   }
+  // Climb/descent arrow between distance and altitude (optional).
+  int8_t trend=cfg.planeTrend&&!f.onGround?radarTrend(f.motion.hasRate,f.motion.rateFpm):0;
+  if(full||trend!=lastPlaneTrend){
+    if(!full)gfx->fillRect(112,190,16,24,C_BLACK);
+    if(trend>0)gfx->fillTriangle(120,195,114,206,126,206,C_CYAN);
+    else if(trend<0)gfx->fillTriangle(114,196,126,196,120,207,C_CYAN);
+  }
+  lastPlaneTrend=trend;
   lastPlaneDist=dist;lastPlaneAlt=alt;
   if(full||f.error!=lastPlaneRendered.error||paused!=lastPlanePauseRendered||cfg.planeShowAge!=lastPlaneAgeRendered){
     if(!full)gfx->fillRect(8,223,186,14,C_BLACK);
@@ -1179,7 +1249,8 @@ static void drawActive() {
   int8_t slot=countdownSlotFromMode(cfg.mode);
   if(slot>=0){drawCountdown((uint8_t)slot);return;}
   switch (cfg.mode) {
-    case MODE_WEATHER: weatherPage=0; lastWeatherPageSwitchMs=millis(); drawWeather(); break;
+    case MODE_WEATHER: weatherPage=0; drawWeather(); break;
+    case MODE_FORECAST: weatherPage=1; drawWeather(); break;
     case MODE_PLANE: planePlacePhase=false; lastPlanePlaceSwitchMs=millis(); drawPlane(); break;
     case MODE_CLOCK: drawClock(); break;
     case MODE_TRACKED_FLIGHT: drawTrackedFlight(); break;
@@ -1247,12 +1318,13 @@ static void updateCountdownSettings(JsonObjectConst in,CountdownSlot& c) {
 
 static void apiGetConfig() {
   JsonDocument d;
-  d["ssid"]=cfg.ssid;d["hostname"]=cfg.hostname;d["mode"]=cfg.mode;d["rotationMask"]=cfg.rotationMask;d["brightness"]=cfg.brightness;d["timeZone"]=cfg.timeZone;
-  JsonArray rs=d["rotationSec"].to<JsonArray>();for(uint8_t i=0;i<9;i++)rs.add(cfg.rotationSec[i]);
+  d["ssid"]=cfg.ssid;d["hostname"]=cfg.hostname;d["mode"]=cfg.mode;d["rotationMask"]=cfg.rotationMask;d["brightness"]=cfg.brightness;d["backlightMode"]=cfg.backlightMode;d["timeZone"]=cfg.timeZone;
+  JsonArray rs=d["rotationSec"].to<JsonArray>();for(uint8_t i=0;i<MODE_COUNT;i++)rs.add(cfg.rotationSec[i]);
   d["nightEnabled"]=cfg.nightEnabled;d["nightStart"]=cfg.nightStart;d["nightEnd"]=cfg.nightEnd;d["nightBrightness"]=cfg.nightBrightness;
-  d["stopName"]=cfg.stopName;d["stopPlace"]=cfg.stopPlace;d["stopId"]=cfg.stopId;d["departureCount"]=cfg.departureCount;d["departurePoll"]=cfg.departurePoll;d["vvoMotMask"]=cfg.vvoMotMask;d["lang"]=cfg.lang;d["departureCompactDestinations"]=cfg.departureCompactDestinations;d["departureAbbreviate"]=cfg.departureAbbreviate;d["departureDropTown"]=cfg.departureDropTown;d["weatherForecast"]=cfg.weatherForecast;
+  d["stopName"]=cfg.stopName;d["stopPlace"]=cfg.stopPlace;d["stopId"]=cfg.stopId;d["departureCount"]=cfg.departureCount;d["departurePoll"]=cfg.departurePoll;d["vvoMotMask"]=cfg.vvoMotMask;d["lang"]=cfg.lang;d["departureCompactDestinations"]=cfg.departureCompactDestinations;d["departureAbbreviate"]=cfg.departureAbbreviate;d["departureDropTown"]=cfg.departureDropTown;
   d["weatherCity"]=cfg.weatherCity;d["weatherDisplayName"]=cfg.weatherDisplayName;d["weatherLat"]=cfg.weatherLat;d["weatherLon"]=cfg.weatherLon;d["weatherPoll"]=cfg.weatherPoll;d["weatherTempColor"]=cfg.weatherTempColor;d["weatherFahrenheit"]=cfg.weatherFahrenheit;d["geoGermanNames"]=cfg.geoGermanNames;
   d["planePlace"]=cfg.planePlace;d["planeDisplayName"]=cfg.planeDisplayName;d["planeLat"]=cfg.planeLat;d["planeLon"]=cfg.planeLon;d["planeRadiusKm"]=cfg.planeRadiusKm;d["planePoll"]=cfg.planePoll;d["planeShowAge"]=cfg.planeShowAge;d["planeShowPlace"]=cfg.planeShowPlace;d["planePlaceToggleSec"]=cfg.planePlaceToggleSec;
+  d["planeOperator"]=cfg.planeOperator;d["planeSpeed"]=cfg.planeSpeed;d["planeTrend"]=cfg.planeTrend;d["planeMarkMilitary"]=cfg.planeMarkMilitary;d["planeHide"]=cfg.planeHide;
   d["trackedFlightNo"]=cfg.trackedFlightNo;d["trackerStatusPollMin"]=cfg.trackerStatusPollMin;d["aviationstackKeySet"]=cfg.aviationstackKey.length()>0;d["adsbLolKeySet"]=cfg.adsbLolKey.length()>0;
   JsonArray a=d["countdowns"].to<JsonArray>();for(uint8_t i=0;i<4;i++)countdownToJson(a.add<JsonObject>(),cfg.countdown[i]);
   sendJson(d);
@@ -1266,10 +1338,11 @@ static void apiPostConfig() {
   if(d["ssid"].is<const char*>())cfg.ssid=d["ssid"].as<String>();
   if(d["pass"].is<const char*>()){String x=d["pass"].as<String>();if(x.length())cfg.pass=x;}
   if(d["hostname"].is<const char*>())cfg.hostname=d["hostname"].as<String>();
-  uint16_t mask=((uint16_t)(d["rotationMask"]|cfg.rotationMask))&0x01FFU;if(mask)cfg.rotationMask=mask;
-  JsonArrayConst rs=d["rotationSec"].as<JsonArrayConst>();if(!rs.isNull())for(uint8_t i=0;i<9&&i<rs.size();i++)cfg.rotationSec[i]=constrain((int)(rs[i]|cfg.rotationSec[i]),5,3600);
+  uint16_t mask=((uint16_t)(d["rotationMask"]|cfg.rotationMask))&0x03FFU;if(mask)cfg.rotationMask=mask;
+  JsonArrayConst rs=d["rotationSec"].as<JsonArrayConst>();if(!rs.isNull())for(uint8_t i=0;i<MODE_COUNT&&i<rs.size();i++)cfg.rotationSec[i]=constrain((int)(rs[i]|cfg.rotationSec[i]),5,3600);
   if(!modeEnabled(cfg.mode))cfg.mode=firstEnabledMode();
   cfg.brightness=constrain((int)(d["brightness"]|cfg.brightness),1,100);
+  cfg.backlightMode=(uint8_t)(d["backlightMode"]|cfg.backlightMode)==1?1:0;
   if(d["timeZone"].is<const char*>())cfg.timeZone=d["timeZone"].as<String>();
   cfg.nightEnabled=d["nightEnabled"]|cfg.nightEnabled;cfg.nightStart=constrain((int)(d["nightStart"]|cfg.nightStart),0,1439);cfg.nightEnd=constrain((int)(d["nightEnd"]|cfg.nightEnd),0,1439);cfg.nightBrightness=constrain((int)(d["nightBrightness"]|cfg.nightBrightness),1,100);
   if(d["stopName"].is<const char*>()) cfg.stopName=d["stopName"].as<String>();
@@ -1283,7 +1356,6 @@ static void apiPostConfig() {
   cfg.departureCompactDestinations=d["departureCompactDestinations"]|cfg.departureCompactDestinations;
   cfg.departureAbbreviate=d["departureAbbreviate"]|cfg.departureAbbreviate;
   cfg.departureDropTown=d["departureDropTown"]|cfg.departureDropTown;
-  cfg.weatherForecast=d["weatherForecast"]|cfg.weatherForecast;
   if(d["weatherCity"].is<const char*>()) cfg.weatherCity=d["weatherCity"].as<String>();
   if(d["weatherDisplayName"].is<const char*>()) cfg.weatherDisplayName=d["weatherDisplayName"].as<String>();
   cfg.weatherLat=d["weatherLat"]|cfg.weatherLat; cfg.weatherLon=d["weatherLon"]|cfg.weatherLon;
@@ -1298,6 +1370,8 @@ static void apiPostConfig() {
   cfg.planePoll=constrain((int)(d["planePoll"]|cfg.planePoll),3,300);
   cfg.planeShowAge=d["planeShowAge"]|cfg.planeShowAge;cfg.planeShowPlace=d["planeShowPlace"]|cfg.planeShowPlace;
   cfg.planePlaceToggleSec=(d["planePlaceToggleSec"]|cfg.planePlaceToggleSec)==0?0:constrain((int)(d["planePlaceToggleSec"]|cfg.planePlaceToggleSec),5,30);
+  cfg.planeOperator=constrain((int)(d["planeOperator"]|cfg.planeOperator),0,2);cfg.planeSpeed=constrain((int)(d["planeSpeed"]|cfg.planeSpeed),0,2);
+  cfg.planeTrend=d["planeTrend"]|cfg.planeTrend;cfg.planeMarkMilitary=d["planeMarkMilitary"]|cfg.planeMarkMilitary;cfg.planeHide=((uint8_t)(d["planeHide"]|cfg.planeHide))&RADAR_HIDE_ALL;
   if(d["trackedFlightNo"].is<const char*>()){cfg.trackedFlightNo=d["trackedFlightNo"].as<String>();cfg.trackedFlightNo.trim();cfg.trackedFlightNo.toUpperCase();}
   if(d["aviationstackKey"].is<const char*>()){String x=d["aviationstackKey"].as<String>();x.trim();if(x.length())cfg.aviationstackKey=x;}
   // adsb.lol key: empty keeps the stored key, "-" removes it.
@@ -1309,8 +1383,8 @@ static void apiPostConfig() {
   if(!saveConfig()){diagEvent(D_CONFIG,DS_FAILED);cfg=previous;server.send_P(500,"application/json",PSTR("{\"ok\":false,\"error\":\"Einstellungen konnten nicht gespeichert werden.\"}"));return;}diagEvent(D_CONFIG,DS_DONE);applyTimeZone();applyBrightness();if(oldAdsbKey!=cfg.adsbLolKey){adsbLolSetKey(cfg.adsbLolKey);serviceClear(SERVICE_ADSB_LOL);flightReset();}
   uint16_t activated=cfg.rotationMask & ~previous.rotationMask;
   if(previous.stopId!=cfg.stopId||previous.departureCount!=cfg.departureCount||previous.vvoMotMask!=cfg.vvoMotMask||(activated&(1U<<MODE_DEPARTURES)))vvoReset();
-  if(previous.weatherLat!=cfg.weatherLat||previous.weatherLon!=cfg.weatherLon||previous.timeZone!=cfg.timeZone||(activated&(1U<<MODE_WEATHER)))weatherReset();
-  if(previous.planeLat!=cfg.planeLat||previous.planeLon!=cfg.planeLon||previous.planeRadiusKm!=cfg.planeRadiusKm||(activated&(1U<<MODE_PLANE)))flightReset();
+  if(previous.weatherLat!=cfg.weatherLat||previous.weatherLon!=cfg.weatherLon||previous.timeZone!=cfg.timeZone||(activated&((1U<<MODE_WEATHER)|(1U<<MODE_FORECAST))))weatherReset();
+  if(previous.planeLat!=cfg.planeLat||previous.planeLon!=cfg.planeLon||previous.planeRadiusKm!=cfg.planeRadiusKm||previous.planeHide!=cfg.planeHide||(activated&(1U<<MODE_PLANE)))flightReset();
   deferBackgroundNetwork(1000);departurePage=0;departurePagingReady=false;lastDeparturePageSwitchMs=millis();planePlacePhase=false;lastPlanePlaceSwitchMs=millis();if(oldTracked!=cfg.trackedFlightNo||oldKey!=cfg.aviationstackKey)trackedFlightReset();lastModeSwitchMs=millis();drawActive();
   bool reboot=(oldSsid!=cfg.ssid)||(oldHost!=cfg.hostname);server.send(200,"application/json",reboot?"{\"ok\":true,\"reboot\":true}":"{\"ok\":true,\"reboot\":false}");if(reboot){diagEvent(D_REBOOT,DS_BEGIN);delay(500);ESP.restart();}
 }
@@ -1320,7 +1394,7 @@ static void apiShow() {
   JsonDocument d;
   if(!server.hasArg("plain")||deserializeJson(d,server.arg("plain"))){server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Ungültige Daten.\"}"));return;}
   int mode=d["mode"]|-1;
-  if(mode<0||mode>MODE_COUNTDOWN4){server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Unbekanntes Programm.\"}"));return;}
+  if(mode<0||mode>=MODE_COUNT){server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Unbekanntes Programm.\"}"));return;}
   // Tell the web interface how long the view stays before the rotation continues.
   const bool rotating=enabledModeCount()>1;
   char reply[56];snprintf_P(reply,sizeof(reply),PSTR("{\"ok\":true,\"sec\":%u,\"rotation\":%s}"),
@@ -1350,7 +1424,7 @@ static void apiCountdown() {
 
 static void apiStatus() {
   JsonDocument d;d["fw"]=FW_NAME;d["version"]=FW_VERSION;d["ssid"]=apMode?"PixelStop-Setup":WiFi.SSID();d["ip"]=apMode?WiFi.softAPIP().toString():WiFi.localIP().toString();d["rssi"]=apMode?0:WiFi.RSSI();d["heap"]=ESP.getFreeHeap();d["uptime"]=millis()/1000;
-  d["maxBlock"]=ESP.getMaxFreeBlockSize();d["vvoCount"]=vvoCount();d["vvoError"]=vvoError();d["weatherValid"]=weatherData().valid;d["weatherError"]=weatherData().error;d["flightValid"]=flightData().valid;d["flightError"]=flightData().error;d["flightStage"]=flightStageName();d["flightHttp"]=flightLastHttp();d["flightTlsRx"]=flightTlsRx();d["flightTlsMinBlock"]=flightTlsMinBlock();d["flightWaitSec"]=flightWaitSec();d["flightMinIntervalSec"]=serviceMinIntervalMs(SERVICE_ADSB_LOL)/1000;d["adsbToday"]=adsbLolRequestsToday();d["adsbDenied"]=adsbLolAccessDenied(flightLastHttp());d["adsbKey"]=adsbLolHasKey();d["adsbBudgetSec"]=adsbLolBudgetIntervalMs(radarVisibleShare())/1000;d["routeStatus"]=flightRouteStatus();d["routeSource"]=flightRouteSource();d["routeHttp"]=flightRouteHttp();d["flightAgeSec"]=flightLastOkMs()?(millis()-flightLastOkMs())/1000:0;d["trackerValid"]=trackedFlightData().valid;d["trackerError"]=trackedFlightData().error;sendJson(d);
+  d["maxBlock"]=ESP.getMaxFreeBlockSize();d["vvoCount"]=vvoCount();d["vvoError"]=vvoError();d["weatherValid"]=weatherData().valid;d["weatherError"]=weatherData().error;d["flightValid"]=flightData().valid;d["flightError"]=flightData().error;d["flightStage"]=flightStageName();d["flightHttp"]=flightLastHttp();d["flightTlsRx"]=flightTlsRx();d["flightTlsMinBlock"]=flightTlsMinBlock();d["flightWaitSec"]=flightWaitSec();d["flightMinIntervalSec"]=serviceMinIntervalMs(SERVICE_ADSB_LOL)/1000;d["adsbToday"]=adsbLolRequestsToday();d["adsbDenied"]=adsbLolAccessDenied(flightLastHttp());d["flightScanned"]=flightLastScanned();d["flightCall"]=flightData().valid?flightData().callsign:"";d["adsbKey"]=adsbLolHasKey();d["adsbBudgetSec"]=adsbLolBudgetIntervalMs(radarVisibleShare())/1000;d["routeStatus"]=flightRouteStatus();d["routeSource"]=flightRouteSource();d["routeHttp"]=flightRouteHttp();d["flightAgeSec"]=flightLastOkMs()?(millis()-flightLastOkMs())/1000:0;d["trackerValid"]=trackedFlightData().valid;d["trackerError"]=trackedFlightData().error;sendJson(d);
 }
 
 static void apiVvoSearch() {
@@ -1465,7 +1539,7 @@ void loop() {
       if(t.tm_min!=lastMinute){
         lastMinute=t.tm_min;
         if(cfg.mode==MODE_CLOCK) drawClock(false);
-        else if(cfg.mode==MODE_DEPARTURES||cfg.mode==MODE_WEATHER||cfg.mode==MODE_PLANE||cfg.mode==MODE_TRACKED_FLIGHT) drawFooterClockOnly();
+        else if(cfg.mode==MODE_DEPARTURES||cfg.mode==MODE_WEATHER||cfg.mode==MODE_FORECAST||cfg.mode==MODE_PLANE||cfg.mode==MODE_TRACKED_FLIGHT) drawFooterClockOnly();
       }
     }
     int8_t slot=countdownSlotFromMode(cfg.mode);
@@ -1483,9 +1557,6 @@ void loop() {
     }
   }
 
-  if(cfg.mode==MODE_WEATHER&&cfg.weatherForecast&&weatherData().valid&&weatherData().days){
-    if((uint32_t)(nowMs-lastWeatherPageSwitchMs)>=8000UL){weatherPage^=1;lastWeatherPageSwitchMs=nowMs;drawWeather(false);}
-  }else if(weatherPage){weatherPage=0;lastWeatherPageSwitchMs=nowMs;if(cfg.mode==MODE_WEATHER)drawWeather(true);}
 
   if(cfg.departureCount==10&&vvoCount()>5){
     if(!departurePagingReady){departurePagingReady=true;departurePage=0;lastDeparturePageSwitchMs=nowMs;}
@@ -1502,10 +1573,10 @@ void loop() {
       uint8_t task=cursor;cursor=(cursor+1)%6;bool ran=false;
       if(task==0&&modeEnabled(MODE_DEPARTURES)&&cfg.stopId.length()&&vvoPollDue(cfg.departurePoll)){
         vvoFetchDepartures(cfg.stopId,cfg.departureCount,cfg.vvoMotMask);if(cfg.mode==MODE_DEPARTURES)drawDepartures(false);ran=true;
-      }else if(task==1&&modeEnabled(MODE_WEATHER)&&weatherPollDue(cfg.weatherPoll)){
-        weatherFetch(cfg.weatherLat,cfg.weatherLon,cfg.timeZone.c_str());if(cfg.mode==MODE_WEATHER)drawWeather(false);ran=true;
+      }else if(task==1&&(modeEnabled(MODE_WEATHER)||modeEnabled(MODE_FORECAST))&&weatherPollDue(cfg.weatherPoll)){
+        weatherFetch(cfg.weatherLat,cfg.weatherLon,cfg.timeZone.c_str());if(cfg.mode==MODE_WEATHER||cfg.mode==MODE_FORECAST)drawWeather(false);ran=true;
       }else if(task==2&&radarActive()&&flightPollDue(cfg.planePoll,radarVisibleShare())){
-        flightFetch(cfg.planeLat,cfg.planeLon,cfg.planeRadiusKm);if(cfg.mode==MODE_PLANE)drawPlane(false);ran=true;
+        flightFetch(cfg.planeLat,cfg.planeLon,cfg.planeRadiusKm,cfg.planeHide);if(cfg.mode==MODE_PLANE)drawPlane(false);ran=true;
       }else if(task==3&&radarActive()&&flightEnrichmentDue()){
         flightEnrich();if(cfg.mode==MODE_PLANE)drawPlane(false);ran=true;
       }else if(cfg.mode==MODE_TRACKED_FLIGHT&&cfg.trackedFlightNo.length()&&cfg.aviationstackKey.length()){

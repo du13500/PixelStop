@@ -90,6 +90,9 @@ using std::min; using std::max;
 template<class T,class A,class B> T constrain(T x,A a,B b){return x<(T)a?(T)a:(x>(T)b?(T)b:x);}
 uint32_t millis();
 inline void analogWrite(int,int){}
+#define HIGH 1
+inline void digitalWrite(int,int){}
+inline void sigmaDeltaEnable(){} inline void sigmaDeltaSetPrescaler(uint8_t){} inline void sigmaDeltaAttachPin(int,int){} inline void sigmaDeltaDetachPin(int){} inline void sigmaDeltaWrite(int,uint8_t){}
 inline long lround_(double v){return lround(v);}
 inline size_t strlcpy(char*d,const char*s,size_t n){size_t l=strlen(s);if(n){size_t c=l<n-1?l:n-1;memcpy(d,s,c);d[c]=0;}return l;}
 struct String : std::string {
@@ -228,6 +231,8 @@ MAIN = r'''
 #include "TimeZones.h"
 #include "WeatherVisual.h"
 #include "AircraftLabel.h"
+#include "MilitaryOperator.h"
+#include "RadarFilter.h"
 #include "DestinationFormat.h"
 static inline bool adsbLolAccessDenied(int c){return c==401||c==403||c==426;}
 ''' + GFX + '\n' + decl + '\n' + FIXTURES + '\n' + views + r'''

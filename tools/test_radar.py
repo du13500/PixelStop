@@ -39,27 +39,27 @@ static bool g_hasPolled=false,g_providerPaused=false;
 static uint8_t g_consecutiveFailures=0;
 static int g_lastHttp=0;
 static const char* g_stage="bereit";
-static uint16_t g_adsbLolRx=512;
+static uint16_t g_adsbLolRx=512,g_scanned=0;
 static int probes=0,requests=0;
 static uint16_t adsbLolRx(){++probes;return g_adsbLolRx;}
 '''
 funcs='\n'.join(function(n) for n in ['tlsHeapReady','flightPollDue','flightExpire','flightFailure','flightSuccess'])
 # Run the original pre-request section verbatim; replace only the network body.
 fetch=function('flightFetch').split('  uint16_t radiusNm',1)[0]
-fetch+='  (void)homeLat;(void)homeLon;(void)radiusKm;requests++;return true;\n}\n'
+fetch+='  (void)homeLat;(void)homeLon;(void)radiusKm;(void)scan;requests++;return true;\n}\n'
 tests='''int main(){
- for(auto rx:{512,1024,4096}){g_adsbLolRx=rx;ESP.heap=25248;ESP.block=11368;assert(flightFetch(51,13,25));}
+ for(auto rx:{512,1024,4096}){g_adsbLolRx=rx;ESP.heap=25248;ESP.block=11368;assert(flightFetch(51,13,25,0));}
  assert(requests==3&&probes==3);
  g_f.valid=true;g_f.error=false;g_lastOkMs=10000;clockMs=15000;
- ESP.block=6000;assert(!flightFetch(51,13,25));assert(requests==3&&probes==3);
+ ESP.block=6000;assert(!flightFetch(51,13,25,0));assert(requests==3&&probes==3);
  assert(g_f.valid&&g_f.error);assert(!strcmp(g_stage,"übersprungen: Heap"));
  assert(!flightPollDue(5,1.0f));clockMs=20001;assert(flightPollDue(5,1.0f));
  minimumInterval=15000;clockMs=29999;assert(!flightPollDue(5,1.0f));clockMs=30000;assert(flightPollDue(5,1.0f));minimumInterval=0;
  budgetInterval=12000;clockMs=26999;assert(!flightPollDue(5,0.25f)&&lastShare==0.25f);clockMs=27000;assert(flightPollDue(5,0.25f)&&g_intervalMs==12000);budgetInterval=0;
  clockMs=39999;assert(!flightExpire());clockMs=40000;assert(flightExpire());assert(!g_f.valid&&g_f.error);assert(!flightExpire());
- ESP.heap=25768;ESP.block=13192;g_adsbLolRx=512;assert(flightFetch(51,13,25));
+ ESP.heap=25768;ESP.block=13192;g_adsbLolRx=512;assert(flightFetch(51,13,25,0));
  g_f={true,false};flightSuccess();assert(!g_consecutiveFailures&&g_lastOkMs==40000);
- WiFi.state=0;clockMs=45000;assert(!flightFetch(51,13,25));assert(g_f.valid&&g_f.error);assert(!strcmp(g_stage,"kein WLAN"));
+ WiFi.state=0;clockMs=45000;assert(!flightFetch(51,13,25,0));assert(g_f.valid&&g_f.error);assert(!strcmp(g_stage,"kein WLAN"));
  clockMs=70000;assert(!flightFailure("HTTP-Fehler"));assert(!g_f.valid);
  // Confirmed provider pauses preserve data beyond normal expiry, even after
  // the cooldown timer ends, until the next actual result. Real errors expire.
