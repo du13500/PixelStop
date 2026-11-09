@@ -306,10 +306,12 @@ int main(int argc, char** argv) {
   cfg.planeShowPlace = true; cfg.planeDisplayName = "CIC BSG75"; cfg.planePlaceToggleSec = 0; planePlacePhase = true;
   bsg("KARMA", "Colonial Fleet", "N/A", "Raptor", "BS75-R1", 98.7f, 98700, true);
   fl.motion.hasRate = true; fl.motion.rateFpm = -3000; cfg.planeTrend = true; strlcpy(fl.squawk, "7700", 5);
-  // Six frames, one per second: 3 s route, 3 s squawk, the age counts on and the altitude falls.
+  // Six frames, one per second: 3 s route, 3 s squawk, the age counts on and the
+  // Raptor falls 1.4 km per second; seen from the CIC, distance equals altitude.
   for (int i = 0; i < 6; i++) {
     clockMs = 1002000 + i * 1000; okAgeMs = 33000 + i * 1000;
-    fl.altitudeFt = (int32_t)lroundf((98700 - 15 * i) / 0.3048f);
+    const int32_t m = 98700 - 1400 * i;
+    fl.altitudeFt = (int32_t)lroundf(m / 0.3048f); fl.distanceKm = m / 1000.0f;
     drawPlane(); char name[64]; snprintf(name, sizeof name, "/gif-radar-karma-%d.ppm", i); dump((out + name).c_str());
   }
   planeSourceLabel = "ADSB.LOL"; okAgeMs = 4000; clockMs = 1000000; cfg.planeTrend = false; cfg.planeShowPlace = false; cfg.planeDisplayName = "";
