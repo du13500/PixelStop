@@ -4,6 +4,8 @@ const source=fs.readFileSync(path.join(__dirname,'../src/main.cpp'),'utf8');
 const version=(fs.readFileSync(path.join(__dirname,'../src/Version.h'),'utf8').match(/FW_VERSION "([^"]+)"/)||[])[1];
 const html=[...source.matchAll(/R"HTML\(([\s\S]*?)\)HTML"/g)].map(m=>m[1]).join('').replace(/(<span class="chip">v)(<\/span>)/,`$1${version}$2`);
 const fixture={ssid:'Testnetz',hostname:'pixelstop',timeZone:'Europe/Berlin',stopName:'Pohlandplatz',stopId:'fixture',weatherCity:'Dresden',weatherLat:51,weatherLon:13,planePlace:'Dresden',planeLat:51,planeLon:13,nightStart:1320,nightEnd:420,nightEnabled:true,brightness:70,nightBrightness:12,rotationMask:1,rotationSec:[30,20,20,15,20,20,20,20,20],departureCount:4,departurePoll:30,weatherPoll:600,planeRadiusKm:25,planePoll:10,planePlaceToggleSec:10,trackerStatusPollMin:15,vvoMotMask:127,countdowns:[]};
+// Pages are reached through the menu button (drawer), like a user would.
+async function go(page,id){await page.locator('#menuBtn').click();await page.locator(`[data-p="${id}"]`).click();assert(await page.locator('#mainMenu').evaluate(e=>e.classList.contains('hidden')),'Menu closes after choosing a page');}
 (async()=>{
  const engine=process.env.SMALLTV_BROWSER==='chromium'?chromium:webkit;
  const browser=await engine.launch({headless:true,...(process.env.SMALLTV_WEBKIT_EXECUTABLE?{executablePath:process.env.SMALLTV_WEBKIT_EXECUTABLE}:{})});
@@ -24,7 +26,7 @@ const fixture={ssid:'Testnetz',hostname:'pixelstop',timeZone:'Europe/Berlin',sto
    assert(!(await page.locator('#wetter').textContent()).includes('Ortsauswahl über diesen Browser'));
    assert(!(await page.locator('#flugradar').textContent()).includes('Ortsauswahl über diesen Browser'));
 
-   assert.deepStrictEqual(await page.locator('#modeRows .modeLeft span').allTextContents(),['Abfahrten','Wetter','Flugradar','Flug-Tracker','Uhr','Countdown 1','Countdown 2','Countdown 3','Countdown 4']);
+   assert.deepStrictEqual(await page.locator('#modeRows .modeLeft span').allTextContents(),['Abfahrten','Wetter','3-Tage-Vorhersage','Flugradar','Flug-Tracker','Uhr','Countdown 1','Countdown 2','Countdown 3','Countdown 4']);
    assert.strictEqual(await page.locator('#brightness').getAttribute('min'),'1');
    assert.strictEqual(await page.locator('#nightBrightness').getAttribute('min'),'1');
    assert.strictEqual(await page.locator('#timeZone option').count(),50);
@@ -42,7 +44,7 @@ const fixture={ssid:'Testnetz',hostname:'pixelstop',timeZone:'Europe/Berlin',sto
    if(width<=560)assert(layout.b.top>=layout.a.bottom+5);
    else {assert(layout.b.left-layout.a.right>=9);assert(Math.abs(layout.a.width-layout.b.width)<1);}
    assert(!layout.overflow,`Page overflow at ${width}`);
-   await page.locator('[data-p="flugradar"]').click();
+   await go(page,'flugradar');
    assert(await page.locator('#planePlaceToggleSec').isDisabled());
    await page.locator('#planeShowPlace').check();assert(await page.locator('#planePlaceToggleSec').isEnabled());
    await page.locator('#planePlaceToggleSec').selectOption('0');
@@ -55,11 +57,11 @@ const fixture={ssid:'Testnetz',hostname:'pixelstop',timeZone:'Europe/Berlin',sto
    });
    assert.deepStrictEqual(style.head,style.label);
    if(process.env.SMALLTV_SCREENSHOTS&&[390,820].includes(width)){
-    await page.locator('[data-p="anzeige"]').click();
+    await go(page,'anzeige');
     await page.locator('#nightStart').scrollIntoViewIfNeeded();
     await page.screenshot({path:path.join(process.env.SMALLTV_SCREENSHOTS,`night-${width}.png`)});
    }
-   await page.locator('[data-p="anzeige"]').click();
+   await go(page,'anzeige');
    await page.locator('#timeZone').selectOption('Asia/Tokyo');
    await page.getByRole('button',{name:'Einstellungen speichern',exact:true}).click();
    await page.waitForFunction(()=>document.querySelector('.toast')?.textContent.includes('gespeichert'));
@@ -69,7 +71,7 @@ const fixture={ssid:'Testnetz',hostname:'pixelstop',timeZone:'Europe/Berlin',sto
    await page.waitForFunction(()=>document.getElementById('timeZone').value==='Asia/Tokyo');
    assert(!(await page.locator('#planeShowAge').isChecked()),'Disabled age restored incorrectly');
    if(width===390){
-    await page.locator('[data-p="wetter"]').click();
+    await go(page,'wetter');
     const requests=[];let releaseFirst;
     await page.route('http://smalltv.test/api/geo/**',()=>{throw new Error('Geo must not use the ESP8266 HTTP endpoints')});
     await page.route('https://nominatim.openstreetmap.org/reverse**',async r=>{
@@ -152,7 +154,7 @@ const fixture={ssid:'Testnetz',hostname:'pixelstop',timeZone:'Europe/Berlin',sto
     await page.evaluate(()=>reversePlace('weather',13,23));await page.waitForFunction(()=>!geoBusy&&!geoPending.weather);
     assert.strictEqual(limited,1,'Provider pause must apply to both search/map programs');
     assert(await page.locator('#saveBtn').isEnabled(),'Provider pause must release save');
-    await page.locator('[data-p="system"]').click();
+    await go(page,'system');
     assert(!(await page.locator('#geoAdvanced').evaluate(e=>e.open)),'Advanced settings must start closed');
     await page.locator('#geoAdvanced summary').click();
     await page.locator('#geoProviderUrl').fill('https://geo.example.test/nominatim/');await page.locator('#geoProviderBtn').click();

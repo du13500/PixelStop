@@ -69,6 +69,8 @@ int main(){
   assert(parseFlightRoute(" lej - blr - hkg ",r));assert(r.count==3&&!strcmp(r.airports[0],"LEJ"));
   assert(parseFlightRoute("OSL-IST",r));assert(r.count==2);
   assert(parseFlightRoute("AAA-BBB-CCC-DDD-EEE-FFF-GGG-HHH-III",r));assert(r.count==8&&r.truncated);
-  for(auto s:{"", "unknown", "LEJ", "LEJ-", "LEJ- ", "LEJ--HKG", "LEJ-N/A-HKG", "LEJ-BL1-HKG", "LEJJ-HKG", "-HKG"}){assert(!parseFlightRoute(s,r));assert(r.count==0);}
+  for(auto s:{"", "unknown", "LEJ", "LEJ-", "LEJ- ", "LEJ--HKG", "LEJ-N/A-HKG", "LEJ-BL1-HKG", "LEJJJ-HKG", "1EJJ-HKG", "-HKG"}){assert(!parseFlightRoute(s,r));assert(r.count==0);}
+  assert(parseFlightRoute("FRA-EDAK",r)&&r.count==2&&!strcmp(r.airports[1],"EDAK"));
+  assert(parseFlightRoute("K1G4-KJFK",r)&&!strcmp(r.airports[0],"K1G4"));
   puts("Latin/Greek/Cyrillic, UTF-8/hearts, routes, radar memory/expiry, weather and time zones: OK");
 }

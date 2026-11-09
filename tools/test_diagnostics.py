@@ -47,6 +47,18 @@ int main(){
  ESP.rtc[128+8]^=1;diagInit();assert(!previousValid); // checksum detects corrupted RTC
  clockMs=0xfffffff0;deferBackgroundNetwork(750);clockMs=733;assert(!backgroundNetworkReady());clockMs=734;assert(backgroundNetworkReady());
  clockMs=1000;{DiagRequest request(D_WEATHER);clockMs=1200;request.http(200);request.finish(true);}assert(marker.op==D_WEATHER&&marker.stage==DS_DONE&&marker.value==200);
+ // Radar positions: one line on success (lowest heap of the request), all steps on failure.
+ diagInit();uint8_t before=next;auto added=[&](){return (uint8_t)((next+24-before)%24);};ESP.heap=25000;ESP.block=12000;
+ clockMs=2000;{DiagRequest r(D_RADAR);r.stage(DS_TLS);ESP.heap=5100;ESP.block=3700;r.http(200);r.stage(DS_JSON);ESP.heap=21000;ESP.block=15000;clockMs=2300;r.finish(true);}
+ assert(added()==1);{const Event& e=events[(next+23)%24];assert(e.op==D_RADAR&&e.stage==DS_DONE&&e.heap==5100&&e.block==3700&&e.value==300&&e.code==200);}
+ assert(marker.op==D_RADAR&&marker.stage==DS_DONE);
+ before=next;{DiagRequest r(D_RADAR);r.stage(DS_TLS);r.http(429);}
+ assert(added()==4);assert(events[(next+23)%24].stage==DS_FAILED&&events[(next+22)%24].stage==DS_HTTP&&events[(next+21)%24].stage==DS_TLS&&events[(next+20)%24].stage==DS_BEGIN);
+ assert(hasLastError&&lastError.op==D_RADAR&&lastError.code==429);
+ before=next;{DiagRequest r(D_RADAR);r.http(200);r.finish(true,DS_EMPTY);}assert(added()==1&&events[(next+23)%24].stage==DS_EMPTY);
+ before=next;{DiagRequest r(D_RADAR_ROUTE);r.http(200);r.finish(true);}assert(added()==3); // other requests keep every step
+ diagEvent(D_RADAR_ROUTE,DS_SKIPPED,0,2);{Print o;diagPrint(o);assert(o.text.find("übersprungen")!=std::string::npos);}
+ diagInit();assert(previousValid&&previous.stage==DS_SKIPPED);
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:

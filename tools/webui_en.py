@@ -64,7 +64,25 @@ EXACT = {
  "Zeigt die Sekunden seit dem letzten erfolgreichen Positionsabruf.": "Shows the seconds since the last successful position update.",
  "Entfernung und Höhe werden zwischen den Abrufen aus Geschwindigkeit, Kurs und Steigrate weitergerechnet. Der Punkt unten links zeigt den Stand: kurz weiß bei neuen Daten, grün im normalen Takt, gelb Abruf überfällig, grau Werte angehalten.":
    "Between updates, distance and altitude are continued from speed, track and vertical rate. The dot at the bottom left shows the state: briefly white on new data, green on schedule, yellow update overdue, grey values frozen.",
- "Flugdaten:": "Flight data:", "adsb.lol": "adsb.lol", "(ODbL) · Kostenlosen Key holen:": "(ODbL) · Get a free key:",
+ "Flugdaten:": "Flight data:", "Ausblenden": "Hide", "Beides": "Both", "Betreiber": "Operator",
+ "Darstellung": "Display", "Dimmverfahren": "Dimming method", "Eingabe anzeigen": "Show input", "Geschwindigkeit": "Speed",
+ "Hauptnavigation": "Main navigation", "Hubschrauber": "Helicopters", "Kleinflugzeuge": "Light aircraft", "Knoten (kt)": "Knots (kt)",
+ "Menü öffnen": "Open menu", "Militär mit „MIL“ markieren": "Mark military with “MIL”", "km/h": "km/h", "nicht anzeigen": "do not show",
+ "Im Wechsel mit dem Kennzeichen, alle 3 Sekunden.": "Alternating with the registration, every 3 seconds.",
+ "Name zum Rufzeichen": "Name of the callsign",
+ "Oberbegriff": "Branch",
+ "Beispiel RCH5060: „Air Mobility Command“, „US Air Force“ oder „US Air Force / AMC“. Oberbegriff und „Beides“ gelten für bekannte Militär-Rufzeichen; sonst bleibt der Name zum Rufzeichen.":
+   "Example RCH5060: “Air Mobility Command”, “US Air Force” or “US Air Force / AMC”. Branch and “Both” apply to known military callsigns; otherwise the name of the callsign stays.",
+ "Segler, Ballone, Ultraleicht, Drohnen": "Gliders, balloons, ultralights, drones", "am Boden": "on the ground",
+ "Mit Filter fragt PixelStop alle Flugzeuge im Radius ab und zeigt das nächste passende. Die Antwort ist größer, bei großem Radius dauert der Abruf etwas länger. Flugzeuge ohne Kategorie werden nie ausgeblendet. Notfälle (Squawk 7500/7600/7700) erscheinen immer rot.":
+   "With a filter, PixelStop requests all aircraft in the radius and shows the nearest matching one. The answer is larger; with a large radius the request takes a little longer. Aircraft without a category are never hidden. Emergencies (squawk 7500/7600/7700) always appear in red.",
+ "Standard (PWM)": "Standard (PWM)", "Sigma-Delta (Test gegen Aufblitzen)": "Sigma-delta (test against flashes)",
+ "Sigma-Delta dimmt über einen eigenen Baustein des Chips und wird nicht von WLAN-Aufgaben unterbrochen. Bitte nachts bei geringer Helligkeit vergleichen.":
+   "Sigma-delta dims with a dedicated block of the chip and is not interrupted by Wi-Fi tasks. Please compare at night at low brightness.",
+ "Steig- und Sinkflug als ▲▼ anzeigen": "Show climb and descent as ▲▼",
+ "Die 3-Tage-Vorhersage ist eine eigene Ansicht in der Rotation unter „Anzeige“ und nutzt Ort und Einstellungen dieser Seite.":
+   "The 3-day forecast is a view of its own in the rotation under “Display” and uses the location and settings of this page.",
+ "3-Tage-Vorhersage": "3-day forecast", "adsb.lol": "adsb.lol", "(ODbL) · Kostenlosen Key holen:": "(ODbL) · Get a free key:",
  "anonym, ca. 1 Monat gültig": "anonymous, valid for about a month", "weitere Wege": "other ways",
  "adsb.lol lehnt den Key ab – vermutlich ist er abgelaufen. Neuen Key holen und hier eintragen.":
    "adsb.lol rejects the key – it has probably expired. Get a new key and enter it here.",
@@ -158,7 +176,7 @@ LINES = {
  "Netz: ": "Network: ", "Freier Heap: ": "Free heap: ", " B größter Block)": " B largest block)", "Flugradar: ": "Radar: ",
  "Mindestintervall": "minimum interval", "Radar-Route: ": "Radar route: ", "adsb.lol heute: ": "adsb.lol today: ",
  " Anfragen": " requests", " · mit Schlüssel": " · with key", " von 450 · Tagesbudget-Intervall ": " of 450 · daily budget interval ",
- "Tracker: ": "Tracker: ",
+ "Tracker: ": "Tracker: ", "Aktuelles Flugzeug: ": "Current aircraft: ", " Flugzeuge geprüft": " aircraft checked",
 }
 
 def js():

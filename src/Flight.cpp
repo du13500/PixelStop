@@ -1,6 +1,9 @@
 #include "Version.h"
 #include "Flight.h"
 #include "AircraftPolicy.h"
+#include "AircraftLabel.h"
+#include "RadarFilter.h"
+#include "RadarScan.h"
 #include "RadarPolicy.h"
 #include "RequestPolicy.h"
 #include "RoutePolicy.h"
@@ -40,6 +43,7 @@ static uint32_t g_lastEnrichmentMs=0;
 static const char* g_routeStatus="nicht geprüft";
 static const char* g_routeSource="keine";
 static int g_routeHttp=0;
+static uint16_t g_scanned=0;
 static float g_homeLat=NAN,g_homeLon=NAN;
 static uint32_t g_intervalMs=0;
 
@@ -71,7 +75,7 @@ static float distanceKm(float lat1, float lon1, float lat2, float lon2) {
   return radarFlatDistanceKm(lat1, lon1, lat2, lon2);
 }
 
-// Fallback names for common airlines and aircraft types. The tables live in
+// Fallback names for common airlines (aircraft types: AircraftLabel.h). The tables live in
 // flash (PROGMEM) and the match is copied into the caller's buffer.
 struct NameEntry4 { char key[5]; char name[20]; };
 static const NameEntry4 AIRLINE_NAMES[] PROGMEM = {
@@ -81,17 +85,6 @@ static const NameEntry4 AIRLINE_NAMES[] PROGMEM = {
   {"BAW","British Airways"},{"LOT","LOT"},{"SAS","SAS"},{"THY","Turkish Airlines"},
   {"BEL","Brussels Airlines"},{"UAE","Emirates"},{"QTR","Qatar Airways"},{"EXS","Jet2"},
   {"TUI","TUI"},{"ITY","ITA Airways"},{"IBE","Iberia"},{"VLG","Vueling"}
-};
-static const NameEntry4 TYPE_NAMES[] PROGMEM = {
-  {"A20N","Airbus A320neo"},{"A21N","Airbus A321neo"},{"A320","Airbus A320"},
-  {"A321","Airbus A321"},{"A319","Airbus A319"},{"A318","Airbus A318"},
-  {"A359","Airbus A350-900"},{"A35K","Airbus A350-1000"},{"A333","Airbus A330-300"},
-  {"A332","Airbus A330-200"},{"B738","Boeing 737-800"},{"B737","Boeing 737-700"},
-  {"B38M","Boeing 737 MAX 8"},{"B39M","Boeing 737 MAX 9"},{"B788","Boeing 787-8"},
-  {"B789","Boeing 787-9"},{"B772","Boeing 777-200"},{"B77W","Boeing 777-300ER"},
-  {"E190","Embraer E190"},{"E195","Embraer E195"},{"E290","Embraer E190-E2"},
-  {"E295","Embraer E195-E2"},{"CRJ9","CRJ900"},{"BCS1","Airbus A220-100"},
-  {"BCS3","Airbus A220-300"},{"AT76","ATR 72-600"},{"DH8D","Dash 8 Q400"}
 };
 
 // Copies the name for `key` (first `keyLen` chars, 0 = whole key) or `fallback`.
@@ -112,7 +105,9 @@ static RoutePoint jsonPoint(JsonObjectConst o,const char* latKey,const char* lon
 }
 
 static bool lookupRouteAdsbLol(const FlightSnapshot& f,RoutePoint pos,Enrichment& out) {
-  if(adsbLolBudgetLow()||serviceWaitMs(SERVICE_ADSB_LOL)||serviceMinIntervalMs(SERVICE_ADSB_LOL)||!tlsHeapReady(adsbLolRx()))return false;
+  // Skipped requests are logged with a reason (value): 1 budget, 2 pause, 3 minimum interval, 4 memory.
+  uint8_t skip=adsbLolBudgetLow()?1:(serviceWaitMs(SERVICE_ADSB_LOL)?2:(serviceMinIntervalMs(SERVICE_ADSB_LOL)?3:(!tlsHeapReady(adsbLolRx())?4:0)));
+  if(skip){diagLookup(f.hex,f.callsign);diagEvent(D_RADAR_ROUTE,DS_SKIPPED,0,skip);return false;}
   DiagRequest trace(D_RADAR_ROUTE);diagLookup(f.hex,f.callsign);trace.stage(DS_TLS);
   BearSSL::WiFiClientSecure client;makeSecure(client,&g_routeSession,adsbLolRx());
   HTTPClient http;http.setTimeout(5000);http.setReuse(false);
@@ -126,23 +121,26 @@ static bool lookupRouteAdsbLol(const FlightSnapshot& f,RoutePoint pos,Enrichment
   int code=http.POST(body);request.clear();body=String();trace.http(code);g_routeHttp=code;
   serviceResponse(SERVICE_ADSB_LOL,code,http.header("Retry-After").c_str());
   if(serviceWaitMs(SERVICE_ADSB_LOL))diagEvent(D_RADAR,DS_WAIT,code,serviceWaitMs(SERVICE_ADSB_LOL));
-  if(code!=200){if(code==201)trace.stage(DS_EMPTY);http.end();client.stop();return false;}
+  if(code!=200){if(code==201)trace.finish(true,DS_EMPTY);http.end();client.stop();return false;}
   JsonDocument filter(networkJsonAllocator());JsonObject item=filter.to<JsonArray>().add<JsonObject>();
   item["callsign"]=true;item["plausible"]=true;item["_airport_codes_iata"]=true;
   JsonObject ap=item["_airports"].to<JsonArray>().add<JsonObject>();ap["lat"]=true;ap["lon"]=true;
   trace.stage(DS_JSON);JsonDocument doc(networkJsonAllocator());if(!jsonFilterReady(filter,trace)){http.end();client.stop();return false;}AdsbLolBody routeBody(http);auto err=deserializeJson(doc,routeBody,DeserializationOption::Filter(filter));logJsonError(trace,err); filter.clear(); http.end(); client.stop();
-  if(err||!doc.is<JsonArray>()||!doc.size())return false;
+  if(err)return false;
+  // From here the answer was read; "leer" = no usable route for this flight.
+  if(!doc.is<JsonArray>()||!doc.size()){trace.finish(true,DS_EMPTY);return false;}
   JsonObjectConst r=doc[0];
-  if(strcmp(r["callsign"]|"",f.callsign)||!r["plausible"].is<bool>()||!r["plausible"].as<bool>())return false;
-  FlightRoute route={};if(!parseFlightRoute(r["_airport_codes_iata"]|"",route)||route.truncated)return false;
-  JsonArrayConst airports=r["_airports"];if(airports.size()!=route.count)return false;
+  if(strcmp(r["callsign"]|"",f.callsign)||!r["plausible"].is<bool>()||!r["plausible"].as<bool>()){trace.finish(true,DS_EMPTY);return false;}
+  FlightRoute route={};if(!parseFlightRoute(r["_airport_codes_iata"]|"",route)||route.truncated){trace.finish(true,DS_EMPTY);return false;}
+  JsonArrayConst airports=r["_airports"];if(airports.size()!=route.count){trace.finish(true,DS_EMPTY);return false;}
   for(uint8_t i=0;i<route.count;i++)out.airports[i]=jsonPoint(airports[i],"lat","lon");
-  if(!routePositionPlausible(pos,out.airports,route.count,f.onGround,f.altitudeKnown,f.altitudeFt))return false;
+  if(!routePositionPlausible(pos,out.airports,route.count,f.onGround,f.altitudeKnown,f.altitudeFt)){trace.finish(true,DS_EMPTY);return false;}
   out.route=route;out.airportCount=route.count;out.source="adsb.lol";trace.finish(true);return true;
 }
 
 static bool lookupMetadata(const FlightSnapshot& f,RoutePoint pos,Enrichment& out) {
-  if(serviceWaitMs(SERVICE_ADSB_DB)||!tlsHeapReady(networkTlsRx("api.adsbdb.com",g_adsbDbRx,D_METADATA)))return false;
+  if(serviceWaitMs(SERVICE_ADSB_DB)){diagLookup(f.hex,f.callsign);diagEvent(D_METADATA,DS_SKIPPED,0,2);return false;}
+  if(!tlsHeapReady(networkTlsRx("api.adsbdb.com",g_adsbDbRx,D_METADATA))){diagLookup(f.hex,f.callsign);diagEvent(D_METADATA,DS_SKIPPED,0,4);return false;}
   String id=f.hex[0]?String(f.hex):String(f.registration);
   String url=id.length()?String("https://api.adsbdb.com/v0/aircraft/")+id+"?callsign="+f.callsign:
     String("https://api.adsbdb.com/v0/callsign/")+f.callsign;
@@ -152,14 +150,15 @@ static bool lookupMetadata(const FlightSnapshot& f,RoutePoint pos,Enrichment& ou
   if(!http.begin(client,url))return false;
   const char* headers[]={"Retry-After"};http.collectHeaders(headers,1);http.setUserAgent(FW_USER_AGENT);
   int code=http.GET();trace.http(code);g_routeHttp=code;serviceResponse(SERVICE_ADSB_DB,code,http.header("Retry-After").c_str());
-  if(code!=200){http.end();return false;}
+  // 404: adsbdb does not know the aircraft - an answer, not an error.
+  if(code!=200){if(code==404)trace.finish(true,DS_EMPTY);http.end();return false;}
   JsonDocument filter(networkJsonAllocator());filter["response"]["aircraft"]["type"]=true;filter["response"]["aircraft"]["icao_type"]=true;
   filter["response"]["aircraft"]["mode_s"]=true;
   JsonObject routeFilter=filter["response"]["flightroute"].to<JsonObject>();
   routeFilter["callsign_icao"]=true;routeFilter["callsign"]=true;
   routeFilter["airline"]["name"]=true;routeFilter["airline"]["icao"]=true;
   for(const char* key:{"origin","midpoint","destination"}){
-    routeFilter[key]["iata_code"]=true;routeFilter[key]["latitude"]=true;routeFilter[key]["longitude"]=true;
+    routeFilter[key]["iata_code"]=true;routeFilter[key]["icao_code"]=true;routeFilter[key]["latitude"]=true;routeFilter[key]["longitude"]=true;
   }
   trace.stage(DS_JSON);JsonDocument doc(networkJsonAllocator());if(!jsonFilterReady(filter,trace)){http.end();client.stop();return false;}auto err=deserializeJson(doc,http.getStream(),DeserializationOption::Filter(filter));logJsonError(trace,err); filter.clear(); http.end(); client.stop();if(err)return false;
   trace.finish(true);
@@ -177,7 +176,8 @@ static bool lookupMetadata(const FlightSnapshot& f,RoutePoint pos,Enrichment& ou
     strlcpy(out.airline,route["airline"]["name"]|"",sizeof(out.airline));
   FlightRoute candidate={};RoutePoint points[3];uint8_t count=0;
   for(const char* key:{"origin","midpoint","destination"}){
-    JsonObjectConst ap=route[key];const char* code=ap["iata_code"]|"";
+    // IATA code, or the ICAO code for airfields without one.
+    JsonObjectConst ap=route[key];const char* code=ap["iata_code"]|"";if(!*code)code=ap["icao_code"]|"";
     if(!*code&& !strcmp(key,"midpoint"))continue;
     if(!appendRouteAirport(candidate,code))return true;
     points[count++]=jsonPoint(ap,"latitude","longitude");
@@ -288,6 +288,7 @@ bool flightPollDue(uint16_t pollSec, float visibleShare) {
 }
 
 const FlightSnapshot& flightData() { return g_f; }
+uint16_t flightLastScanned() { return g_scanned; }
 uint32_t flightPollIntervalMs() { return g_intervalMs ? g_intervalMs : RADAR_MOTION_MIN_MS; }
 float flightLiveDistanceKm(const FlightSnapshot& f) {
   if(!f.valid||!f.motion.hasMotion||isnan(g_homeLat)||isnan(g_homeLon))return f.distanceKm;
@@ -336,7 +337,62 @@ static void flightSuccess(const char* stage = "ok") {
   g_lastOkMs = millis();
 }
 
-bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm) {
+// Fields the radar reads per aircraft.
+static void addAircraftFields(JsonObject f) {
+  f["flight"] = true; f["r"] = true; f["t"] = true; f["category"] = true;
+  f["lat"] = true; f["lon"] = true; f["alt_baro"] = true; f["hex"] = true;
+  f["gs"] = true; f["track"] = true; f["baro_rate"] = true; f["geom_rate"] = true; f["seen_pos"] = true;
+  f["squawk"] = true; f["dbFlags"] = true;
+}
+
+// One aircraft object into a snapshot; false without a usable position.
+static bool readAircraft(JsonObjectConst a, float homeLat, float homeLon, FlightSnapshot& next) {
+  strlcpy(next.origin,"N/A",sizeof(next.origin));
+  strlcpy(next.destination,"N/A",sizeof(next.destination));
+  const char* rawCall = a["flight"] | (a["hex"] | "");
+  strlcpy(next.callsign, rawCall, sizeof(next.callsign));
+  trimTail(next.callsign);
+  strlcpy(next.hex, a["hex"] | "", sizeof(next.hex));
+  strlcpy(next.registration, a["r"] | "", sizeof(next.registration));
+  strlcpy(next.category,a["category"]|"",sizeof(next.category));
+  strlcpy(next.typeCode, a["t"] | "", sizeof(next.typeCode));
+  strlcpy(next.squawk, a["squawk"] | "", sizeof(next.squawk));
+  next.military = ((int)(a["dbFlags"] | 0)) & 1;
+  next.onGround=a["alt_baro"].is<const char*>()&&!strcmp(a["alt_baro"].as<const char*>(),"ground");
+  next.altitudeKnown=a["alt_baro"].is<float>();
+  next.altitudeFt=next.altitudeKnown?(int32_t)lroundf(a["alt_baro"].as<float>()):0;
+  float acLat = NAN, acLon = NAN;
+  if (a["lat"].is<float>()) acLat = a["lat"].as<float>();
+  if (a["lon"].is<float>()) acLon = a["lon"].as<float>();
+  if(!isfinite(acLat)||!isfinite(acLon)||acLat<-90||acLat>90||acLon<-180||acLon>180)return false;
+  next.distanceKm = distanceKm(homeLat, homeLon, acLat, acLon);
+  // Motion for estimates until the next request (not on the ground).
+  RadarMotion& m = next.motion;
+  m.lat = acLat; m.lon = acLon;
+  float seen = a["seen_pos"] | 0.0f;
+  if (!(seen >= 0.0f) || seen > 60.0f) seen = 0.0f;
+  m.sampleMs = millis() - (uint32_t)(seen * 1000.0f);
+  float gs = a["gs"] | -1.0f, track = a["track"] | -1.0f;
+  next.speedKnown = gs >= 0.0f && gs <= 800.0f;
+  next.speedKt = next.speedKnown ? gs : 0.0f;
+  m.hasMotion = !next.onGround && next.speedKnown && track >= 0.0f && track <= 360.0f;
+  m.speedKt = m.hasMotion ? gs : 0.0f;
+  m.trackDeg = m.hasMotion ? track : 0.0f;
+  JsonVariantConst rate = a["baro_rate"].is<float>() ? a["baro_rate"] : a["geom_rate"];
+  m.hasRate = !next.onGround && next.altitudeKnown && rate.is<float>() && fabsf(rate.as<float>()) <= 8000.0f;
+  m.rateFpm = m.hasRate ? rate.as<float>() : 0.0f;
+  return true;
+}
+
+// Names from the built-in tables, only for the aircraft that is shown.
+static void labelAircraft(FlightSnapshot& f) {
+  if(!aircraftDisplayLabel(f.typeCode, f.typeName, sizeof(f.typeName))) strlcpy(f.typeName, f.typeCode, sizeof(f.typeName));
+  nameFromTable(AIRLINE_NAMES, sizeof(AIRLINE_NAMES)/sizeof(AIRLINE_NAMES[0]), f.callsign, 3, "", f.airline, sizeof(f.airline));
+}
+
+bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm, uint8_t hideMask) {
+  const bool scan = hideMask != 0;
+  g_scanned = 0;
   if(serviceWaitMs(SERVICE_ADSB_LOL))return false;
   DiagRequest trace(D_RADAR);
   struct Completion {~Completion(){g_lastPollMs=millis();}} completion;
@@ -365,7 +421,7 @@ bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm) {
     http.setTimeout(5000);
     http.setReuse(false);
 
-    String url = F("https://api.adsb.lol/v2/closest/");
+    String url = scan ? F("https://api.adsb.lol/v2/point/") : F("https://api.adsb.lol/v2/closest/");
     url += String(homeLat, 4); url += '/';
     url += String(homeLon, 4); url += '/';
     url += String(radiusNm);
@@ -380,57 +436,47 @@ bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm) {
     if (code != HTTP_CODE_OK) { http.end(); client.stop(); const bool paused=(code==429||code==503)&&serviceWaitMs(SERVICE_ADSB_LOL);return flightFailure(adsbLolAccessDenied(code)?"Zugriff abgelehnt":(paused?"Abrufpause: Anbieter":(code < 0 ? "Verbindung fehlgeschlagen" : "HTTP-Fehler")),paused); }
 
     JsonDocument filter(networkJsonAllocator());
-    JsonObject f = filter["ac"][0].to<JsonObject>();
-    f["flight"] = true; f["r"] = true; f["t"] = true; f["category"] = true;
-    f["lat"] = true; f["lon"] = true; f["alt_baro"] = true; f["hex"] = true;
-    f["gs"] = true; f["track"] = true; f["baro_rate"] = true; f["geom_rate"] = true; f["seen_pos"] = true;
+    addAircraftFields(scan ? filter.to<JsonObject>() : filter["ac"][0].to<JsonObject>());
     JsonDocument doc(networkJsonAllocator());
     trace.stage(DS_JSON);
     if(!jsonFilterReady(filter,trace)){http.end();client.stop();return flightFailure("JSON-Speicher knapp");}
     AdsbLolBody body(http);
-    auto err = deserializeJson(doc, body, DeserializationOption::Filter(filter));
-    logJsonError(trace,err); filter.clear(); http.end(); client.stop();
-    if (err) return flightFailure("JSON-Fehler");
-
-    JsonArrayConst ac = doc["ac"].as<JsonArrayConst>();
-    if(ac.isNull()){trace.stage(DS_SCHEMA);return flightFailure("Antwortformat-Fehler");}
-    if (ac.size() == 0) {
+    bool found = false;
+    if (!scan) {
+      auto err = deserializeJson(doc, body, DeserializationOption::Filter(filter));
+      logJsonError(trace,err); filter.clear(); http.end(); client.stop();
+      if (err) return flightFailure("JSON-Fehler");
+      JsonArrayConst ac = doc["ac"].as<JsonArrayConst>();
+      if(ac.isNull()){trace.stage(DS_SCHEMA);return flightFailure("Antwortformat-Fehler");}
+      if (ac.size()) {
+        if(!readAircraft(ac[0].as<JsonObjectConst>(),homeLat,homeLon,next)){trace.stage(DS_SCHEMA);return flightFailure("Positionsdaten fehlen");}
+        found = true;
+      }
+    } else {
+      // All aircraft in the radius, read one at a time (RadarScan.h).
+      FlightSnapshot cand;
+      DeserializationError err;
+      g_scanned = radarScanArray(body, doc, filter, [&](JsonObjectConst a) {
+        memset(&cand, 0, sizeof(cand));
+        if (!readAircraft(a, homeLat, homeLon, cand) || radarHidden(cand.category, cand.onGround, hideMask)) return;
+        if (!found || cand.distanceKm < next.distanceKm) { next = cand; found = true; }
+        yield();
+      }, err);
+      if (err) {
+        logJsonError(trace,err); filter.clear(); http.end(); client.stop();
+        if (err == DeserializationError::InvalidInput && !g_scanned) { trace.stage(DS_SCHEMA); return flightFailure("Antwortformat-Fehler"); }
+        return flightFailure("JSON-Fehler");
+      }
+      filter.clear(); http.end(); client.stop();
+    }
+    if (!found) {
       memset(&g_f, 0, sizeof(g_f));
       g_f.error = false;
       flightSuccess("keine Flugzeuge");trace.finish(true,DS_EMPTY);
       return true;
     }
-
-    JsonObjectConst a = ac[0].as<JsonObjectConst>();
-    const char* rawCall = a["flight"] | (a["hex"] | "");
-    strlcpy(next.callsign, rawCall, sizeof(next.callsign));
-    trimTail(next.callsign);
-    strlcpy(next.hex, a["hex"] | "", sizeof(next.hex));
-    strlcpy(next.registration, a["r"] | "", sizeof(next.registration));
-    strlcpy(next.category,a["category"]|"",sizeof(next.category));
-    strlcpy(next.typeCode, a["t"] | "", sizeof(next.typeCode));
-    nameFromTable(TYPE_NAMES, sizeof(TYPE_NAMES)/sizeof(TYPE_NAMES[0]), next.typeCode, 0, next.typeCode, next.typeName, sizeof(next.typeName));
-    nameFromTable(AIRLINE_NAMES, sizeof(AIRLINE_NAMES)/sizeof(AIRLINE_NAMES[0]), next.callsign, 3, "", next.airline, sizeof(next.airline));
-    next.onGround=a["alt_baro"].is<const char*>()&&!strcmp(a["alt_baro"].as<const char*>(),"ground");
-    next.altitudeKnown=a["alt_baro"].is<float>();
-    next.altitudeFt=next.altitudeKnown?(int32_t)lroundf(a["alt_baro"].as<float>()):0;
-    if (a["lat"].is<float>() || a["lat"].is<int>()) acLat = a["lat"].as<float>();
-    if (a["lon"].is<float>() || a["lon"].is<int>()) acLon = a["lon"].as<float>();
-    if(!isfinite(acLat)||!isfinite(acLon)||acLat<-90||acLat>90||acLon<-180||acLon>180){trace.stage(DS_SCHEMA);return flightFailure("Positionsdaten fehlen");}
-    if (!isnan(acLat) && !isnan(acLon)) next.distanceKm = distanceKm(homeLat, homeLon, acLat, acLon);
-    // Motion for estimates until the next request (not on the ground).
-    RadarMotion& m = next.motion;
-    m.lat = acLat; m.lon = acLon;
-    float seen = a["seen_pos"] | 0.0f;
-    if (!(seen >= 0.0f) || seen > 60.0f) seen = 0.0f;
-    m.sampleMs = millis() - (uint32_t)(seen * 1000.0f);
-    float gs = a["gs"] | -1.0f, track = a["track"] | -1.0f;
-    m.hasMotion = !next.onGround && gs >= 0.0f && gs <= 800.0f && track >= 0.0f && track <= 360.0f;
-    m.speedKt = m.hasMotion ? gs : 0.0f;
-    m.trackDeg = m.hasMotion ? track : 0.0f;
-    JsonVariantConst rate = a["baro_rate"].is<float>() ? a["baro_rate"] : a["geom_rate"];
-    m.hasRate = !next.onGround && next.altitudeKnown && rate.is<float>() && fabsf(rate.as<float>()) <= 8000.0f;
-    m.rateFpm = m.hasRate ? rate.as<float>() : 0.0f;
+    labelAircraft(next);
+    acLat = next.motion.lat; acLon = next.motion.lon;
     next.valid = true;
     next.error = false;
   }
