@@ -4,13 +4,7 @@ Stand: 09.11.2026. Erledigtes steht in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Nächste Prüfungen auf dem Gerät
 
-- **v0.5.3-dev:** Menü und Auge-Symbol im Webinterface; 3-Tage-Vorhersage als eigene Ansicht (Migration der alten Einstellung); Radar-Optionen (Betreiber A/B/C, Geschwindigkeit, ▲▼, MIL), Filter mit Abfrage aller Flugzeuge im Radius (Dauer und freien Speicher im Log beobachten); Notfalldarstellung; neue Typenliste; Routen mit 4-stelligen ICAO-Codes (kleine Flugplätze statt „N/A“); **Sigma-Delta nachts bei 1–10 % gegen PWM vergleichen** (Aufblitzen, Fiepen, Helligkeitsstufen). Offene Beobachtung: easyJet ohne Kennzeichen und Route – mit dem neuen Log prüfen.
-- **Flugradar:** Langzeittest über mehrere Tage mit Rotation; Anfragezähler „adsb.lol heute“ beobachten. adsb.lol nennt keine festen Zahlen (kostenlose Schlüssel: festes Budget pro Schlüssel, ohne Garantie); Budgetwerte (`src/RadarBudget.h`) anhand des Verbrauchs im adsb.lol-Dashboard prüfen. Freien Speicher während der Abfrage im Blick behalten (ca. 5 KB bei 4-KB-TLS-Puffer).
-- **Wetter:** Exception 29 beim Programmwechsel ist seit den Speicherkorrekturen nicht wieder aufgetreten; im Langzeittest weiter beobachten.
-- **Zeitzone, Sommerzeit, Nachtmodus:** gezielt prüfen, spätestens bei der Zeitumstellung Ende März.
-- **Abfahrten:** zehn Abfahrten mit Seitenwechsel 5+5, Verhalten bei Verbindungsproblemen.
-- **Helligkeit:** 300 Hz / 1023 Stufen bei 1 %; bei Fiepen oder Flimmern `BL_PWM_FREQ` in `src/main.cpp` anpassen.
-- **Flug-Tracker** mit gültigem aviationstack-Schlüssel vollständig testen; Airline-Erholung nach fehlgeschlagenem Zusatzabruf prüfen.
+Aktueller Hardwaretest und dauerhafte Prüfungen stehen in [`TESTPLAN.md`](TESTPLAN.md).
 
 ## Geplante Versionen
 
