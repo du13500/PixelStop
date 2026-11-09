@@ -169,9 +169,9 @@ Zur Veranschaulichung ein Blick aus dem CIC der Galactica:
 
 | | |
 | :---: | :---: |
-| <img src="docs/screens/radar-colone.png" width="260" alt="COLONE"><br><sub><b>Geschwindigkeit</b> im Wechsel mit dem Kennzeichen, 4-stellige Codes, im All ohne Höhe (N/A)</sub> | <img src="docs/screens/radar-apollo.png" width="260" alt="APOLLO"><br><sub><b>MIL</b>-Markierung, Betreiber als „Oberbegriff / Einheit“</sub> |
+| <img src="docs/screens/radar-colone.png" width="260" alt="COLONE"><br><sub><b>Geschwindigkeit</b> im Wechsel mit dem Kennzeichen, 4-stellige Codes, „N/A“ wenn der Datenabruf keine Höhe liefert</sub> | <img src="docs/screens/radar-apollo.png" width="260" alt="APOLLO"><br><sub><b>MIL</b>-Markierung, Betreiber als „Oberbegriff / Einheit“</sub> |
 
-<p align="center"><img src="docs/screens/radar-karma.gif" width="260" alt="KARMA"><br><sub><b>Notfall</b> · Rufzeichen und Routenzeile rot; Route und „SQUAWK 7700“ wechseln alle 3 s, dazu Sturz Richtung Planet ▼ – die Höhe sinkt, die Entfernung zum CIC wächst bis knapp an den 100-km-Radius, das Alter zählt weiter – eigener Anzeigename in der Kopfzeile</sub></p>
+<p align="center"><img src="docs/screens/radar-karma.gif" width="260" alt="KARMA"><br><sub><b>Notfall</b> · Rufzeichen und Routenzeile rot; Route und „SQUAWK 7700“ wechseln alle 3 s, dazu ▼ im Sinkflug, Entfernung, Höhe und Alter laufen weiter, eigener Anzeigename in der Kopfzeile</sub></p>
 
 <sub>Fiktive Beispieldaten in Anlehnung an Battlestar Galactica, ohne Verbindung zu den Rechteinhabern. Für diese Bilder heißt die Quelle in der Fußzeile „DRADIS“ statt „ADSB.LOL“; alles andere ist unveränderte Firmware-Ausgabe.</sub>
 
