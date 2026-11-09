@@ -64,15 +64,15 @@ EXACT = {
  "Zeigt die Sekunden seit dem letzten erfolgreichen Positionsabruf.": "Shows the seconds since the last successful position update.",
  "Entfernung und Höhe werden zwischen den Abrufen aus Geschwindigkeit, Kurs und Steigrate weitergerechnet. Der Punkt unten links zeigt den Stand: kurz weiß bei neuen Daten, grün im normalen Takt, gelb Abruf überfällig, grau Werte angehalten.":
    "Between updates, distance and altitude are continued from speed, track and vertical rate. The dot at the bottom left shows the state: briefly white on new data, green on schedule, yellow update overdue, grey values frozen.",
- "Flugdaten:": "Flight data:", "Ausblenden": "Hide", "Beides (z. B. US Air Force / AMC)": "Both (e.g. US Air Force / AMC)", "Betreiber": "Operator",
+ "Flugdaten:": "Flight data:", "Ausblenden": "Hide", "Beides": "Both", "Betreiber": "Operator",
  "Darstellung": "Display", "Dimmverfahren": "Dimming method", "Eingabe anzeigen": "Show input", "Geschwindigkeit": "Speed",
  "Hauptnavigation": "Main navigation", "Hubschrauber": "Helicopters", "Kleinflugzeuge": "Light aircraft", "Knoten (kt)": "Knots (kt)",
  "Menü öffnen": "Open menu", "Militär mit „MIL“ markieren": "Mark military with “MIL”", "km/h": "km/h", "nicht anzeigen": "do not show",
  "Im Wechsel mit dem Kennzeichen, alle 3 Sekunden.": "Alternating with the registration, every 3 seconds.",
- "Name zum Rufzeichen (z. B. Air Mobility Command)": "Name of the callsign (e.g. Air Mobility Command)",
- "Oberbegriff (z. B. US Air Force)": "Branch (e.g. US Air Force)",
- "Oberbegriff und „Beides“ gelten für bekannte Militär-Rufzeichen; sonst bleibt der Name zum Rufzeichen.":
-   "Branch and “Both” apply to known military callsigns; otherwise the name of the callsign stays.",
+ "Name zum Rufzeichen": "Name of the callsign",
+ "Oberbegriff": "Branch",
+ "Beispiel RCH5060: „Air Mobility Command“, „US Air Force“ oder „US Air Force / AMC“. Oberbegriff und „Beides“ gelten für bekannte Militär-Rufzeichen; sonst bleibt der Name zum Rufzeichen.":
+   "Example RCH5060: “Air Mobility Command”, “US Air Force” or “US Air Force / AMC”. Branch and “Both” apply to known military callsigns; otherwise the name of the callsign stays.",
  "Segler, Ballone, Ultraleicht, Drohnen": "Gliders, balloons, ultralights, drones", "am Boden": "on the ground",
  "Mit Filter fragt PixelStop alle Flugzeuge im Radius ab und zeigt das nächste passende. Die Antwort ist größer, bei großem Radius dauert der Abruf etwas länger. Flugzeuge ohne Kategorie werden nie ausgeblendet. Notfälle (Squawk 7500/7600/7700) erscheinen immer rot.":
    "With a filter, PixelStop requests all aircraft in the radius and shows the nearest matching one. The answer is larger; with a large radius the request takes a little longer. Aircraft without a category are never hidden. Emergencies (squawk 7500/7600/7700) always appear in red.",
