@@ -158,7 +158,7 @@ static bool lookupMetadata(const FlightSnapshot& f,RoutePoint pos,Enrichment& ou
   routeFilter["callsign_icao"]=true;routeFilter["callsign"]=true;
   routeFilter["airline"]["name"]=true;routeFilter["airline"]["icao"]=true;
   for(const char* key:{"origin","midpoint","destination"}){
-    routeFilter[key]["iata_code"]=true;routeFilter[key]["latitude"]=true;routeFilter[key]["longitude"]=true;
+    routeFilter[key]["iata_code"]=true;routeFilter[key]["icao_code"]=true;routeFilter[key]["latitude"]=true;routeFilter[key]["longitude"]=true;
   }
   trace.stage(DS_JSON);JsonDocument doc(networkJsonAllocator());if(!jsonFilterReady(filter,trace)){http.end();client.stop();return false;}auto err=deserializeJson(doc,http.getStream(),DeserializationOption::Filter(filter));logJsonError(trace,err); filter.clear(); http.end(); client.stop();if(err)return false;
   trace.finish(true);
@@ -176,7 +176,8 @@ static bool lookupMetadata(const FlightSnapshot& f,RoutePoint pos,Enrichment& ou
     strlcpy(out.airline,route["airline"]["name"]|"",sizeof(out.airline));
   FlightRoute candidate={};RoutePoint points[3];uint8_t count=0;
   for(const char* key:{"origin","midpoint","destination"}){
-    JsonObjectConst ap=route[key];const char* code=ap["iata_code"]|"";
+    // IATA code, or the ICAO code for airfields without one.
+    JsonObjectConst ap=route[key];const char* code=ap["iata_code"]|"";if(!*code)code=ap["icao_code"]|"";
     if(!*code&& !strcmp(key,"midpoint"))continue;
     if(!appendRouteAirport(candidate,code))return true;
     points[count++]=jsonPoint(ap,"latitude","longitude");

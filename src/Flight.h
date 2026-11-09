@@ -13,8 +13,8 @@ struct FlightSnapshot {
   char typeCode[8];
   char category[4];
   char typeName[80];
-  char origin[4];
-  char destination[4];
+  char origin[ROUTE_CODE_SIZE];
+  char destination[ROUTE_CODE_SIZE];
   FlightRoute route;
   float distanceKm;
   int32_t altitudeFt;

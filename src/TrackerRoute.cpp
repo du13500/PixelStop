@@ -31,16 +31,16 @@ static void makeSecure(BearSSL::WiFiClientSecure& client, BearSSL::Session* sess
   client.setTimeout(9000);
 }
 
-static void routeFallback(char outOrigin[4], char outDestination[4]) {
-  strlcpy(outOrigin, "N/A", 4);
-  strlcpy(outDestination, "N/A", 4);
+static void routeFallback(char outOrigin[ROUTE_CODE_SIZE], char outDestination[ROUTE_CODE_SIZE]) {
+  strlcpy(outOrigin, "N/A", ROUTE_CODE_SIZE);
+  strlcpy(outDestination, "N/A", ROUTE_CODE_SIZE);
 }
 
-static bool routeComplete(const char origin[4], const char destination[4]) {
+static bool routeComplete(const char origin[ROUTE_CODE_SIZE], const char destination[ROUTE_CODE_SIZE]) {
   return routeCode(origin) && routeCode(destination);
 }
 
-static bool lookupRouteAdsbLol(const char* callsign, float lat, float lon, char origin[4], char destination[4], FlightRoute& chain) {
+static bool lookupRouteAdsbLol(const char* callsign, float lat, float lon, char origin[ROUTE_CODE_SIZE], char destination[ROUTE_CODE_SIZE], FlightRoute& chain) {
   DiagRequest trace(D_TRACK_ROUTE);trace.stage(DS_TLS);
   if (serviceWaitMs(SERVICE_ADSB_LOL)||!tlsHeapReady(g_adsbLolRx ? g_adsbLolRx : 512)) return false;
   const uint16_t rx=adsbLolRx();
@@ -87,14 +87,23 @@ static bool lookupRouteAdsbLol(const char* callsign, float lat, float lon, char 
   route.trim();
   if (!route.length() || route == "unknown") return false;
   if (!parseFlightRoute(route.c_str(), chain)) return false;
-  strlcpy(origin, chain.airports[0], 4);
+  strlcpy(origin, chain.airports[0], ROUTE_CODE_SIZE);
   // Preserve the true final airport even if the bounded display chain overflows.
   String last=route.substring(route.lastIndexOf('-')+1);last.trim();last.toUpperCase();
-  strlcpy(destination, last.c_str(), 4);
+  strlcpy(destination, last.c_str(), ROUTE_CODE_SIZE);
   bool ok=routeComplete(origin,destination);trace.finish(ok);return ok;
 }
 
-static bool lookupRouteAdsbDb(const char* callsign, char origin[4], char destination[4], FlightRoute& chain) {
+// adsbdb: IATA code, or the ICAO code if the airport has none.
+static String airportCode(JsonObjectConst ap) {
+  String code = ap["iata_code"] | "";
+  code.trim();
+  if (!code.length()) { code = ap["icao_code"] | ""; code.trim(); }
+  code.toUpperCase();
+  return code;
+}
+
+static bool lookupRouteAdsbDb(const char* callsign, char origin[ROUTE_CODE_SIZE], char destination[ROUTE_CODE_SIZE], FlightRoute& chain) {
   DiagRequest trace(D_TRACK_ROUTE);trace.stage(DS_TLS);
   if (serviceWaitMs(SERVICE_ADSB_DB)||!tlsHeapReady(4096)) return false;
   BearSSL::Session routeSession;
@@ -116,9 +125,10 @@ static bool lookupRouteAdsbDb(const char* callsign, char origin[4], char destina
   if (code != HTTP_CODE_OK) { http.end(); return false; }
 
   JsonDocument filter(networkJsonAllocator());
-  filter["response"]["flightroute"]["origin"]["iata_code"] = true;
-  filter["response"]["flightroute"]["destination"]["iata_code"] = true;
-  filter["response"]["flightroute"]["midpoint"]["iata_code"] = true;
+  for (const char* key : {"origin", "destination", "midpoint"}) {
+    filter["response"]["flightroute"][key]["iata_code"] = true;
+    filter["response"]["flightroute"][key]["icao_code"] = true;   // for airfields without IATA code
+  }
   JsonDocument doc(networkJsonAllocator());
   trace.stage(DS_JSON);
   if(!jsonFilterReady(filter,trace)){http.end();client.stop();return false;}
@@ -126,21 +136,19 @@ static bool lookupRouteAdsbDb(const char* callsign, char origin[4], char destina
   logJsonError(trace,err); filter.clear(); http.end(); client.stop();
   if (err) return false;
 
-  String a = doc["response"]["flightroute"]["origin"]["iata_code"] | "";
-  String b = doc["response"]["flightroute"]["destination"]["iata_code"] | "";
-  a.trim(); b.trim(); a.toUpperCase(); b.toUpperCase();
-  if (a.length() == 3) strlcpy(origin, a.c_str(), 4);
-  if (b.length() == 3) strlcpy(destination, b.c_str(), 4);
+  String a = airportCode(doc["response"]["flightroute"]["origin"]);
+  String b = airportCode(doc["response"]["flightroute"]["destination"]);
+  if (routeCode(a.c_str())) strlcpy(origin, a.c_str(), ROUTE_CODE_SIZE);
+  if (routeCode(b.c_str())) strlcpy(destination, b.c_str(), ROUTE_CODE_SIZE);
   if (!routeComplete(origin,destination)) return false;
   chain={};appendRouteAirport(chain,origin);
-  String midpoint=doc["response"]["flightroute"]["midpoint"]["iata_code"] | "";
-  midpoint.trim();midpoint.toUpperCase();
+  String midpoint=airportCode(doc["response"]["flightroute"]["midpoint"]);
   if(midpoint.length())appendRouteAirport(chain,midpoint.c_str());
   appendRouteAirport(chain,destination);
   trace.finish(true);return true;
 }
 
-static bool performRouteLookup(const char* callsign, float lat, float lon, char origin[4], char destination[4], FlightRoute& chain) {
+static bool performRouteLookup(const char* callsign, float lat, float lon, char origin[ROUTE_CODE_SIZE], char destination[ROUTE_CODE_SIZE], FlightRoute& chain) {
   routeFallback(origin, destination);
   chain={};
   bool ok = !isnan(lat) && !isnan(lon) && lookupRouteAdsbLol(callsign, lat, lon, origin, destination, chain);
@@ -151,7 +159,7 @@ static bool performRouteLookup(const char* callsign, float lat, float lon, char 
   return ok;
 }
 
-bool trackerRouteLookup(const char* callsign,float lat,float lon,FlightRoute& route,char origin[4],char destination[4]) {
+bool trackerRouteLookup(const char* callsign,float lat,float lon,FlightRoute& route,char origin[ROUTE_CODE_SIZE],char destination[ROUTE_CODE_SIZE]) {
   if(!callsign||strlen(callsign)<3||WiFi.status()!=WL_CONNECTED )return false;
   return performRouteLookup(callsign,lat,lon,origin,destination,route);
 }

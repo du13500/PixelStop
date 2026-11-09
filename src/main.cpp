@@ -1001,7 +1001,12 @@ static String routePart(const FlightRoute& route, uint8_t begin, uint8_t end) {
 
 static void drawFlightRoute(const FlightRoute& route, const char* origin, const char* destination, int y) {
   if(route.count<=2){
-    centerText(String(origin[0]?origin:"N/A")+" > "+String(destination[0]?destination:"N/A"),y,3,C_YELLOW);
+    // The arrow stays in the middle: codes are padded to 4 characters, so
+    // 3-letter routes look exactly as before and 4-character codes grow outward.
+    String a=String(origin[0]?origin:"N/A"),b=String(destination[0]?destination:"N/A");
+    while(a.length()<4)a=" "+a;
+    while(b.length()<4)b+=" ";
+    centerText(a+" > "+b,y,3,C_YELLOW);
     return;
   }
   String text=routePart(route,0,route.count);
@@ -1053,8 +1058,10 @@ static String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;
 static String lastPlaneCall,lastPlaneOperator,lastPlaneRoute,lastPlaneReg;static int8_t lastPlaneTrend=0;
 // The footer starts with a status dot; label and age follow after it.
 static const int PLANE_FOOTER_X=18;
+// Name of the position source in the footer (prepared for further sources).
+static const char* planeSourceLabel="ADSB.LOL";
 static String planeFooterLabel() {
-  return flightProviderPaused()?TR("ABRUFPAUSE","PAUSED"):(flightData().error?TR("LETZTER STAND","LAST DATA"):"ADSB.LOL LIVE");
+  return flightProviderPaused()?String(TR("ABRUFPAUSE","PAUSED")):(flightData().error?String(TR("LETZTER STAND","LAST DATA")):String(planeSourceLabel)+" LIVE");
 }
 static void drawPlaneAge() {
   if(!cfg.planeShowAge||!flightData().valid)return;

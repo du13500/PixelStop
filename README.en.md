@@ -41,6 +41,35 @@ Plus night mode, brightness down to 1 %, place search with a map, Greek and Cyri
 | <img src="docs/screens/en/abfahrten.png" width="260" alt="Departures"><br><sub><b>Departures</b> · Dresden Hauptbahnhof with a delay (yellow) and a cancellation (✕)</sub> | <img src="docs/screens/en/wetter.png" width="260" alt="Weather"><br><sub><b>Weather</b> · Brooklyn in °F</sub> | <img src="docs/screens/en/flugradar.png" width="260" alt="Flight radar"><br><sub><b>Flight radar</b> · Emirates A380 from Dubai to Frankfurt</sub> |
 | <img src="docs/screens/en/flugtracker.png" width="260" alt="Flight tracker"><br><sub><b>Flight tracker</b> · one flight with scheduled and actual times</sub> | <img src="docs/screens/en/vorhersage.png" width="260" alt="3-day forecast"><br><sub><b>Forecast</b> · the next three days</sub> | <img src="docs/screens/en/countdown-tage.png" width="260" alt="Countdown"><br><sub><b>Countdown</b> · in days or as a timer</sub> |
 
+### More examples
+
+<details><summary><b>Departures & weather</b></summary>
+
+| | |
+| :---: | :---: |
+| <img src="docs/screens/en/abfahrten-ziele.png" width="260" alt="Departures S-Bahnhof Reick"><br><sub><b>Destinations</b> · town of the stop dropped, “Meißen T.” abbreviated</sub> | <img src="docs/screens/en/wetter-nacht.png" width="260" alt="Weather at night"><br><sub><b>Weather</b> · Dresden at night in °C</sub> |
+
+</details>
+
+<details><summary><b>Clock & countdown</b></summary>
+
+| | |
+| :---: | :---: |
+| <img src="docs/screens/en/uhr.png" width="260" alt="Clock"><br><sub><b>Clock</b> · with date</sub> | <img src="docs/screens/en/countdown-timer.png" width="260" alt="Countdown as timer"><br><sub><b>Countdown</b> · as a minute timer</sub> |
+
+</details>
+
+<details><summary><b>Flight radar – examples from Galactica’s CIC</b></summary>
+
+| | |
+| :---: | :---: |
+| <img src="docs/screens/en/radar-colone.png" width="260" alt="COLONE"><br><sub><b>Speed</b> alternating with the registration, 4-character codes</sub> | <img src="docs/screens/en/radar-apollo.png" width="260" alt="APOLLO"><br><sub><b>MIL</b> marking, operator as “branch / unit”</sub> |
+| <img src="docs/screens/en/radar-karma.png" width="260" alt="KARMA"><br><sub><b>Descent ▼</b>, custom display name in the header</sub> | <img src="docs/screens/en/radar-karma-notfall.png" width="260" alt="KARMA emergency"><br><sub><b>Emergency</b> · squawk 7700 alternating with the route, callsign in red</sub> |
+
+<sub>Fictional sample data inspired by Battlestar Galactica, not affiliated with the rights holders. For these images the footer source reads “DRADIS” instead of “ADSB.LOL”; everything else is unchanged firmware output.</sub>
+
+</details>
+
 ## Status: v0.5.3-dev
 
 | Area | Status |

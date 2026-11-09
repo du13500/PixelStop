@@ -205,7 +205,8 @@ const WeatherSnapshot& weatherData() { return wx; }
 const char* weatherLabel(int c) { return weatherVisual(c).label; }
 static FlightSnapshot fl = {};
 const FlightSnapshot& flightData() { return fl; }
-uint32_t flightLastOkMs() { return clockMs - 4000; }
+static uint32_t okAgeMs = 4000;
+uint32_t flightLastOkMs() { return clockMs - okAgeMs; }
 bool flightProviderPaused() { return false; }
 int flightLastHttp() { return 200; }
 uint32_t flightWaitSec() { return 0; }
@@ -257,12 +258,23 @@ int main(int argc, char** argv) {
   dep("S1", "Meißen Triebischtal", 1); dep("3", "Wilder Mann", 3); dep("RE50", "Leipzig Hbf", 6, true);
   dep("8", "Hellerau", 9); dep("10", "Messe Dresden", 12, false, true);
   drawDepartures(); dump((out + "/abfahrten.ppm").c_str());
+  // Fahrtziele ohne eigenen Ort und abgekürzt (S-Bahnhof Reick, Dresden)
+  depN = 0; cfg.stopName = "S-Bahnhof Reick"; cfg.stopPlace = "Dresden"; cfg.departureDropTown = true; cfg.departureAbbreviate = true;
+  dep("S2", "Dresden Flughafen", 2); dep("S1", "Schöna", 5); dep("S2", "Pirna", 9); dep("S1", "Meißen Triebischtal", 14, true); dep("S2", "Dresden Flughafen", 22);
+  drawDepartures(); dump((out + "/abfahrten-ziele.ppm").c_str());
+  cfg.departureDropTown = false; cfg.departureAbbreviate = false; cfg.stopPlace = "";
 
   // Wetter
   cfg.mode = MODE_WEATHER; cfg.weatherCity = "Brooklyn"; cfg.weatherDisplayName = ""; cfg.weatherFahrenheit = true;
   wx.valid = true; wx.currentC = 8.9f; wx.highC = 11.7f; wx.lowC = 5.6f; wx.rainPct = 70; wx.code = 61; wx.isDay = true;
   strlcpy(wx.sunrise, "06:31", sizeof wx.sunrise); strlcpy(wx.sunset, "16:42", sizeof wx.sunset);
   drawWeather(); dump((out + "/wetter.ppm").c_str());
+  // Nacht in Dresden, °C
+  cfg.weatherCity = "Dresden"; cfg.weatherFahrenheit = false;
+  wx.currentC = 11.6f; wx.highC = 14.2f; wx.lowC = 9.4f; wx.rainPct = 10; wx.code = 1; wx.isDay = false;
+  drawWeather(); dump((out + "/wetter-nacht.ppm").c_str());
+  cfg.weatherCity = "Brooklyn"; cfg.weatherFahrenheit = true;
+  wx.currentC = 8.9f; wx.highC = 11.7f; wx.lowC = 5.6f; wx.rainPct = 70; wx.code = 61; wx.isDay = true;
   wx.days = 3;
   wx.day[0] = {13.4f, 6.1f, 3, 10}; wx.day[1] = {9.8f, 3.2f, 63, 80}; wx.day[2] = {6.2f, -1.4f, 71, 60};
   weatherPage = 1; drawWeather(true); dump((out + "/vorhersage.ppm").c_str()); weatherPage = 0;
@@ -274,6 +286,29 @@ int main(int argc, char** argv) {
   strlcpy(fl.origin, "DXB", 4); strlcpy(fl.destination, "FRA", 4); parseFlightRoute("DXB-FRA", fl.route);
   fl.distanceKm = 11.4f; fl.altitudeFt = 37000; fl.altitudeKnown = true;
   drawPlane(); dump((out + "/flugradar.ppm").c_str());
+
+  // Fiktive Beispieldaten in Anlehnung an Battlestar Galactica: Blick vom CIC
+  // der Galactica, Quelle "DRADIS" statt adsb.lol, 4-stellige Codes (BS75, BS62).
+  planeSourceLabel = "DRADIS"; okAgeMs = 33000; cfg.planeMarkMilitary = true;
+  auto bsg = [&](const char* call, const char* op, const char* to, const char* type, const char* reg, float km, int32_t m, bool mil) {
+    fl = FlightSnapshot{}; fl.valid = true; strlcpy(fl.hex, "bs7500", 8); strlcpy(fl.callsign, call, 12); strlcpy(fl.airline, op, 64);
+    strlcpy(fl.registration, reg, 16); strlcpy(fl.typeName, type, 80); strlcpy(fl.typeCode, "BSG", 8);
+    strlcpy(fl.origin, "BS75", 5); strlcpy(fl.destination, to, 5);
+    if (strcmp(to, "N/A")) { char r[12]; snprintf(r, sizeof r, "BS75-%s", to); parseFlightRoute(r, fl.route); }
+    fl.distanceKm = km; fl.altitudeFt = (int32_t)lroundf(m / 0.3048f); fl.altitudeKnown = true; fl.military = mil;
+  };
+  bsg("COLONE", "Colonial Fleet", "BS62", "Colonial Heavy 798", "COL-ONE", 12.4f, 9800, false);
+  fl.speedKnown = true; fl.speedKt = 860 / 1.852f; cfg.planeSpeed = 1; clockMs = 999000; // speed phase
+  drawPlane(); dump((out + "/radar-colone.ppm").c_str());
+  cfg.planeSpeed = 0;
+  bsg("APOLLO", "Col. Fleet / Viper", "N/A", "Viper MK II", "N7242C", 1.2f, 1200, true);
+  clockMs = 1002000; drawPlane(); dump((out + "/radar-apollo.ppm").c_str());
+  cfg.planeShowPlace = true; cfg.planeDisplayName = "CIC BSG75"; cfg.planePlaceToggleSec = 0; planePlacePhase = true;
+  bsg("KARMA", "Colonial Fleet", "N/A", "Raptor", "BS75-R1", 98.7f, 98700, true);
+  fl.motion.hasRate = true; fl.motion.rateFpm = -3000; cfg.planeTrend = true;
+  clockMs = 1002000; drawPlane(); dump((out + "/radar-karma.ppm").c_str());
+  strlcpy(fl.squawk, "7700", 5); clockMs = 999000; drawPlane(); dump((out + "/radar-karma-notfall.ppm").c_str());
+  planeSourceLabel = "ADSB.LOL"; okAgeMs = 4000; clockMs = 1000000; cfg.planeTrend = false; cfg.planeShowPlace = false; cfg.planeDisplayName = "";
 
   // Uhr
   cfg.mode = MODE_CLOCK; drawClock(); dump((out + "/uhr.ppm").c_str());

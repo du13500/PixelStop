@@ -126,8 +126,18 @@ int main(){
    assert(parseFlightRoute(text,route));clearDraws();
    drawFlightRoute(route,route.airports[0],route.airports[route.count-1],105);
    for(auto d:draws){assert(textW(d.text,d.size)<=224);assert(d.y>=105&&d.y+d.size*7<=133);}
-   if(route.count==2){assert(draws.size()==1&&draws[0].text=="OSL > IST"&&draws[0].size==3&&draws[0].y==105);}
+   if(route.count==2){assert(draws.size()==1&&draws[0].text==" OSL > IST "&&draws[0].size==3&&draws[0].y==105);}
  }
+ // 4-character ICAO codes: the arrow stays in place (x=111), codes grow outward;
+ // 3-letter routes keep their pixels (first letter at x=39 as before).
+ for(auto c:{std::make_pair("EDAK-KJFK","EDAK > KJFK"),std::make_pair("FRA-EDAK"," FRA > EDAK"),std::make_pair("BS75-BS62","BS75 > BS62")}){
+   assert(parseFlightRoute(c.first,route));clearDraws();drawFlightRoute(route,route.airports[0],route.airports[1],105);
+   assert(draws.size()==1&&draws[0].text==c.second&&textW(draws[0].text,3)==198);
+ }
+ clearDraws();drawFlightRoute(FlightRoute{},"BS75","N/A",105);assert(draws[0].text=="BS75 > N/A ");
+ assert(routeCode("DRS")&&routeCode("EDAK")&&routeCode("K1G4")&&routeCode("BS75"));
+ assert(!routeCode("DR5")&&!routeCode("1ABC")&&!routeCode("EDA")==false&&!routeCode("EDDFX")&&!routeCode("ed")&&!routeCode("ED-K"));
+ assert(!parseFlightRoute("EDDFX-FRA",route)&&parseFlightRoute("edak-fra",route)&&!strcmp(route.airports[0],"EDAK"));
  cfg={};clearDraws();drawTrackedFlight();assert(footer=="");
  bool hint=false;for(auto d:draws)if(d.text=="Webinterface eingeben")hint=true;assert(hint);
  cfg.trackedFlightNo="AF1234";footer="not drawn";drawTrackedFlight();assert(footer=="");
@@ -136,7 +146,7 @@ int main(){
  data.error=false;data.notFound=true;footer="";drawTrackedFlight();assert(footer=="FLUG NICHT GEFUNDEN");
  data.valid=true;data.notFound=false;strcpy(data.origin,"OSL");strcpy(data.destination,"IST");
  strcpy(data.arrActual,"N/A");clearDraws();drawTrackedFlight();assert(footer=="AVIATIONSTACK + ADSB.LOL");
- assert(draws[1].text=="OSL > IST"&&draws[1].y==36&&draws[1].size==3);
+ assert(draws[1].text==" OSL > IST "&&draws[1].y==36&&draws[1].size==3);
  clearDraws();drawTrackedFlight(false);assert(fullScreens==0&&draws.empty()&&rects.empty());
  strcpy(data.depScheduled,"10:00");clearDraws();drawTrackedFlight(false);assert(fullScreens==0&&draws.size()==1);
  data.error=true;footer="";drawTrackedFlight();assert(footer=="LETZTER STAND");
@@ -273,7 +283,7 @@ int main(){
  puts("Real display: selective radar/new aircraft, stale states, tracker footer, weather motifs and Unicode bounds OK");
 }
 '''
-pre+='\nstatic bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;\nstatic String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;static const int PLANE_FOOTER_X=18;\nstatic String lastPlaneCall,lastPlaneOperator,lastPlaneRoute,lastPlaneReg;static int8_t lastPlaneTrend=0;\n'
+pre+='\nstatic bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;\nstatic String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;static const int PLANE_FOOTER_X=18;static const char* planeSourceLabel="ADSB.LOL";\nstatic String lastPlaneCall,lastPlaneOperator,lastPlaneRoute,lastPlaneReg;static int8_t lastPlaneTrend=0;\n'
 names=['nextCodepoint','glyphCount','drawSpecialGlyph','textW','crop','stopTown','departureText','beginView','visibleText','visibleCenter','planePlaceTitle','drawPlaneHeader','routePart','drawFlightRoute','samePlane','planeDistance','planeAltitude','compactType','planeFooterLabel','drawPlaneAge','drawPlaneDot','drawPlaneFooter','planeSecondPhase','planeOperatorText','planeSpeedText','drawPlane','drawTrackedFlight','wxLen','drawCloud','drawSun','drawMoon','drawSnowflake','drawWeatherIconAt','drawWeatherIcon','drawSunEventIcon','centerTextIn','drawForecast','drawWeather','drawDepartures','segMask','drawSevenDigit','sevenUnit','sevenCharWidth','drawSevenString','drawCountdown','drawClock']
 import collections
 _types=re.findall(r'\{"([A-Z0-9]{2,4})","([^"]*)"\}',(root/'src/AircraftLabel.h').read_text())

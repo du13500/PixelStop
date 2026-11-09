@@ -11,8 +11,8 @@ struct TrackedFlightSnapshot {
   char flightIata[12];
   char flightIcao[12];
   char airline[28];
-  char origin[4];
-  char destination[4];
+  char origin[ROUTE_CODE_SIZE];
+  char destination[ROUTE_CODE_SIZE];
   FlightRoute route;
   char status[16];
   char depScheduled[6];

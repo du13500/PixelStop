@@ -154,10 +154,12 @@ bool trackedFlightFetchStatus(const String& apiKey, const String& flightNumber) 
   item["flight"]["iata"] = true;
   item["flight"]["icao"] = true;
   item["departure"]["iata"] = true;
+  item["departure"]["icao"] = true;
   item["departure"]["scheduled"] = true;
   item["departure"]["estimated"] = true;
   item["departure"]["actual"] = true;
   item["arrival"]["iata"] = true;
+  item["arrival"]["icao"] = true;
   item["arrival"]["scheduled"] = true;
   item["arrival"]["estimated"] = true;
   item["arrival"]["actual"] = true;
@@ -203,8 +205,9 @@ bool trackedFlightFetchStatus(const String& apiKey, const String& flightNumber) 
   strlcpy(next.flightIata, x["flight"]["iata"] | next.requested, sizeof(next.flightIata));
   strlcpy(next.flightIcao, x["flight"]["icao"] | "", sizeof(next.flightIcao));
   strlcpy(next.airline, x["airline"]["name"] | "", sizeof(next.airline));
-  strlcpy(next.origin, x["departure"]["iata"] | "N/A", sizeof(next.origin));
-  strlcpy(next.destination, x["arrival"]["iata"] | "N/A", sizeof(next.destination));
+  // IATA code, or the ICAO code for airfields without one.
+  strlcpy(next.origin, x["departure"]["iata"] | (x["departure"]["icao"] | "N/A"), sizeof(next.origin));
+  strlcpy(next.destination, x["arrival"]["iata"] | (x["arrival"]["icao"] | "N/A"), sizeof(next.destination));
   strlcpy(next.status, x["flight_status"] | "unknown", sizeof(next.status));
   strlcpy(next.registration, x["aircraft"]["registration"] | "", sizeof(next.registration));
   strlcpy(next.typeCode, x["aircraft"]["icao"] | "", sizeof(next.typeCode));
@@ -309,7 +312,7 @@ bool trackedFlightFetchRoute() {
   if(g_t.route.count>2||(positioned?g_routePositionDone:g_routeInitialDone))return false;
   if(positioned)g_routePositionDone=true;
   g_routeInitialDone=true;
-  FlightRoute route={};char origin[4]={},destination[4]={};
+  FlightRoute route={};char origin[ROUTE_CODE_SIZE]={},destination[ROUTE_CODE_SIZE]={};
   const char* call=g_t.flightIcao[0]?g_t.flightIcao:g_t.flightIata;
   if(!trackerRouteLookup(call,g_routeLat,g_routeLon,route,origin,destination))return false;
   // A static route may be stale. Accept it only if it contains this reported leg.
