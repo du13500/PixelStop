@@ -999,23 +999,23 @@ static String routePart(const FlightRoute& route, uint8_t begin, uint8_t end) {
   return out;
 }
 
-static void drawFlightRoute(const FlightRoute& route, const char* origin, const char* destination, int y) {
+static void drawFlightRoute(const FlightRoute& route, const char* origin, const char* destination, int y, uint16_t color=C_YELLOW) {
   if(route.count<=2){
     // The arrow stays in the middle: codes are padded to 4 characters, so
     // 3-letter routes look exactly as before and 4-character codes grow outward.
     String a=String(origin[0]?origin:"N/A"),b=String(destination[0]?destination:"N/A");
     while(a.length()<4)a=" "+a;
     while(b.length()<4)b+=" ";
-    centerText(a+" > "+b,y,3,C_YELLOW);
+    centerText(a+" > "+b,y,3,color);
     return;
   }
   String text=routePart(route,0,route.count);
-  if(textW(text,2)<=224)centerText(text,y,2,C_YELLOW);
-  else if(textW(text,1)<=224)centerText(text,y,1,C_YELLOW);
+  if(textW(text,2)<=224)centerText(text,y,2,color);
+  else if(textW(text,1)<=224)centerText(text,y,1,color);
   else { // Long chains fit in the existing route area as two compact rows.
     uint8_t split=route.count/2;
-    centerText(routePart(route,0,split)+" >",y,1,C_YELLOW);
-    centerText(routePart(route,split,route.count),y+10,1,C_YELLOW);
+    centerText(routePart(route,0,split)+" >",y,1,color);
+    centerText(routePart(route,split,route.count),y+10,1,color);
   }
 }
 
@@ -1132,13 +1132,14 @@ static void drawPlane(bool force=true) {
   }
   lastPlaneOperator=op;
   const bool routeKnown=f.route.count>0||(f.origin[0]&&strcmp(f.origin,"N/A"));
-  String routeKey=emergency&&(second||!routeKnown)?String("SQUAWK ")+f.squawk:String();
+  // In an emergency the whole route line is red: route and squawk alternate.
+  String routeKey=emergency?((second||!routeKnown)?String("SQUAWK ")+f.squawk:String("!")):String();
   if(full||routeKey!=lastPlaneRoute||strcmp(f.origin,lastPlaneRendered.origin)||strcmp(f.destination,lastPlaneRendered.destination)||
     f.route.count!=lastPlaneRendered.route.count||f.route.truncated!=lastPlaneRendered.route.truncated||
     memcmp(f.route.airports,lastPlaneRendered.route.airports,sizeof(f.route.airports))){
     if(!full)gfx->fillRect(8,102,224,29,C_BLACK);
-    if(routeKey.length())centerText(routeKey,105,3,C_RED);
-    else drawFlightRoute(f.route,f.origin,f.destination,105);
+    if(routeKey.length()>1)centerText(routeKey,105,3,C_RED);
+    else drawFlightRoute(f.route,f.origin,f.destination,105,emergency?C_RED:C_YELLOW);
   }
   lastPlaneRoute=routeKey;
   if(full||strcmp(f.typeName,lastPlaneRendered.typeName)||strcmp(f.typeCode,lastPlaneRendered.typeCode)){

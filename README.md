@@ -163,14 +163,14 @@ Im Reiter **Flugradar** lässt sich die Anzeige anpassen:
 - **▲▼** zwischen Entfernung und Höhe bei Steig- oder Sinkflug ab 300 ft/min.
 - **MIL** neben dem Rufzeichen für Militärflugzeuge.
 - **Ausblenden:** Hubschrauber, Kleinflugzeuge, Segler/Ballone/Ultraleicht/Drohnen, Flugzeuge am Boden.
-- **Immer aktiv:** Notfälle (Squawk 7500/7600/7700) mit rotem Rufzeichen und „SQUAWK 7700“ im Wechsel mit der Route; Flughäfen mit 3-stelligem IATA- oder 4-stelligem ICAO-Code.
+- **Immer aktiv:** Notfälle (Squawk 7500/7600/7700) mit rotem Rufzeichen und roter Routenzeile, in der Route und „SQUAWK 7700“ alle 3 s wechseln; Flughäfen mit 3-stelligem IATA- oder 4-stelligem ICAO-Code.
 
 Zur Veranschaulichung ein Blick aus dem CIC der Galactica:
 
 | | |
 | :---: | :---: |
 | <img src="docs/screens/radar-colone.png" width="260" alt="COLONE"><br><sub><b>Geschwindigkeit</b> im Wechsel mit dem Kennzeichen, 4-stellige Codes</sub> | <img src="docs/screens/radar-apollo.png" width="260" alt="APOLLO"><br><sub><b>MIL</b>-Markierung, Betreiber als „Oberbegriff / Einheit“</sub> |
-| <img src="docs/screens/radar-karma.png" width="260" alt="KARMA"><br><sub><b>Sinkflug ▼</b>, eigener Anzeigename in der Kopfzeile</sub> | <img src="docs/screens/radar-karma-notfall.png" width="260" alt="KARMA Notfall"><br><sub><b>Notfall</b> · Squawk 7700 im Wechsel mit der Route, Rufzeichen rot</sub> |
+| <img src="docs/screens/radar-karma.png" width="260" alt="KARMA"><br><sub><b>Notfall, Phase 1</b> · Route rot, Sinkflug ▼, eigener Anzeigename in der Kopfzeile</sub> | <img src="docs/screens/radar-karma-notfall.png" width="260" alt="KARMA Notfall"><br><sub><b>Notfall, Phase 2</b> · nach 3 s „SQUAWK 7700“ statt der Route</sub> |
 
 <sub>Fiktive Beispieldaten in Anlehnung an Battlestar Galactica, ohne Verbindung zu den Rechteinhabern. Für diese Bilder heißt die Quelle in der Fußzeile „DRADIS“ statt „ADSB.LOL“; alles andere ist unveränderte Firmware-Ausgabe.</sub>
 

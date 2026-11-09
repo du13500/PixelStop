@@ -163,14 +163,14 @@ The **Flight radar** tab lets you adjust the view:
 - **▲▼** between distance and altitude when climbing or descending faster than 300 ft/min.
 - **MIL** next to the callsign for military aircraft.
 - **Hide:** helicopters, light aircraft, gliders/balloons/ultralights/drones, aircraft on the ground.
-- **Always on:** emergencies (squawk 7500/7600/7700) with a red callsign and “SQUAWK 7700” alternating with the route; airports with 3-letter IATA or 4-character ICAO codes.
+- **Always on:** emergencies (squawk 7500/7600/7700) with a red callsign and a red route line in which the route and “SQUAWK 7700” alternate every 3 s; airports with 3-letter IATA or 4-character ICAO codes.
 
 For illustration, a view from Galactica’s CIC:
 
 | | |
 | :---: | :---: |
 | <img src="docs/screens/en/radar-colone.png" width="260" alt="COLONE"><br><sub><b>Speed</b> alternating with the registration, 4-character codes</sub> | <img src="docs/screens/en/radar-apollo.png" width="260" alt="APOLLO"><br><sub><b>MIL</b> marking, operator as “branch / unit”</sub> |
-| <img src="docs/screens/en/radar-karma.png" width="260" alt="KARMA"><br><sub><b>Descent ▼</b>, custom display name in the header</sub> | <img src="docs/screens/en/radar-karma-notfall.png" width="260" alt="KARMA emergency"><br><sub><b>Emergency</b> · squawk 7700 alternating with the route, callsign in red</sub> |
+| <img src="docs/screens/en/radar-karma.png" width="260" alt="KARMA"><br><sub><b>Emergency, phase 1</b> · route in red, descent ▼, custom display name in the header</sub> | <img src="docs/screens/en/radar-karma-notfall.png" width="260" alt="KARMA emergency"><br><sub><b>Emergency, phase 2</b> · after 3 s “SQUAWK 7700” instead of the route</sub> |
 
 <sub>Fictional sample data inspired by Battlestar Galactica, not affiliated with the rights holders. For these images the footer source reads “DRADIS” instead of “ADSB.LOL”; everything else is unchanged firmware output.</sub>
 

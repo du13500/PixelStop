@@ -305,9 +305,9 @@ int main(int argc, char** argv) {
   clockMs = 1002000; drawPlane(); dump((out + "/radar-apollo.ppm").c_str());
   cfg.planeShowPlace = true; cfg.planeDisplayName = "CIC BSG75"; cfg.planePlaceToggleSec = 0; planePlacePhase = true;
   bsg("KARMA", "Colonial Fleet", "N/A", "Raptor", "BS75-R1", 98.7f, 98700, true);
-  fl.motion.hasRate = true; fl.motion.rateFpm = -3000; cfg.planeTrend = true;
-  clockMs = 1002000; drawPlane(); dump((out + "/radar-karma.ppm").c_str());
-  strlcpy(fl.squawk, "7700", 5); clockMs = 999000; drawPlane(); dump((out + "/radar-karma-notfall.ppm").c_str());
+  fl.motion.hasRate = true; fl.motion.rateFpm = -3000; cfg.planeTrend = true; strlcpy(fl.squawk, "7700", 5);
+  clockMs = 1002000; drawPlane(); dump((out + "/radar-karma.ppm").c_str());           // phase 1: route
+  clockMs = 999000; drawPlane(); dump((out + "/radar-karma-notfall.ppm").c_str());     // phase 2: squawk
   planeSourceLabel = "ADSB.LOL"; okAgeMs = 4000; clockMs = 1000000; cfg.planeTrend = false; cfg.planeShowPlace = false; cfg.planeDisplayName = "";
 
   // Uhr

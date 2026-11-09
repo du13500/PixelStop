@@ -193,14 +193,14 @@ int main(){
  providerPaused=false;plane.valid=true;plane.error=false;
  // Emergency: red callsign, "SQUAWK 7700" alternates with the route every 3 s; permanent without route.
  cfg.planeShowAge=false;clockMs=300000;strcpy(plane.squawk,"7700");clearDraws();drawPlane();
- {bool red=false,sq=false;for(auto d:draws){if(d.text==plane.callsign&&d.color==C_RED)red=true;if(d.text=="SQUAWK 7700")sq=true;}assert(red&&!sq);}
+ {bool red=false,sq=false,routeRed=false;for(auto d:draws){if(d.text==plane.callsign&&d.color==C_RED)red=true;if(d.text=="SQUAWK 7700")sq=true;if(d.y==105&&d.text.indexOf(">")>=0&&d.color==C_RED)routeRed=true;}assert(red&&!sq&&routeRed);}
  clockMs=303000;clearDraws();drawPlane(false);assert(fullScreens==0&&draws.size()==1&&draws[0].text=="SQUAWK 7700"&&draws[0].color==C_RED&&rects.size()==1&&rects[0].y==102);
- clockMs=306000;clearDraws();drawPlane(false);assert(draws.size()==1&&draws[0].text!="SQUAWK 7700");
+ clockMs=306000;clearDraws();drawPlane(false);assert(draws.size()==1&&draws[0].text!="SQUAWK 7700"&&draws[0].color==C_RED);
  FlightRoute keepRoute=plane.route;char keepO[4],keepD[4];strcpy(keepO,plane.origin);strcpy(keepD,plane.destination);
  plane.route={};strcpy(plane.origin,"N/A");strcpy(plane.destination,"N/A");clearDraws();drawPlane(false);assert(draws.size()==1&&draws[0].text=="SQUAWK 7700");
  clockMs=309000;clearDraws();drawPlane(false);assert(draws.empty());
  plane.route=keepRoute;strcpy(plane.origin,keepO);strcpy(plane.destination,keepD);plane.squawk[0]=0;clearDraws();drawPlane(false);
- {bool white=false;for(auto d:draws)if(d.text==plane.callsign&&d.color==C_WHITE)white=true;assert(white);}
+ {bool white=false,yellow=false;for(auto d:draws){if(d.text==plane.callsign&&d.color==C_WHITE)white=true;if(d.y==105&&d.color==C_YELLOW)yellow=true;}assert(white&&yellow);}
  // Military: MIL badge; operator variants A/B/C.
  strcpy(plane.callsign,"RCH5060");strcpy(plane.airline,"Air Mobility Command");plane.military=true;clearDraws();drawPlane(false);
  {bool mil=false;for(auto d:draws)if(d.text=="MIL"&&d.x==214)mil=true;assert(mil);}
