@@ -1,6 +1,22 @@
 # Änderungen
 
+## v0.5.3-dev
+
+- **Webinterface-Menü:** Die wischbare Reiterleiste ist ersetzt durch ein Menü hinter der Taste ☰ (ausklappend wie beim RavestickBoard). Unter dem Titel steht die aktuelle Seite.
+- **Auge-Symbol** an WLAN-Passwort und API-Keys: zeigt die gerade getippte Eingabe. Gespeicherte Werte werden weiterhin nie an den Browser zurückgeschickt.
+- **3-Tage-Vorhersage als eigene Ansicht** in der Rotation, direkt unter „Wetter“, mit eigener Dauer und ▶. Der feste 8-s-Wechsel in der Wetteransicht entfällt; der Wetter-Reiter weist auf die neue Ansicht hin. Wer die Vorhersage bisher eingeschaltet hatte, findet die neue Zeile nach dem Update angehakt. Die Rotation folgt jetzt der Reihenfolge der Liste (Flug-Tracker vor Uhr).
+- **Flugzeugtypen:** eine einzige Tabelle im Flash mit 232 Typen weltweit (Airliner aller Varianten, Regionaljets, Frachter, Business-Jets, allgemeine Luftfahrt, Hubschrauber, Militär, Russland/GUS). Mit Hersteller, solange es in 18 Zeichen passt; ein Code ergibt genau einen Text; unbekannte Codes erscheinen als Code.
+- **Radar-Optionen** im Flugradar-Reiter: Betreiber als Name zum Rufzeichen (Standard), Oberbegriff oder beides (für bekannte Militär-Rufzeichen, z. B. „US Air Force / AMC“); Geschwindigkeit in km/h oder Knoten im Wechsel mit dem Kennzeichen; ▲▼ für Steig-/Sinkflug ab 300 ft/min; „MIL“ neben dem Rufzeichen für Militär.
+- **Notfälle:** Bei Squawk 7500/7600/7700 ist das Rufzeichen rot, „SQUAWK 7700“ wechselt alle 3 s mit der Route (ohne Route dauerhaft).
+- **Filter:** Hubschrauber, Kleinflugzeuge, Segler/Ballone/Ultraleicht/Drohnen und Flugzeuge am Boden ausblendbar. Mit Filter fragt PixelStop alle Flugzeuge im Radius ab und liest sie einzeln ein (`src/RadarScan.h`), damit der Speicherbedarf nicht mit der Zahl der Flugzeuge wächst.
+- **Diagnose:** Erfolgreiche Radarabrufe stehen als eine Zeile im Log (mit dem kleinsten freien Speicher während des Abrufs), Fehler weiter mit allen Schritten; der Log reicht damit etwa fünfmal so lange. Zusatzabfragen melden „leer“ (keine Daten zum Flugzeug) oder „übersprungen“ mit Grund. Im Status: aktuelles Flugzeug und Zahl der geprüften Flugzeuge.
+- **Dimmverfahren (Test):** Unter „Anzeige“ wählbar zwischen Standard (PWM) und Sigma-Delta. Sigma-Delta nutzt einen eigenen Baustein des Chips und soll das gelegentliche Aufblitzen bei geringer Helligkeit beseitigen.
+- Workflow-Bausteine auf Node-24-Versionen (checkout v5, setup-node v5, setup-python v6, upload-artifact v6).
+
 ## v0.5.2-dev
+
+Auf Hardware bestätigt: Weiterrechnen von Entfernung und Höhe, Statuspunkt, Meldung bei „Jetzt anzeigen“, adsb.lol-Schlüssel.
+
 
 - **Radar weitergerechnet:** Entfernung und Höhe werden zwischen zwei Abrufen jede Sekunde aus Geschwindigkeit über Grund, Kurs und Steig-/Sinkrate fortgeschrieben (`src/RadarMotion.h`). Jeder echte Abruf setzt die Werte neu. Die Höhe folgt der Steigrate höchstens 45 s, die Position höchstens bis kurz nach dem nächsten erwarteten Abruf (mindestens 1, höchstens 4 Minuten); danach bleiben die Werte stehen. Am Boden wird nicht gerechnet. Die auswählbaren Abrufintervalle bleiben unverändert.
 - **Statuspunkt in der Radar-Fußzeile:** kurz weiß bei neuen Daten, grün im normalen Takt, gelb bei überfälligem oder fehlgeschlagenem Abruf und bei Anbieterpausen, grau, wenn die Werte stehen. Text und Sekundenzähler rücken dafür 10 Pixel nach rechts.

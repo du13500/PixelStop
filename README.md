@@ -6,9 +6,9 @@
 Gekauft als kleiner WLAN-Würfel mit eher bescheidener Werksfirmware – und von Anfang an mit dem Plan, etwas Eigenes daraus zu machen.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.2--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.3--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
-![Hardwaretest](https://img.shields.io/badge/hardwaretest-v0.5.2%20offen-yellow)
+![Hardwaretest](https://img.shields.io/badge/hardwaretest-v0.5.3%20offen-yellow)
 ![Hobbyprojekt](https://img.shields.io/badge/hobbyprojekt-nicht%20kommerziell-lightgrey)
 ![Lizenz](https://img.shields.io/badge/lizenz-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
@@ -25,8 +25,9 @@ Der Würfel zeigt im Wechsel oder dauerhaft:
 | Ansicht | Was du siehst |
 | --- | --- |
 | **Abfahrten** | Live-Abfahrten einer Haltestelle des Verkehrsverbunds Oberelbe (VVO): Linie, Ziel, Minuten, Verspätungen und Ausfälle; bis zu zehn Abfahrten auf zwei Seiten, Filter nach Verkehrsmittel |
-| **Wetter** | Aktuelle Temperatur, Wetterbild für Tag und Nacht, Höchst- und Tiefstwert, Regenwahrscheinlichkeit, Sonnenauf- und -untergang, im Wechsel eine 3-Tage-Vorhersage; °C oder °F |
-| **Flugradar** | Das nächste Flugzeug im gewählten Umkreis: Callsign, Airline, Route, Typ, Kennzeichen, Entfernung und Höhe |
+| **Wetter** | Aktuelle Temperatur, Wetterbild für Tag und Nacht, Höchst- und Tiefstwert, Regenwahrscheinlichkeit, Sonnenauf- und -untergang; °C oder °F |
+| **3-Tage-Vorhersage** | Wochentag, Wetterbild, Höchst-/Tiefstwert und Regen für die nächsten drei Tage, als eigene Ansicht in der Rotation |
+| **Flugradar** | Das nächste Flugzeug im gewählten Umkreis: Callsign, Airline, Route, Typ, Kennzeichen, Entfernung und Höhe; wahlweise Geschwindigkeit, ▲▼ bei Steig-/Sinkflug, Militär-Markierung und Filter (z. B. Hubschrauber ausblenden). Notfälle (Squawk 7500/7600/7700) erscheinen rot |
 | **Uhr** | Uhrzeit und Datum mit wählbarer Zeitzone |
 | **Flug-Tracker** | Ein bestimmter Flug mit Plan- und Ist-Zeiten und Live-Höhe (eigener aviationstack-Schlüssel nötig) |
 | **Countdown 1–4** | Vier unabhängige Timer mit eigenem Titel und Farben – in Tagen, Stunden oder Minuten |
@@ -40,17 +41,18 @@ Dazu kommen Nachtmodus, Helligkeit ab 1 %, Ortssuche mit Karte, griechische und 
 | <img src="docs/screens/abfahrten.png" width="260" alt="Abfahrten"><br><sub><b>Abfahrten</b> · Dresden Hauptbahnhof, mit Verspätung (gelb) und Ausfall (✕)</sub> | <img src="docs/screens/wetter.png" width="260" alt="Wetter"><br><sub><b>Wetter</b> · Brooklyn in °F</sub> | <img src="docs/screens/flugradar.png" width="260" alt="Flugradar"><br><sub><b>Flugradar</b> · Emirates A380 von Dubai nach Frankfurt</sub> |
 | <img src="docs/screens/flugtracker.png" width="260" alt="Flug-Tracker"><br><sub><b>Flug-Tracker</b> · ein Flug mit Plan- und Ist-Zeiten</sub> | <img src="docs/screens/vorhersage.png" width="260" alt="3-Tage-Vorhersage"><br><sub><b>Vorhersage</b> · die nächsten drei Tage</sub> | <img src="docs/screens/countdown-tage.png" width="260" alt="Countdown"><br><sub><b>Countdown</b> · in Tagen oder als Timer</sub> |
 
-## Entwicklungsstand: v0.5.2-dev
+## Entwicklungsstand: v0.5.3-dev
 
 | Bereich | Stand |
 | --- | --- |
 | Abfahrten (VVO), Wetter, Uhr, Countdowns | ✅ im Alltag stabil |
 | Flugradar über HTTP/1.1, Pausen bei abgelehnten Anfragen | ✅ auf Hardware bestätigt (v0.4.14.7) |
 | Radar nur bei sichtbarer Ansicht, Tagesbudget ohne Schlüssel | ✅ läuft auf Hardware (v0.4.14.8), Langzeitbeobachtung läuft |
-| Hintergrundbeleuchtung bei 1 % ohne Aufblitzen | ✅ deutlich besser (v0.4.14.6) |
+| Hintergrundbeleuchtung bei 1 % ohne Aufblitzen | ⚠️ gelegentliches Aufblitzen, Test mit Sigma-Delta läuft (v0.5.3) |
 | Sprachumschaltung Deutsch/Englisch, abgekürzte Fahrtziele | ✅ auf Hardware bestätigt (v0.5.0) |
 | 3-Tage-Vorhersage, aufgeräumtes Webinterface, „Jetzt anzeigen“, Ort der Haltestelle | ✅ auf Hardware bestätigt (v0.5.1) |
-| Radar: Entfernung und Höhe zwischen den Abrufen weitergerechnet, Statuspunkt | ⏳ Hardwaretest offen |
+| Radar: Entfernung und Höhe zwischen den Abrufen weitergerechnet, Statuspunkt | ✅ auf Hardware bestätigt (v0.5.2) |
+| Radar-Optionen und Filter, 232 Flugzeugtypen, Menü, Vorhersage als Ansicht, Dimmverfahren Sigma-Delta | ⏳ Hardwaretest offen |
 | Flug-Tracker mit eigenem aviationstack-Schlüssel | ⏳ nicht vollständig auf Hardware getestet |
 
 Alle Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md), offene Prüfungen in [`ROADMAP.md`](ROADMAP.md).
