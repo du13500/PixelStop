@@ -2,6 +2,7 @@
 #include "Flight.h"
 #include "AircraftPolicy.h"
 #include "AircraftLabel.h"
+#include "AirlineName.h"
 #include "RadarFilter.h"
 #include "RadarScan.h"
 #include "RadarPolicy.h"
@@ -75,39 +76,21 @@ static float distanceKm(float lat1, float lon1, float lat2, float lon2) {
   return radarFlatDistanceKm(lat1, lon1, lat2, lon2);
 }
 
-// Fallback names for common airlines (aircraft types: AircraftLabel.h). The tables live in
-// flash (PROGMEM) and the match is copied into the caller's buffer.
-struct NameEntry4 { char key[5]; char name[20]; };
-static const NameEntry4 AIRLINE_NAMES[] PROGMEM = {
-  {"EWG","Eurowings"},{"DLH","Lufthansa"},{"RYR","Ryanair"},{"EJU","easyJet"},
-  {"EZY","easyJet"},{"CFG","Condor"},{"WZZ","Wizz Air"},{"TVS","Smartwings"},
-  {"AUA","Austrian"},{"SWR","SWISS"},{"KLM","KLM"},{"AFR","Air France"},
-  {"BAW","British Airways"},{"LOT","LOT"},{"SAS","SAS"},{"THY","Turkish Airlines"},
-  {"BEL","Brussels Airlines"},{"UAE","Emirates"},{"QTR","Qatar Airways"},{"EXS","Jet2"},
-  {"TUI","TUI"},{"ITY","ITA Airways"},{"IBE","Iberia"},{"VLG","Vueling"}
-};
-
-// Copies the name for `key` (first `keyLen` chars, 0 = whole key) or `fallback`.
-static void nameFromTable(const NameEntry4* table, size_t count, const char* key, size_t keyLen,
-                          const char* fallback, char* out, size_t cap) {
-  if (key && *key) {
-    for (size_t i = 0; i < count; i++) {
-      NameEntry4 e; memcpy_P(&e, &table[i], sizeof(e));
-      bool hit = keyLen ? (strlen(key) >= keyLen && !strncmp(key, e.key, keyLen)) : !strcmp(key, e.key);
-      if (hit) { strlcpy(out, e.name, cap); return; }
-    }
-  }
-  strlcpy(out, fallback ? fallback : "", cap);
-}
-
 static RoutePoint jsonPoint(JsonObjectConst o,const char* latKey,const char* lonKey) {
   return {o[latKey].is<float>()?o[latKey].as<float>():NAN,o[lonKey].is<float>()?o[lonKey].as<float>():NAN};
 }
 
+// Descent rule (RoutePolicy.h), checked once when a route arrives.
+static bool routeContradicted(const FlightSnapshot& f,RoutePoint pos,const RoutePoint* airports,uint8_t count){
+  return count>=2&&routeOriginContradicted(pos,airports[0],airports[count-1],f.onGround,f.altitudeKnown,f.altitudeFt,f.motion.hasRate,f.motion.rateFpm);
+}
+
 static bool lookupRouteAdsbLol(const FlightSnapshot& f,RoutePoint pos,Enrichment& out) {
-  // Skipped requests are logged with a reason (value): 1 budget, 2 pause, 3 minimum interval, 4 memory.
-  uint8_t skip=adsbLolBudgetLow()?1:(serviceWaitMs(SERVICE_ADSB_LOL)?2:(serviceMinIntervalMs(SERVICE_ADSB_LOL)?3:(!tlsHeapReady(adsbLolRx())?4:0)));
+  // Skipped requests are logged with a reason (value): 1 quota, 2 pause, 4 memory.
+  // A route lookup takes the place of the next position request (savings mode).
+  uint8_t skip=adsbLolQuotaWaitMs()?1:(serviceWaitMs(SERVICE_ADSB_LOL)?2:(!tlsHeapReady(adsbLolRx())?4:0));
   if(skip){diagLookup(f.hex,f.callsign);diagEvent(D_RADAR_ROUTE,DS_SKIPPED,0,skip);return false;}
+  g_lastPollMs=millis();
   DiagRequest trace(D_RADAR_ROUTE);diagLookup(f.hex,f.callsign);trace.stage(DS_TLS);
   BearSSL::WiFiClientSecure client;makeSecure(client,&g_routeSession,adsbLolRx());
   HTTPClient http;http.setTimeout(5000);http.setReuse(false);
@@ -130,11 +113,13 @@ static bool lookupRouteAdsbLol(const FlightSnapshot& f,RoutePoint pos,Enrichment
   // From here the answer was read; "leer" = no usable route for this flight.
   if(!doc.is<JsonArray>()||!doc.size()){trace.finish(true,DS_EMPTY);return false;}
   JsonObjectConst r=doc[0];
-  if(strcmp(r["callsign"]|"",f.callsign)||!r["plausible"].is<bool>()||!r["plausible"].as<bool>()){trace.finish(true,DS_EMPTY);return false;}
+  if(strcmp(r["callsign"]|"",f.callsign)){trace.finish(true,DS_ROUTE_CALLSIGN);return false;}
+  if(!r["plausible"].is<bool>()||!r["plausible"].as<bool>()){trace.finish(true,DS_ROUTE_PROVIDER);return false;}
   FlightRoute route={};if(!parseFlightRoute(r["_airport_codes_iata"]|"",route)||route.truncated){trace.finish(true,DS_EMPTY);return false;}
   JsonArrayConst airports=r["_airports"];if(airports.size()!=route.count){trace.finish(true,DS_EMPTY);return false;}
   for(uint8_t i=0;i<route.count;i++)out.airports[i]=jsonPoint(airports[i],"lat","lon");
-  if(!routePositionPlausible(pos,out.airports,route.count,f.onGround,f.altitudeKnown,f.altitudeFt)){trace.finish(true,DS_EMPTY);return false;}
+  if(!routePositionPlausible(pos,out.airports,route.count,f.onGround,f.altitudeKnown,f.altitudeFt)){trace.finish(true,DS_ROUTE_POSITION);return false;}
+  if(routeContradicted(f,pos,out.airports,route.count)){trace.finish(true,DS_ROUTE_DESCENT);return false;}
   out.route=route;out.airportCount=route.count;out.source="adsb.lol";trace.finish(true);return true;
 }
 
@@ -170,7 +155,8 @@ static bool lookupMetadata(const FlightSnapshot& f,RoutePoint pos,Enrichment& ou
   }
   JsonObjectConst route=doc["response"]["flightroute"];
   const char* cs=route["callsign_icao"]|(route["callsign"]|"");
-  if(strcmp(cs,f.callsign))return true;
+  if(!*cs)return true;
+  if(strcmp(cs,f.callsign)){diagEvent(D_METADATA,DS_ROUTE_CALLSIGN);return true;}
   const char* airlineCode=route["airline"]["icao"]|"";
   if(strlen(f.callsign)>=3&&strlen(airlineCode)==3&&!strncmp(f.callsign,airlineCode,3))
     strlcpy(out.airline,route["airline"]["name"]|"",sizeof(out.airline));
@@ -182,14 +168,17 @@ static bool lookupMetadata(const FlightSnapshot& f,RoutePoint pos,Enrichment& ou
     if(!appendRouteAirport(candidate,code))return true;
     points[count++]=jsonPoint(ap,"latitude","longitude");
   }
-  if(!out.route.count&&routePositionPlausible(pos,points,count,f.onGround,f.altitudeKnown,f.altitudeFt)){
-    out.route=candidate;out.airportCount=count;for(uint8_t i=0;i<count;i++)out.airports[i]=points[i];out.source="adsbdb";
+  if(!out.route.count){
+    if(!routePositionPlausible(pos,points,count,f.onGround,f.altitudeKnown,f.altitudeFt))diagEvent(D_METADATA,DS_ROUTE_POSITION);
+    else if(routeContradicted(f,pos,points,count))diagEvent(D_METADATA,DS_ROUTE_DESCENT);
+    else{out.route=candidate;out.airportCount=count;for(uint8_t i=0;i<count;i++)out.airports[i]=points[i];out.source="adsbdb";}
   }
   return true;
 }
 
 static void lookupAirline(const FlightSnapshot& f,Enrichment& out) {
-  if(out.airline[0]||strlen(f.callsign)<4)return;
+  char brand[19];
+  if(out.airline[0]||strlen(f.callsign)<4||airlineBrand(f.callsign,brand,sizeof(brand)))return;
   for(uint8_t i=0;i<3;i++)if(f.callsign[i]<'A'||f.callsign[i]>'Z')return;
   String registration=f.registration;registration.replace("-","");
   if(registration==f.callsign||!strcmp(f.hex,f.callsign))return;
@@ -225,7 +214,8 @@ static void enrichFlight(FlightSnapshot& f,RoutePoint pos) {
   uint32_t now=millis();
   // Network work is scheduled separately, never inside position parsing.
   if(!entry)return;
-  if(entry->airline[0])strlcpy(f.airline,entry->airline,sizeof(f.airline));
+  char brand[19];
+  if(entry->airline[0]&&!airlineBrand(f.callsign,brand,sizeof(brand)))strlcpy(f.airline,entry->airline,sizeof(f.airline));
   if(entry->type[0]&&metadataTypeMatches(f.typeCode,f.category,entry->typeCode))strlcpy(f.typeName,entry->type,sizeof(f.typeName));
   if(entry->route.count && (uint32_t)(now-entry->checked)<300000UL &&
       routePositionPlausible(pos,entry->airports,entry->airportCount,f.onGround,f.altitudeKnown,f.altitudeFt)){
@@ -239,12 +229,19 @@ static Enrichment* currentEnrichment(){
  for(auto& e:g_cache)if(e.used&&!strcmp(e.hex,g_f.hex)&&!strcmp(e.callsign,g_f.callsign))return &e;
  return nullptr;
 }
+// The adsb.lol route lookup replaces a position request: it needs a free slot
+// in the quota and keeps the minimum distance after a provider limit.
+static bool routeSlotFree(){
+  if(adsbLolWaitMs())return false;
+  uint32_t minimum=serviceMinIntervalMs(SERVICE_ADSB_LOL);
+  return !minimum||(uint32_t)(millis()-g_lastPollMs)>=minimum;
+}
 bool flightEnrichmentDue(){
  if(!g_f.valid||g_f.error||!routePointValid(g_position)||!g_f.callsign[0])return false;
  Enrichment* e=currentEnrichment();
- if(e&&e->phase<3)return e->phase==0?!serviceWaitMs(SERVICE_ADSB_LOL):!serviceWaitMs(SERVICE_ADSB_DB);
+ if(e&&e->phase<3)return e->phase==0?routeSlotFree():!serviceWaitMs(SERVICE_ADSB_DB);
  return (!e||(uint32_t)(millis()-e->checked)>=(e->route.count?300000UL:120000UL)) &&
-   (!g_lastEnrichmentMs||(uint32_t)(millis()-g_lastEnrichmentMs)>=60000UL) && !serviceWaitMs(SERVICE_ADSB_LOL);
+   (!g_lastEnrichmentMs||(uint32_t)(millis()-g_lastEnrichmentMs)>=60000UL) && routeSlotFree();
 }
 void flightEnrich(){
  if(!flightEnrichmentDue())return;
@@ -276,8 +273,11 @@ void flightReset() {
 }
 
 bool flightPollDue(uint16_t pollSec, float visibleShare) {
-  if(serviceWaitMs(SERVICE_ADSB_LOL))return false;
+  if(adsbLolWaitMs())return false;
+  // A pending route lookup for the shown aircraft goes first and takes this slot.
+  if(flightEnrichmentDue())return false;
   if (!g_hasPolled) return true;
+  if(pollSec<RADAR_MIN_POLL_SEC)pollSec=RADAR_MIN_POLL_SEC;
   uint32_t interval=(uint32_t)pollSec*1000UL;
   uint32_t minimum=serviceMinIntervalMs(SERVICE_ADSB_LOL);
   if(interval<minimum)interval=minimum;
@@ -300,7 +300,7 @@ int32_t flightLiveAltitudeFt(const FlightSnapshot& f) {
 }
 uint32_t flightLastOkMs() { return g_lastOkMs; }
 bool flightProviderPaused() { return g_providerPaused; }
-const char* flightStageName() { return g_stage; }
+const char* flightStageName() { return adsbLolQuotaWaitMs()&&!serviceWaitMs(SERVICE_ADSB_LOL)?"Abrufpause: Kontingent":g_stage; }
 int flightLastHttp() { return g_lastHttp; }
 uint32_t flightWaitSec() { return (serviceWaitMs(SERVICE_ADSB_LOL)+999)/1000; }
 const char* flightRouteStatus() { return g_routeStatus; }
@@ -387,23 +387,24 @@ static bool readAircraft(JsonObjectConst a, float homeLat, float homeLon, Flight
 // Names from the built-in tables, only for the aircraft that is shown.
 static void labelAircraft(FlightSnapshot& f) {
   if(!aircraftDisplayLabel(f.typeCode, f.typeName, sizeof(f.typeName))) strlcpy(f.typeName, f.typeCode, sizeof(f.typeName));
-  nameFromTable(AIRLINE_NAMES, sizeof(AIRLINE_NAMES)/sizeof(AIRLINE_NAMES[0]), f.callsign, 3, "", f.airline, sizeof(f.airline));
+  // Brand names (AirlineName.h) take precedence over provider names.
+  if(!airlineBrand(f.callsign, f.airline, sizeof(f.airline))) f.airline[0] = 0;
 }
 
 bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm, uint8_t hideMask) {
   const bool scan = hideMask != 0;
   g_scanned = 0;
-  if(serviceWaitMs(SERVICE_ADSB_LOL))return false;
+  if(adsbLolWaitMs())return false;
   DiagRequest trace(D_RADAR);
   struct Completion {~Completion(){g_lastPollMs=millis();}} completion;
   g_lastPollMs = millis();
   g_hasPolled = true;
   g_lastHttp = 0;
-  if (WiFi.status() != WL_CONNECTED) return flightFailure("kein WLAN");
-  if (!tlsHeapReady(g_adsbLolRx ? g_adsbLolRx : 512)) return flightFailure("übersprungen: Heap");
+  if (WiFi.status() != WL_CONNECTED) { trace.stage(DS_NO_WIFI); return flightFailure("kein WLAN"); }
+  if (!tlsHeapReady(g_adsbLolRx ? g_adsbLolRx : 512)) { trace.stage(DS_HEAP); return flightFailure("übersprungen: Heap"); }
   trace.stage(DS_TLS);
   const uint16_t rx=adsbLolRx();
-  if (!tlsHeapReady(rx)) return flightFailure("übersprungen: Heap");
+  if (!tlsHeapReady(rx)) { trace.stage(DS_HEAP); return flightFailure("übersprungen: Heap"); }
 
   uint16_t radiusNm = (uint16_t)ceilf(radiusKm / 1.852f);
   if (radiusNm < 1) radiusNm = 1;

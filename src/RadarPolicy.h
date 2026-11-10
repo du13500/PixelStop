@@ -23,6 +23,8 @@ static inline bool radarTlsFits(uint32_t freeHeap, uint32_t maxBlock,
   return freeHeap >= b.total && maxBlock >= b.block;
 }
 static constexpr uint32_t RADAR_MAX_AGE_MS = 30000;
+// Smallest selectable radar interval; values in between are continued (RadarMotion.h).
+static constexpr uint16_t RADAR_MIN_POLL_SEC = 10;
 static inline bool radarExpired(uint32_t now, uint32_t lastOk, bool valid) {
   return valid && (uint32_t)(now - lastOk) >= RADAR_MAX_AGE_MS;
 }

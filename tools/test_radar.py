@@ -20,7 +20,7 @@ pre='''#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include "RadarPolicy.h"
-enum {D_RADAR,DS_TLS};struct DiagRequest {DiagRequest(int){} void stage(int){}};
+enum {D_RADAR,DS_TLS,DS_HEAP,DS_NO_WIFI};struct DiagRequest {DiagRequest(int){} void stage(int){}};
 static uint32_t clockMs=10000;
 uint32_t millis(){return clockMs;}
 struct br_ssl_client_context { char bytes[3408]; };
@@ -33,6 +33,8 @@ uint32_t serviceMinIntervalMs(int){return minimumInterval;}
 static uint32_t budgetInterval=0;static float lastShare=0;
 uint32_t adsbLolBudgetIntervalMs(float share){lastShare=share;return budgetInterval;}
 const int SERVICE_ADSB_LOL=0;
+static uint32_t quotaWait=0;uint32_t adsbLolWaitMs(){return quotaWait;}
+static bool enrichDue=false;bool flightEnrichmentDue(){return enrichDue;}
 struct Snapshot {bool valid,error;} g_f={};
 static uint32_t g_lastPollMs=0,g_lastOkMs=0,g_firstFailureMs=0,g_intervalMs=0;
 static bool g_hasPolled=false,g_providerPaused=false;
@@ -53,7 +55,10 @@ tests='''int main(){
  g_f.valid=true;g_f.error=false;g_lastOkMs=10000;clockMs=15000;
  ESP.block=6000;assert(!flightFetch(51,13,25,0));assert(requests==3&&probes==3);
  assert(g_f.valid&&g_f.error);assert(!strcmp(g_stage,"übersprungen: Heap"));
- assert(!flightPollDue(5,1.0f));clockMs=20001;assert(flightPollDue(5,1.0f));
+ // 5 s is no longer selectable: the radar asks at most every 10 s.
+ assert(!flightPollDue(5,1.0f));clockMs=24999;assert(!flightPollDue(5,1.0f));clockMs=25000;assert(flightPollDue(5,1.0f)&&g_intervalMs==10000);
+ // The quota (AdsbQuota.h) and a pending route lookup take precedence.
+ quotaWait=1000;assert(!flightPollDue(10,1.0f));quotaWait=0;enrichDue=true;assert(!flightPollDue(10,1.0f));enrichDue=false;
  minimumInterval=15000;clockMs=29999;assert(!flightPollDue(5,1.0f));clockMs=30000;assert(flightPollDue(5,1.0f));minimumInterval=0;
  budgetInterval=12000;clockMs=26999;assert(!flightPollDue(5,0.25f)&&lastShare==0.25f);clockMs=27000;assert(flightPollDue(5,0.25f)&&g_intervalMs==12000);budgetInterval=0;
  clockMs=39999;assert(!flightExpire());clockMs=40000;assert(flightExpire());assert(!g_f.valid&&g_f.error);assert(!flightExpire());
@@ -77,4 +82,4 @@ with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'radar.cpp';p.write_text('#include <initializer_list>\n'+pre+funcs+fetch+tests)
  out=Path(tmp)/'radar';subprocess.run(['g++','-std=c++11','-Wall','-Wextra','-Werror','-I'+str(root/'src'),str(p),'-o',str(out)],check=True)
  subprocess.run([str(out)],check=True)
-print('Real radar guard/retry: screenshot heap values admitted, failures marked, expiry/recovery/wrap OK')
+print('Real radar guard/retry: screenshot heap values admitted, 10 s minimum, quota and route priority, failures marked, expiry/recovery/wrap OK')

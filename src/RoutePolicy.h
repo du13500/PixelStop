@@ -29,3 +29,14 @@ static inline bool routePositionPlausible(RoutePoint p,const RoutePoint* airport
   }
   return false;
 }
+// A clearly descending aircraft (more than 500 ft/min), low (below about
+// 3,000 m) and near an airport is arriving there: that airport cannot be the
+// origin. There is deliberately no rule for climbing: a go-around climbs near
+// the destination. Round trips (origin = destination) are not judged.
+// Returns true if the route must be rejected.
+static inline bool routeOriginContradicted(RoutePoint p,RoutePoint origin,RoutePoint destination,bool ground,bool altitudeKnown,int32_t altitudeFt,bool hasRate,float rateFpm) {
+  if(ground||!altitudeKnown||!hasRate||rateFpm>-500.0f||altitudeFt>=10000)return false;
+  if(!routePointValid(p)||!routePointValid(origin))return false;
+  if(routePointValid(destination)&&routeDistanceKm(origin,destination)<5.0f)return false;
+  return routeDistanceKm(p,origin)<=40.0f;
+}

@@ -5,6 +5,7 @@
 // Unknown codes are shown as the code itself. The table lives in flash.
 #include <string.h>
 #include <stddef.h>
+#include <stdint.h>
 #ifdef ARDUINO
 #include <pgmspace.h>
 #else
@@ -179,6 +180,40 @@ inline bool aircraftDisplayLabel(const char* code, char* out, size_t cap) {
     {"H64","Boeing AH-64"},
     {"H53","Sikorsky CH-53"},
     {"V22","Bell Boeing V-22"},
+    {"F5","Northrop F-5"},
+    {"F4","McDonnell F-4"},
+    {"F14","Grumman F-14"},
+    {"F104","Lockheed F-104"},
+    {"RFAL","Dassault Rafale"},
+    {"MIR2","Mirage 2000"},
+    {"SU27","Sukhoi Su-27"},
+    {"MG29","Mikoyan MiG-29"},
+    // Jet trainers, private and airshow jets, warbirds
+    {"L39","Aero L-39"},
+    {"L159","Aero L-159"},
+    {"L29","Aero L-29"},
+    {"HAWK","BAe Hawk"},
+    {"AJET","Alpha Jet"},
+    {"M346","Leonardo M-346"},
+    {"MG15","Mikoyan MiG-15"},
+    {"MG17","Mikoyan MiG-17"},
+    {"MG21","Mikoyan MiG-21"},
+    {"HUNT","Hawker Hunter"},
+    {"JPRO","Jet Provost"},
+    {"VAMP","DH Vampire"},
+    {"F86","F-86 Sabre"},
+    {"A4","Douglas A-4"},
+    {"PC7","Pilatus PC-7"},
+    {"PC9","Pilatus PC-9"},
+    {"TEX2","Beechcraft T-6"},
+    {"T6","North American T-6"},
+    {"P51","P-51 Mustang"},
+    {"SPIT","Spitfire"},
+    {"HURI","Hawker Hurricane"},
+    {"YK52","Yakovlev Jak-52"},
+    {"E300","Extra 300"},
+    {"DC3","Douglas DC-3"},
+    {"JU52","Junkers Ju 52"},
     // Business
     {"C510","Citation Mustang"},
     {"C525","Citation CJ1"},
@@ -269,6 +304,39 @@ inline bool aircraftDisplayLabel(const char* code, char* out, size_t cap) {
   for (size_t i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
     AircraftTypeName e; memcpy_P(&e, &table[i], sizeof(e));
     if (!strcmp(code, e.code)) { strncpy(out, e.name, cap - 1); out[cap - 1] = 0; return true; }
+  }
+  return false;
+}
+
+// Short form "Manufacturer Model" for long provider names (when the code is
+// not in the table): "Northrop Grumman E-2D Hawkeye" -> "Northrop E-2D".
+// The model is the first word after the manufacturer that contains a digit.
+inline bool aircraftMakerModel(const char* full, char* out, size_t cap) {
+  static const char makers[][12] PROGMEM = {
+    "Airbus","Boeing","Embraer","Cessna","Bombardier","Dassault","Gulfstream","Lockheed","Northrop",
+    "Grumman","McDonnell","Douglas","Pilatus","Beechcraft","Beech","Piper","Diamond","Cirrus","Daher",
+    "Socata","Learjet","Hawker","Textron","Honda","Mitsubishi","Fairchild","Antonov","Ilyushin",
+    "Tupolev","Sukhoi","Mikoyan","Yakovlev","Saab","Fokker","Dornier","Sikorsky","Bell","Robinson",
+    "Eurocopter","Agusta","Leonardo","Aermacchi","Tecnam","Extra","Zlin","Aero"};
+  if (!full || !out || cap < 2) return false;
+  for (size_t i = 0; i < sizeof(makers) / sizeof(makers[0]); i++) {
+    char maker[12]; memcpy_P(maker, makers[i], sizeof(maker));
+    const char* at = strstr(full, maker);
+    size_t ml = strlen(maker);
+    if (!at || (at != full && at[-1] != ' ' && at[-1] != '-') || (at[ml] != ' ' && at[ml] != 0)) continue;
+    const char* p = at + ml;
+    for (uint8_t word = 0; word < 3 && *p; word++) {
+      while (*p == ' ') p++;
+      const char* end = p; bool digit = false;
+      while (*end && *end != ' ') { if (*end >= '0' && *end <= '9') digit = true; end++; }
+      if (digit && end > p) {
+        size_t n = (size_t)(end - p);
+        if (ml + 1 + n + 1 > cap) return false;
+        memcpy(out, maker, ml); out[ml] = ' '; memcpy(out + ml + 1, p, n); out[ml + 1 + n] = 0;
+        return true;
+      }
+      p = end;
+    }
   }
   return false;
 }

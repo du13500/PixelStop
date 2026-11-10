@@ -42,7 +42,7 @@ static bool routeComplete(const char origin[ROUTE_CODE_SIZE], const char destina
 
 static bool lookupRouteAdsbLol(const char* callsign, float lat, float lon, char origin[ROUTE_CODE_SIZE], char destination[ROUTE_CODE_SIZE], FlightRoute& chain) {
   DiagRequest trace(D_TRACK_ROUTE);trace.stage(DS_TLS);
-  if (serviceWaitMs(SERVICE_ADSB_LOL)||!tlsHeapReady(g_adsbLolRx ? g_adsbLolRx : 512)) return false;
+  if (adsbLolWaitMs()||!tlsHeapReady(g_adsbLolRx ? g_adsbLolRx : 512)) return false;
   const uint16_t rx=adsbLolRx();
   if (!tlsHeapReady(rx)) return false;
   BearSSL::Session routeSession;

@@ -5,10 +5,12 @@ import subprocess,tempfile,re
 root=Path(__file__).resolve().parents[1]
 s=(root/'src/main.cpp').read_text()
 version=re.search(r'#define FW_VERSION "([^"]+)"',(root/'src/Version.h').read_text()).group(1)
-assert '<span class="chip">v)HTML" FW_VERSION R"HTML(</span>' in s, 'Web UI shows FW_VERSION'
+page=(root/'src/webui.html').read_text()
+assert '<span class="chip">v@FW_VERSION@</span>' in page, 'Web UI shows FW_VERSION'
+assert '#include "webui_html.h"' in s and 'R"HTML(' not in s, 'Web UI lives in src/webui.html'
 for name in ['README.md','LICENSE','CONTRIBUTING.md','THIRD_PARTY_SERVICES.md','ROADMAP.md','TESTPLAN.md','CHANGELOG.md']:
  assert (root/name).is_file(),name
-html=''.join(re.findall(r'R"HTML\((.*?)\)HTML"',s,re.S))
+html=page
 assert 'navigator.geolocation' not in html and 'alert(' not in html
 assert 'entwickelt von du13500' in html
 zone_select=re.search(r'<select id="timeZone">(.*?)</select>',html,re.S).group(1)
@@ -36,7 +38,9 @@ for p in root.glob('src/*'):
 # English web interface: generated header is current and every German text has a translation.
 import sys,importlib.util
 spec=importlib.util.spec_from_file_location('webui_en',root/'tools/webui_en.py');W=importlib.util.module_from_spec(spec);spec.loader.exec_module(W)
-assert W.js() in (root/'src/webui_en.h').read_text(), 'src/webui_en.h is outdated: run tools/webui_en.py'
+spec=importlib.util.spec_from_file_location('webui_build',root/'tools/webui_build.py');B=importlib.util.module_from_spec(spec);spec.loader.exec_module(B)
+packed=B.unpack_header((root/'src/webui_html.h').read_text())
+assert packed.get('WEBUI_GZ')==B.html().encode() and packed.get('WEBUI_EN_GZ')==W.js().encode(), 'src/webui_html.h is outdated: run tools/webui_build.py'
 from html.parser import HTMLParser
 body=re.sub(r'<script>.*?</script>|<style>.*?</style>','',html,flags=re.S)
 js=''.join(re.findall(r'<script>(.*?)</script>',html,re.S))
@@ -48,7 +52,7 @@ class _P(HTMLParser):
  def handle_starttag(self,t,a):
   for k,v in a:
    if k in('placeholder','title','aria-label') and v:need.add(v)
-_P().feed(body)
+_P().feed(body.replace('v@FW_VERSION@',''))
 for m in re.findall(r'`((?:[^`\\]|\\.)*)`',js):
  for t in re.findall(r'>([^<>$]*[A-Za-zÄÖÜäöü]{3,}[^<>$]*)<',m):need.add(' '.join(t.split()))
  for t in re.findall(r'placeholder="([^"$]+)"',m):need.add(t)
