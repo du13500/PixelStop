@@ -1563,8 +1563,7 @@ static void otaDone() {
 }
 
 static void setupWeb() {
-  static const char* guardHeaders[] = {"Origin"};
-  server.collectHeaders(guardHeaders, 1);
+  server.collectHeaders(F("Origin"));
   server.on("/api/log",HTTP_GET,[]{if(guardRead())apiLog();});
   server.on("/",HTTP_GET,[]{sendGzip(PSTR("text/html; charset=utf-8"),WEBUI_GZ,WEBUI_GZ_LEN,false);});
   server.on("/i18n/en.json",HTTP_GET,[]{sendGzip(PSTR("application/json; charset=utf-8"),WEBUI_EN_GZ,WEBUI_EN_GZ_LEN,true);});
