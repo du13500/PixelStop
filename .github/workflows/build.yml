@@ -58,7 +58,6 @@ jobs:
           python3 tools/test_brightness.py
           python3 tools/test_diagnostics.py
           python3 tools/test_enrichment.py
-          python3 tools/test_network_guard.py
           g++ -std=c++11 -Wall -Wextra -Werror tests/test_core.cpp -o /tmp/pixelstop-core-test
           /tmp/pixelstop-core-test
           node --check tests/webui.cjs
@@ -72,7 +71,7 @@ jobs:
       - name: PlatformIO installieren
         run: pip install platformio==6.1.19
 
-      - name: JSON- und Geo-Speicherschutz prüfen
+      - name: JSON-, Geo- und Netzwerk-Speicherschutz prüfen
         run: |
           pio pkg install -e smalltv_ultra
           python3 tools/test_network_json.py
@@ -81,6 +80,7 @@ jobs:
           python3 tools/test_vvo_response.py
           python3 tools/test_geo_buffer.py
           python3 tools/test_geo_transfer.py
+          python3 tools/test_network_guard.py
 
       - name: ESP8266-Firmware bauen
         run: |

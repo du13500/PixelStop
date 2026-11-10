@@ -1,23 +1,25 @@
 # Testplan
 
-Stand: v0.5.3.1-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: v0.5.4-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
 
-## Hardwaretest v0.5.3-dev
+## Hardwaretest v0.5.4-dev
 
-0. **v0.5.3.1:** Radar über mehrere Stunden ohne „JSON:NoMemory“ im Log; kleinster freier Speicher der Radar-Zeilen wieder um 5 KB.
-
-1. **Dimmverfahren:** Nachts bei 1–10 % unter *Anzeige → Dimmverfahren* zwischen Standard (PWM) und Sigma-Delta wechseln. Aufblitzen, Fiepen und saubere Helligkeitsstufen vergleichen; dabei auch Radar mit Abrufen und offenes Webinterface laufen lassen.
-2. **Webinterface:** Menü hinter ☰ öffnen und schließen (Tippen daneben, Escape), Seitenname unter dem Titel; Auge-Symbol nur beim Tippen, nach dem Speichern wieder verdeckt und leer.
-3. **3-Tage-Vorhersage:** nach dem Update als eigene Zeile unter „Wetter“ angehakt (wenn sie vorher aktiv war); eigene Dauer, ▶ Jetzt anzeigen; Wetter-Reiter ohne die alte Checkbox. Rotation in der Reihenfolge der Liste.
-4. **Radar-Optionen:** Betreiber A/B/C bei einem Militärflug (z. B. RCH…), Geschwindigkeit in km/h und kt im Wechsel mit dem Kennzeichen, ▲▼ bei Steig-/Sinkflug, MIL-Markierung an und aus.
-5. **Filter:** einzeln aktivieren (z. B. „am Boden“, „Hubschrauber“). Im Log Dauer und kleinsten freien Speicher der Radar-Zeile beobachten, im Status „… Flugzeuge geprüft“. Großen Radius (100 km) gegenprüfen.
-6. **Routen:** Flüge zu kleinen Flugplätzen zeigen 4-stellige ICAO-Codes statt „N/A“; 3-stellige Routen unverändert.
-7. **Log:** erfolgreiche Radarabrufe als eine Zeile; Zusatzabfragen mit „leer“ oder „übersprungen“. Offene Beobachtung: easyJet ohne Kennzeichen und Route – bei Auftreten Statuszeilen „Aktuelles Flugzeug“ und „Radar-Route“ sowie den Log sichern.
-8. **Notfall** (nur falls zufällig zu sehen): Rufzeichen und Routenzeile rot, Route und „SQUAWK 7700“ im 3-s-Wechsel.
+1. **Radar-Intervall danach selbst auf 10 s stellen** (5 s gibt es nicht mehr). Unter *System → Status* stehen „Radar-Intervall“ und „adsb.lol: Stunde … · Tag … · Woche … · Monat …“. Die Zahlen mit dem adsb.lol-Schlüsselportal vergleichen; **kein 429** im Log, auch nicht über Stunden mit Radar in der Rotation.
+2. **Zähler über Neustart:** *Neustart* drücken, Status erneut ansehen – die Zähler laufen weiter. Nach Stecker ziehen höchstens die letzten 10 Minuten verloren.
+3. **Webinterface:** Reiter unter dem Titel, auf dem Handy zwei zentrierte Reihen; Seite lädt auch während laufender Radarabrufe vollständig (mehrmals neu laden, auch auf Englisch).
+4. **Anzeigename:** Radar- oder Wetterort um mehr als 5 km verschieben → Hinweis „Leeren/Behalten“; kleine Korrekturen ohne Hinweis.
+5. **Firmware-Update** über *System → Firmware-Update* (eigene Seite, jetzt zweisprachig). Danach startet der Würfel normal, nicht im Rettungsmodus.
+6. **Schutz:** `curl http://<IP>/api/status` funktioniert; ein Aufruf über einen fremden Namen (z. B. per `curl -H "Host: evil.example" http://<IP>/api/status`) liefert 403 und im Log „Web | abgelehnt“.
+7. **Stromausfall:** WLAN der FRITZ!Box kurz ausschalten, Würfel neu starten → Setup-Hotspot mit „sucht gespeichertes WLAN“; WLAN wieder einschalten → nach spätestens etwa einer Minute normaler Start. Mit einem Gerät im Hotspot bleibt er dort.
+8. **Netzwerk-Hänger** (falls er wieder auftritt): vor dem Stecker ziehen in der FRITZ!Box nachsehen, ob „pixelstop“ aktiv ist, und `ping <IP>` versuchen. Nach 10 Minuten sollte die Firmware selbst neu verbinden („WLAN | neu verbinden“ im Log), nach weiteren 5 Minuten neu starten.
+9. **Routen:** Flüge im Sinkflug nahe ORD dürfen ORD nicht als Start zeigen; verworfene Routen stehen mit Grund im Log.
+10. **Airline-Namen:** lange Namen wechseln im 3-s-Takt (z. B. „Air Mobility“ / „Command“), Marken wie KLM, SAS, UPS Airlines, FedEx, Volaris erscheinen kurz.
+11. **Wetter:** „5°C“ ohne Lücke zwischen Zahl und Einheit; zweistellige und negative Werte bleiben mittig.
+12. **Dimmverfahren:** Sigma-Delta nachts bei 1–10 % weiter beobachten.
 
 ## Dauerhafte Prüfungen
 
-- **Flugradar:** Langzeittest über mehrere Tage mit Rotation; Zähler „adsb.lol heute“ und Verbrauch im adsb.lol-Dashboard vergleichen (`src/RadarBudget.h`). Freien Speicher während der Abfrage im Blick behalten (ca. 5 KB bei 4-KB-TLS-Puffer).
+- **Flugradar:** Langzeittest über mehrere Tage mit Rotation; Verbrauch je Fenster im Status mit dem adsb.lol-Schlüsselportal vergleichen (`src/AdsbQuota.h`). Freien Speicher während der Abfrage im Blick behalten (ca. 5 KB bei 4-KB-TLS-Puffer).
 - **Wetter:** Exception 29 beim Programmwechsel ist seit den Speicherkorrekturen nicht wieder aufgetreten; im Langzeittest weiter beobachten.
 - **Zeitzone, Sommerzeit, Nachtmodus:** spätestens bei der Zeitumstellung Ende März prüfen.
 - **Abfahrten:** zehn Abfahrten mit Seitenwechsel 5+5, Verhalten bei Verbindungsproblemen.
@@ -27,14 +29,14 @@ Stand: v0.5.3.1-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisier
 
 ## Stand des letzten Builds
 
-v0.5.3-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
+v0.5.3.1-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
 
 | | belegt | von | Anteil |
 | --- | --- | --- | --- |
-| Statischer RAM | 52.144 Byte | 81.920 Byte | 63,7 % |
-| Flash | 765.039 Byte | 1.044.464 Byte | 73,2 % |
+| Statischer RAM | 51.360 Byte | 81.920 Byte | 62,7 % |
+| Flash | 765.599 Byte | 1.044.464 Byte | 73,3 % |
 
-Zum Vergleich v0.4.14.5.1: 53.288 Byte RAM, 709.007 Byte Flash – feste Texte und Tabellen liegen inzwischen im Flash.
+`tools/check_ram.py` lässt den Build ab 51.600 Byte statischem RAM scheitern, damit für TLS-Abrufe genug Speicher frei bleibt.
 
 ## Lokale Prüfungen
 
@@ -42,7 +44,6 @@ Dieselben Prüfungen führt der Workflow [`build.yml`](.github/workflows/build.y
 
 ```sh
 python3 tools/check.py
-python3 tools/webui_en.py >/dev/null && git diff --exit-code src/webui_en.h
 python3 tools/test_radar.py
 python3 tools/test_motion.py
 python3 tools/test_policy.py
@@ -64,7 +65,11 @@ python3 tools/test_radar_scan.py
 python3 tools/test_airline_cache.py
 python3 tools/test_vvo_response.py
 python3 tools/test_geo_buffer.py
+python3 tools/test_geo_transfer.py
+python3 tools/test_network_guard.py
 pio run -e smalltv_ultra
 ```
+
+Nach Änderungen an `src/webui.html` oder `tools/webui_en.py`: `python3 tools/webui_build.py` (erzeugt `src/webui_html.h`; `check.py` vergleicht).
 
 Die Bilder im README erzeugt `python3 tools/render_screens.py docs/screens --frame --sheet` aus dem echten Displaycode.

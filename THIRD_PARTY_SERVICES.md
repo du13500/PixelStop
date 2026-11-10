@@ -46,7 +46,7 @@ Radarpositionen und Zusatzdaten werden getrennt geladen. Mehrteilige Routen blei
 
 Die Browser-Ortssuche nutzt Nominatim direkt. Die öffentliche Instanz verlangt manuelle Auswahl, Identifikation der Anwendung, Attribution, Zwischenspeicherung und höchstens eine Anfrage pro Sekunde für die gesamte Anwendung. Die lokale Warteschlange ersetzt keine anwendungsweite Koordination mehrerer Browser. Der Dienst ist ohne Firmwarewechsel unter System austauschbar.
 
-Die adsb.lol-API-Dokumentation nennt ODbL 1.0 für ihre Daten. Die CC0-Angabe zu eingesendeten Feederdaten ist davon zu unterscheiden. Aus den öffentlichen API-Hinweisen lässt sich kein garantierter fester Abrufrhythmus ableiten. HTTP 429 und Retry-After werden respektiert; Verbindungsfehler sind keine bestätigte Anbieterpause.
+Die adsb.lol-API-Dokumentation nennt ODbL 1.0 für ihre Daten. Die CC0-Angabe zu eingesendeten Feederdaten ist davon zu unterscheiden. Für kostenlose Schlüssel nennt das adsb.lol-Schlüsselportal (Stand 10.11.2026) feste Grenzen: 5 Anfragen pro 30 s, 20 pro Minute, 150 pro Stunde, 500 pro Tag, 2.000 pro Woche, 5.000 pro Monat; wiederholte Überschreitungen können den Schlüssel kosten. PixelStop plant unterhalb dieser Grenzen (`src/AdsbQuota.h`). HTTP 429 und Retry-After werden zusätzlich respektiert; Verbindungsfehler sind keine bestätigte Anbieterpause.
 
 Open-Meteo erlaubt den kostenlosen Zugang für nichtkommerzielle Nutzung unter den veröffentlichten Grenzen; weitere Nutzung erfordert Prüfung des passenden Angebots. Die Code-Lizenz von adsbdb überträgt keine pauschalen Rechte an übernommenen Routendaten. Die Dokumentation nennt Einschränkungen für deren Veröffentlichung und Übernahme in andere Datenbanken.
 

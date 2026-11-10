@@ -1,5 +1,40 @@
 # Änderungen
 
+## v0.5.4-dev
+
+**Flugradar und adsb.lol**
+- **Kontingent-Wächter:** Ein kostenloser adsb.lol-Schlüssel erlaubt 5 Anfragen pro 30 s, 20 pro Minute, 150 pro Stunde, 500 pro Tag, 2.000 pro Woche und 5.000 pro Monat; wiederholte 429 können ihn kosten. PixelStop zählt jede Anfrage in diesen Fenstern (UTC, feste Grenzen), plant mit Sicherheitsabstand und verteilt die Anfragen auf die Restzeit jedes Fensters – nur für die Zeit, in der das Radar angezeigt wird. Ohne Schlüssel gilt zusätzlich die bisherige Tagesgrenze. Ersetzt das bisherige Tagesbudget (`src/AdsbQuota.h`).
+- **Zähler überstehen Neustarts** (RTC-Speicher) und Stromausfälle (Datei, höchstens alle 10 Minuten geschrieben).
+- **Sparmodus:** Eine Routenabfrage bei adsb.lol ersetzt den nächsten Positionsabruf, statt übersprungen zu werden; sie hat Vorrang vor dem nächsten Positionsabruf.
+- **Kleinstes Radar-Intervall 10 s** (5 s entfällt). Das gewählte Intervall ist ein Wunschwert; das tatsächliche steht im Status, ebenso der Verbrauch je Fenster.
+- **Routenprüfung im Sinkflug:** Sinkt ein Flugzeug deutlich (mehr als 500 ft/min), tief (unter etwa 3.000 m) und nahe einem Flughafen, kann dieser nicht der Start sein (SKW4955 zeigte ORD>MKE statt LEX>ORD). Bewusst keine Regel für den Steigflug wegen Durchstartmanövern.
+- **Log:** verworfene Routen mit Grund („verworfen:Anbieter/Position/Sinkflug/Rufzeichen“), ein Radarabruf ohne WLAN oder ohne Speicher steht als „kein WLAN“ bzw. „Heap-knapp“ statt „HTTP 0“ im Log.
+- **Airline-Namen:** Markennamen nach Rufzeichen-Präfix haben Vorrang (z. B. KLM, SAS, SWISS, FedEx, UPS Airlines, Volaris, Envoy, SkyWest); andere lange Namen verlieren Zusätze wie „Airlines“ oder „Inc“, passen sie dann noch nicht, wechseln zwei Teile im 3-s-Takt, als letzte Lösung kleine Schrift (`src/AirlineName.h`).
+- **Flugzeugtypen:** F-5, F-4, F-14, F-104, Rafale, Mirage 2000, Su-27, MiG-29 sowie Trainer, Privat- und Flugshow-Jets (L-39, L-159, Hawk, Alpha Jet, M-346, MiG-15/17/21, Hunter, P-51, Spitfire u. a.). Lange Typnamen ohne Tabelleneintrag werden allgemein auf „Hersteller Modell“ gekürzt (Northrop, Lockheed, Dassault, Gulfstream und weitere).
+
+**Netz, Sicherheit, Stabilität**
+- **Schutz gegen fremde Webseiten** ohne Passwort: Der Host muss den Würfel nennen (gegen DNS-Rebinding), Änderungen werden nur ohne fremden Origin angenommen (gegen CSRF). Gilt für alle POST-Anfragen, `/api/reboot` und ausdrücklich das **Firmware-Update**, das deshalb einen eigenen Handler hat. `curl` im Heimnetz funktioniert weiter.
+- **WLAN-Namen** im Suchergebnis werden als Text dargestellt (ein präparierter Netzname konnte bisher HTML einschleusen); Leerzeichen am Ende bleiben erhalten und werden in der Liste als „␣“ sichtbar.
+- **WLAN-Grundeinstellungen** (PHY-Modus, Sendeleistung) vor jeder Verbindung.
+- **Nach Stromausfall:** Startet der Router langsamer, sucht der Setup-Hotspot jede Minute das gespeicherte WLAN – nicht, solange ein Gerät mit dem Hotspot verbunden ist – und startet bei Erfolg normal neu.
+- **Rettungsmodus:** Nach drei Abstürzen in Folge startet PixelStop ohne Abrufe; Webinterface und Firmware-Update laufen, auf dem Display steht „RETTUNGSMODUS“. Ein normaler Neustart beendet ihn.
+- **Netzwerk-Wächter:** 10 Minuten ohne eine einzige Antwort trotz Anfragen (oder ohne WLAN) führen zu einer neuen WLAN-Verbindung, 5 Minuten später zu einem Neustart mit erhaltenem RTC-Marker; nach solchen Neustarts verdoppelt sich die Wartezeit. WLAN-Abbrüche und Neuverbindungen stehen im Log, der Log endet mit dem aktuellen WLAN-Zustand.
+- **Hostname** wird geprüft (a–z, 0–9, Bindestrich, 1–32 Zeichen).
+- Startbildschirm „WLAN verbinden…“ auf Englisch, wenn Englisch eingestellt ist.
+
+**Webinterface**
+- **Reiter statt ☰-Menü:** Text-Reiter wie vor v0.5.3 direkt unter dem Titel, umbrechend statt wischend und mittig zentriert.
+- **Komprimiert ausgeliefert:** Seite (60 → 19 KB) und englische Texte (20 → 8 KB) liegen gzip-komprimiert im Flash; während die Seite lädt, pausieren die Hintergrundabrufe. Die Seite steht jetzt in `src/webui.html`, `tools/webui_build.py` erzeugt `src/webui_html.h`.
+- **Anzeigename bei Ortswechsel:** Nach einem Wechsel um mehr als 5 km fragt das Webinterface bei Wetter und Radar, ob der Anzeigename bleiben soll („Leeren“/„Behalten“).
+- Statuswerte der Firmware erscheinen in der englischen Oberfläche übersetzt; Hinweis zu den adsb.lol-Grenzen aktualisiert.
+
+**Anzeige**
+- **„°C“ ohne Lücke:** Zahl und Einheit werden als Gruppe zentriert.
+
+**Build und Doku**
+- `test_geo_transfer.py` und `test_network_guard.py` laufen im Build; neue Tests für Kontingent, Schutz, Airline-Namen, Typen und Sinkflug-Regel.
+- ROADMAP mit v0.5.5 (Ausweichquellen), v0.5.6 (Warnungen), Varianten, Kriterien für v1.0 und Veröffentlichung; CONTRIBUTING neu; Hinweise zu nicht-kommerzieller Nutzung der Datenquellen und zu HTTPS ohne Zertifikatsprüfung.
+
 ## v0.5.3.1-dev
 
 - **Radar: Speicher zurückgeholt.** v0.5.3 belegte 748 Byte mehr festen Arbeitsspeicher als v0.5.2; während einer TLS-Abfrage blieben dadurch zeitweise nur ~4,3 KB frei, und die Antwort ließ sich nicht mehr einlesen („JSON:NoMemory“, Radar ohne Daten). Die Militär-Tabelle liegt jetzt im Flash, ebenso einige kurze Anzeigetexte.
