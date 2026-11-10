@@ -1,8 +1,10 @@
 # Testplan
 
-Stand: v0.5.4-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: v0.5.4.1-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
 
-## Hardwaretest v0.5.4-dev
+## Hardwaretest v0.5.4.1-dev
+
+0. **v0.5.4.1:** Nach dem Flashen und nach mehreren Neustarts verbindet sich der Würfel wieder in wenigen Sekunden (kein Setup-Hotspot, kein Neustart nach ~83 s); Radarabrufe wieder um 1–2 s; Speichern ohne geänderten Hostnamen startet nicht neu.
 
 1. **Radar-Intervall danach selbst auf 10 s stellen** (5 s gibt es nicht mehr). Unter *System → Status* stehen „Radar-Intervall“ und „adsb.lol: Stunde … · Tag … · Woche … · Monat …“. Die Zahlen mit dem adsb.lol-Schlüsselportal vergleichen; **kein 429** im Log, auch nicht über Stunden mit Radar in der Rotation.
 2. **Zähler über Neustart:** *Neustart* drücken, Status erneut ansehen – die Zähler laufen weiter. Nach Stecker ziehen höchstens die letzten 10 Minuten verloren.

@@ -418,7 +418,7 @@ static void loadConfig() {
   if (!LittleFS.begin()) LittleFS.format(), LittleFS.begin();
   File f = LittleFS.open(CFG_PATH, "r"); if (!f) return;
   JsonDocument d; if (deserializeJson(d, f)) { f.close(); return; } f.close();
-  cfg.ssid = d["ssid"] | cfg.ssid; cfg.pass = d["pass"] | cfg.pass; cfg.hostname = d["hostname"] | cfg.hostname;
+  cfg.ssid = d["ssid"] | cfg.ssid; cfg.pass = d["pass"] | cfg.pass; cfg.hostname = d["hostname"] | cfg.hostname; cfg.hostname.trim(); cfg.hostname.toLowerCase(); // mDNS ignores case; saving must not see a "new" name
   if(d["timeZone"].is<const char*>() && timeZoneIndex(d["timeZone"].as<const char*>())>=0)cfg.timeZone=d["timeZone"].as<String>();
   cfg.mode = constrain((int)(d["mode"] | cfg.mode), 0, MODE_COUNT-1);
   if(d["rotationMask"].is<uint16_t>() || d["rotationMask"].is<int>()) cfg.rotationMask = ((uint16_t)(d["rotationMask"] | cfg.rotationMask)) & 0x03FFU;
@@ -1170,12 +1170,6 @@ static void startAP() {
   if(cfg.ssid.length()){WiFi.disconnect();centerText(TR("sucht gespeichertes WLAN","looking for saved Wi-Fi"),205,1,C_GRAY);}
 }
 
-// Defaults before every connection attempt (FRITZ!Box mesh: a changed PHY mode
-// or transmit power must not stay from an earlier session).
-static void wifiDefaults() {
-  WiFi.setPhyMode(WIFI_PHY_MODE_11N);
-  WiFi.setOutputPower(20.5f);
-}
 
 static void connectWiFi() {
   if (!cfg.ssid.length()) { startAP(); return; }
@@ -1183,7 +1177,6 @@ static void connectWiFi() {
   WiFi.persistent(false);
   WiFi.hostname(cfg.hostname.c_str());
   WiFi.setAutoReconnect(true);
-  wifiDefaults();
   // The SSID is used exactly as stored, including blanks at the end.
   WiFi.begin(cfg.ssid.c_str(), cfg.pass.c_str());
   gfx->fillScreen(C_BLACK);
@@ -1275,7 +1268,7 @@ static void networkWatchdog(uint32_t now) {
   const uint32_t silent = now - ref, down = wifiDown ? now - wifiLostAt : 0;
   if (netStage == 0 && ((tried && silent >= NET_SILENT_MS * factor) || down >= NET_SILENT_MS * factor)) {
     diagEvent(D_WIFI, DS_WIFI_RETRY, WiFi.status(), silent / 1000UL);
-    WiFi.disconnect(); wifiDefaults(); WiFi.begin(cfg.ssid.c_str(), cfg.pass.c_str());
+    WiFi.disconnect(); WiFi.begin(cfg.ssid.c_str(), cfg.pass.c_str());
     netStage = 1; netStageAt = now;
   } else if (netStage == 1 && (uint32_t)(now - netStageAt) >= NET_RECONNECT_MS && (tried || wifiDown)) {
     if (bootState.hangRestarts < 255) bootState.hangRestarts++;
@@ -1294,7 +1287,7 @@ static void setupHotspotRetry(uint32_t now) {
     if (WiFi.status() == WL_CONNECTED && !guests) { diagEvent(D_WIFI, DS_WIFI_UP, WiFi.RSSI()); restartNow(); }
     if (guests || (uint32_t)(now - apTryStart) >= 20000UL) { WiFi.disconnect(); apTrying = false; apRetryAt = now + 60000UL; }
   } else if (!guests && (int32_t)(now - apRetryAt) >= 0) {
-    wifiDefaults(); WiFi.begin(cfg.ssid.c_str(), cfg.pass.c_str());
+    WiFi.begin(cfg.ssid.c_str(), cfg.pass.c_str());
     apTrying = true; apTryStart = now;
   } else if (guests) apRetryAt = now + 60000UL;
 }
@@ -1392,7 +1385,7 @@ static void apiPostConfig() {
   if(previous.weatherLat!=cfg.weatherLat||previous.weatherLon!=cfg.weatherLon||previous.timeZone!=cfg.timeZone||(activated&((1U<<MODE_WEATHER)|(1U<<MODE_FORECAST))))weatherReset();
   if(previous.planeLat!=cfg.planeLat||previous.planeLon!=cfg.planeLon||previous.planeRadiusKm!=cfg.planeRadiusKm||previous.planeHide!=cfg.planeHide||(activated&(1U<<MODE_PLANE)))flightReset();
   deferBackgroundNetwork(1000);departurePage=0;departurePagingReady=false;lastDeparturePageSwitchMs=millis();planePlacePhase=false;lastPlanePlaceSwitchMs=millis();if(oldTracked!=cfg.trackedFlightNo||oldKey!=cfg.aviationstackKey)trackedFlightReset();lastModeSwitchMs=millis();drawActive();
-  bool reboot=(oldSsid!=cfg.ssid)||(oldHost!=cfg.hostname);server.send(200,"application/json",reboot?"{\"ok\":true,\"reboot\":true}":"{\"ok\":true,\"reboot\":false}");if(reboot){delay(200);restartNow();}
+  bool reboot=(oldSsid!=cfg.ssid)||!oldHost.equalsIgnoreCase(cfg.hostname);server.send(200,"application/json",reboot?"{\"ok\":true,\"reboot\":true}":"{\"ok\":true,\"reboot\":false}");if(reboot){delay(200);restartNow();}
 }
 
 // Shows a view right away (web interface "▶"); the rotation continues from it.
