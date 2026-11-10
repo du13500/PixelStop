@@ -1,5 +1,13 @@
 # Änderungen
 
+## v0.5.4.3-dev
+
+- **Radar fragt wieder Positionen ab:** In v0.5.4 schob jede wiederholte Routenabfrage für dasselbe Flugzeug den nächsten Positionsabruf um ein ganzes Intervall nach hinten. Weil diese Wiederholungen alle 2–5 Minuten kamen und das Kontingent-Intervall länger war, kam nie wieder ein Positionsabruf – das Radar blieb beim alten Flugzeug stehen (nachgestellt: 1 Positionsabruf in 2 Stunden). Jetzt gilt: höchstens eine adsb.lol-Routenabfrage zwischen zwei Positionsabrufen, und nur für ein neues Flugzeug.
+- **Wiederholte Abfragen für dasselbe Flugzeug** laufen nur noch über adsbdb (ohne adsb.lol-Kontingent), alle 10 statt alle 2–5 Minuten, und behalten Route und Airline, statt sie bis zur Antwort zu löschen.
+- **Flug-Tracker im Kontingent:** Die Live-Abfragen bei adsb.lol (bisher fest alle 15 s) folgen derselben Planung wie das Radar.
+- **Hochrechnung bis 10 Minuten** (vorher 4), passend zu den längeren Intervallen.
+- **Neue Prüfung** `tools/test_radar_schedule.py`: simuliert zwei Stunden mit den echten Planungsfunktionen (gleiches Flugzeug, neue Flugzeuge, Rotation) und schlägt bei v0.5.4 an.
+
 ## v0.5.4.2-dev
 
 - **Netzwerk-Wächter repariert:** In v0.5.4 setzte er sich jede Sekunde selbst zurück, sobald seit dem Start irgendeine Antwort kam. Löste er aus, verband er das WLAN jede Sekunde neu – der Würfel kam nie wieder ins Netz, und der geplante Neustart wurde nie erreicht. Jetzt beendet nur eine *neue* Antwort nach dem Neuverbinden den Alarm; bleibt sie aus, folgt nach 5 Minuten der Neustart. Logik in `src/NetWatch.h` mit Tests.

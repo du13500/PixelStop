@@ -366,14 +366,15 @@ static bool radarActive() {
   uint32_t shown=(uint32_t)(millis()-lastModeSwitchMs);
   return shown+RADAR_PREFETCH_MS>=stayMs;
 }
-// Share of the rotation the radar is visible; used to spread the daily budget.
-static float radarVisibleShare() {
+// Share of the rotation a view is visible (radar incl. prefetch); used to spread the quota.
+static float modeVisibleShare(uint8_t mode,uint32_t extraSec) {
   if(enabledModeCount()<=1) return 1.0f;
   uint32_t total=0;
   for(uint8_t i=0;i<MODE_COUNT;i++) if(modeEnabled(i)) total+=max((uint16_t)5,cfg.rotationSec[i]);
-  uint32_t radar=max((uint16_t)5,cfg.rotationSec[MODE_PLANE])+RADAR_PREFETCH_MS/1000UL;
-  return total?min(1.0f,(float)radar/(float)total):1.0f;
+  uint32_t shown=max((uint16_t)5,cfg.rotationSec[mode])+extraSec;
+  return total?min(1.0f,(float)shown/(float)total):1.0f;
 }
+static float radarVisibleShare() { return modeVisibleShare(MODE_PLANE,RADAR_PREFETCH_MS/1000UL); }
 
 // ---- local config ------------------------------------------------------------
 static const char* CFG_PATH = "/config.json";
@@ -1690,7 +1691,7 @@ void loop() {
         flightEnrich();if(cfg.mode==MODE_PLANE)drawPlane(false);ran=true;
       }else if(cfg.mode==MODE_TRACKED_FLIGHT&&cfg.trackedFlightNo.length()&&cfg.aviationstackKey.length()){
         if(task==4&&trackedFlightStatusPollDue(cfg.trackerStatusPollMin)){trackedFlightFetchStatus(cfg.aviationstackKey,cfg.trackedFlightNo);trackedFlightFetchRoute();drawTrackedFlight(false);ran=true;}
-        else if(task==5&&trackedFlightLivePollDue(15)){trackedFlightFetchLive();trackedFlightFetchRoute();drawTrackedFlight(false);ran=true;}
+        else if(task==5&&trackedFlightLivePollDue(15,modeVisibleShare(MODE_TRACKED_FLIGHT,0))){trackedFlightFetchLive();trackedFlightFetchRoute();drawTrackedFlight(false);ran=true;}
       }
       if(ran){deferBackgroundNetwork();break;}
     }

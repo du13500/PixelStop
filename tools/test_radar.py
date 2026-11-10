@@ -35,6 +35,7 @@ uint32_t adsbLolBudgetIntervalMs(float share){lastShare=share;return budgetInter
 const int SERVICE_ADSB_LOL=0;
 static uint32_t quotaWait=0;uint32_t adsbLolWaitMs(){return quotaWait;}
 static bool enrichDue=false;bool flightEnrichmentDue(){return enrichDue;}
+struct Enrichment{uint8_t phase;};static Enrichment pending={0};static Enrichment* currentEnrichment(){return &pending;}static bool g_routeSincePoll=false;
 struct Snapshot {bool valid,error;} g_f={};
 static uint32_t g_lastPollMs=0,g_lastOkMs=0,g_firstFailureMs=0,g_intervalMs=0;
 static bool g_hasPolled=false,g_providerPaused=false;
@@ -58,7 +59,9 @@ tests='''int main(){
  // 5 s is no longer selectable: the radar asks at most every 10 s.
  assert(!flightPollDue(5,1.0f));clockMs=24999;assert(!flightPollDue(5,1.0f));clockMs=25000;assert(flightPollDue(5,1.0f)&&g_intervalMs==10000);
  // The quota (AdsbQuota.h) and a pending route lookup take precedence.
- quotaWait=1000;assert(!flightPollDue(10,1.0f));quotaWait=0;enrichDue=true;assert(!flightPollDue(10,1.0f));enrichDue=false;
+ quotaWait=1000;assert(!flightPollDue(10,1.0f));quotaWait=0;enrichDue=true;assert(!flightPollDue(10,1.0f));
+ // Only the first lookup of a new aircraft goes first; later checks never block positions.
+ pending.phase=3;assert(flightPollDue(10,1.0f));pending.phase=0;enrichDue=false;
  minimumInterval=15000;clockMs=29999;assert(!flightPollDue(5,1.0f));clockMs=30000;assert(flightPollDue(5,1.0f));minimumInterval=0;
  budgetInterval=12000;clockMs=26999;assert(!flightPollDue(5,0.25f)&&lastShare==0.25f);clockMs=27000;assert(flightPollDue(5,0.25f)&&g_intervalMs==12000);budgetInterval=0;
  clockMs=39999;assert(!flightExpire());clockMs=40000;assert(flightExpire());assert(!g_f.valid&&g_f.error);assert(!flightExpire());

@@ -50,6 +50,7 @@ jobs:
         run: |
           python3 tools/check.py
           python3 tools/test_radar.py
+          python3 tools/test_radar_schedule.py
           python3 tools/test_motion.py
           python3 tools/test_policy.py
           python3 tools/test_chunked.py

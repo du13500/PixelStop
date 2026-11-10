@@ -19,6 +19,8 @@
 
 static FlightSnapshot g_f = {};
 static uint32_t g_lastPollMs = 0;
+// At most one adsb.lol route lookup between two position requests (never starve positions).
+static bool g_routeSincePoll = false;
 static bool g_hasPolled = false;
 static uint32_t g_lastOkMs = 0;
 // A provider cooldown retains the last aircraft until a new request completes.
@@ -90,7 +92,7 @@ static bool lookupRouteAdsbLol(const FlightSnapshot& f,RoutePoint pos,Enrichment
   // A route lookup takes the place of the next position request (savings mode).
   uint8_t skip=adsbLolQuotaWaitMs()?1:(serviceWaitMs(SERVICE_ADSB_LOL)?2:(!tlsHeapReady(adsbLolRx())?4:0));
   if(skip){diagLookup(f.hex,f.callsign);diagEvent(D_RADAR_ROUTE,DS_SKIPPED,0,skip);return false;}
-  g_lastPollMs=millis();
+  g_lastPollMs=millis();g_routeSincePoll=true;
   DiagRequest trace(D_RADAR_ROUTE);diagLookup(f.hex,f.callsign);trace.stage(DS_TLS);
   BearSSL::WiFiClientSecure client;makeSecure(client,&g_routeSession,adsbLolRx());
   HTTPClient http;http.setTimeout(5000);http.setReuse(false);
@@ -217,7 +219,8 @@ static void enrichFlight(FlightSnapshot& f,RoutePoint pos) {
   char brand[19];
   if(entry->airline[0]&&!airlineBrand(f.callsign,brand,sizeof(brand)))strlcpy(f.airline,entry->airline,sizeof(f.airline));
   if(entry->type[0]&&metadataTypeMatches(f.typeCode,f.category,entry->typeCode))strlcpy(f.typeName,entry->type,sizeof(f.typeName));
-  if(entry->route.count && (uint32_t)(now-entry->checked)<300000UL &&
+  // Routes stay valid between the 10-minute checks; the position check still applies.
+  if(entry->route.count && (uint32_t)(now-entry->checked)<900000UL &&
       routePositionPlausible(pos,entry->airports,entry->airportCount,f.onGround,f.altitudeKnown,f.altitudeFt)){
     f.route=entry->route;strlcpy(f.origin,f.route.airports[0],sizeof(f.origin));
     strlcpy(f.destination,f.route.airports[f.route.count-1],sizeof(f.destination));
@@ -232,7 +235,7 @@ static Enrichment* currentEnrichment(){
 // The adsb.lol route lookup replaces a position request: it needs a free slot
 // in the quota and keeps the minimum distance after a provider limit.
 static bool routeSlotFree(){
-  if(adsbLolWaitMs())return false;
+  if(g_routeSincePoll||adsbLolWaitMs())return false;
   uint32_t minimum=serviceMinIntervalMs(SERVICE_ADSB_LOL);
   return !minimum||(uint32_t)(millis()-g_lastPollMs)>=minimum;
 }
@@ -240,17 +243,20 @@ bool flightEnrichmentDue(){
  if(!g_f.valid||g_f.error||!routePointValid(g_position)||!g_f.callsign[0])return false;
  Enrichment* e=currentEnrichment();
  if(e&&e->phase<3)return e->phase==0?routeSlotFree():!serviceWaitMs(SERVICE_ADSB_DB);
- return (!e||(uint32_t)(millis()-e->checked)>=(e->route.count?300000UL:120000UL)) &&
-   (!g_lastEnrichmentMs||(uint32_t)(millis()-g_lastEnrichmentMs)>=60000UL) && routeSlotFree();
+ if(g_lastEnrichmentMs&&(uint32_t)(millis()-g_lastEnrichmentMs)<60000UL)return false;
+ // New aircraft: full lookup including adsb.lol. The same aircraft later: adsbdb
+ // only (no adsb.lol quota), every 10 minutes, keeping what was found.
+ if(!e)return routeSlotFree();
+ return (uint32_t)(millis()-e->checked)>=600000UL&&!serviceWaitMs(SERVICE_ADSB_DB);
 }
 void flightEnrich(){
  if(!flightEnrichmentDue())return;
  Enrichment* e=currentEnrichment();
- if(!e||e->phase>=3){
-   if(!e){e=&g_cache[g_cacheNext];g_cacheNext=(g_cacheNext+1)%3;}
+ if(!e){
+   e=&g_cache[g_cacheNext];g_cacheNext=(g_cacheNext+1)%3;
    *e={};e->used=true;e->checked=millis();g_lastEnrichmentMs=e->checked;
    strlcpy(e->hex,g_f.hex,sizeof(e->hex));strlcpy(e->callsign,g_f.callsign,sizeof(e->callsign));
- }
+ }else if(e->phase>=3){e->phase=1;e->checked=millis();g_lastEnrichmentMs=e->checked;}
  if(e->phase==0)lookupRouteAdsbLol(g_f,g_position,*e);
  else if(e->phase==1)lookupMetadata(g_f,g_position,*e);
  else lookupAirline(g_f,*e);
@@ -274,8 +280,8 @@ void flightReset() {
 
 bool flightPollDue(uint16_t pollSec, float visibleShare) {
   if(adsbLolWaitMs())return false;
-  // A pending route lookup for the shown aircraft goes first and takes this slot.
-  if(flightEnrichmentDue())return false;
+  // The first route lookup of a new aircraft goes first and takes this slot.
+  {Enrichment* e=currentEnrichment();if((!e||e->phase==0)&&flightEnrichmentDue())return false;}
   if (!g_hasPolled) return true;
   if(pollSec<RADAR_MIN_POLL_SEC)pollSec=RADAR_MIN_POLL_SEC;
   uint32_t interval=(uint32_t)pollSec*1000UL;
@@ -399,6 +405,7 @@ bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm, uint8_t hideMa
   struct Completion {~Completion(){g_lastPollMs=millis();}} completion;
   g_lastPollMs = millis();
   g_hasPolled = true;
+  g_routeSincePoll = false;
   g_lastHttp = 0;
   if (WiFi.status() != WL_CONNECTED) { trace.stage(DS_NO_WIFI); return flightFailure("kein WLAN"); }
   if (!tlsHeapReady(g_adsbLolRx ? g_adsbLolRx : 512)) { trace.stage(DS_HEAP); return flightFailure("übersprungen: Heap"); }
