@@ -1061,7 +1061,7 @@ static const int PLANE_FOOTER_X=18;
 // Name of the position source in the footer (prepared for further sources).
 static const char* planeSourceLabel="ADSB.LOL";
 static String planeFooterLabel() {
-  return flightProviderPaused()?String(TR("ABRUFPAUSE","PAUSED")):(flightData().error?String(TR("LETZTER STAND","LAST DATA")):String(planeSourceLabel)+" LIVE");
+  return flightProviderPaused()?String(TR("ABRUFPAUSE","PAUSED")):(flightData().error?String(TR("LETZTER STAND","LAST DATA")):String(planeSourceLabel)+F(" LIVE"));
 }
 static void drawPlaneAge() {
   if(!cfg.planeShowAge||!flightData().valid)return;
@@ -1097,7 +1097,7 @@ static String planeOperatorText(const FlightSnapshot& f) {
   return f.airline[0]?String(f.airline):String("N/A");
 }
 static String planeSpeedText(const FlightSnapshot& f) {
-  return cfg.planeSpeed==2?String((int)lroundf(f.speedKt))+" kt":String((int)lroundf(f.speedKt*1.852f))+" km/h";
+  return cfg.planeSpeed==2?String((int)lroundf(f.speedKt))+F(" kt"):String((int)lroundf(f.speedKt*1.852f))+F(" km/h");
 }
 static void drawPlane(bool force=true) {
   const FlightSnapshot& f=flightData();
@@ -1122,7 +1122,7 @@ static void drawPlane(bool force=true) {
   if(full||callKey!=lastPlaneCall){
     if(!full)gfx->fillRect(8,35,224,40,C_BLACK);
     String cs=f.callsign[0]?String(f.callsign):String("N/A");centerText(cs,42,cs.length()<=6?4:3,emergency?C_RED:C_WHITE);
-    if(cfg.planeMarkMilitary&&f.military)printDisplayTextAt(214,38,"MIL",1,C_KHAKI);
+    if(cfg.planeMarkMilitary&&f.military)printDisplayTextAt(214,38,String(F("MIL")),1,C_KHAKI);
   }
   lastPlaneCall=callKey;
   String op=planeOperatorText(f);
@@ -1133,7 +1133,7 @@ static void drawPlane(bool force=true) {
   lastPlaneOperator=op;
   const bool routeKnown=f.route.count>0||(f.origin[0]&&strcmp(f.origin,"N/A"));
   // In an emergency the whole route line is red: route and squawk alternate.
-  String routeKey=emergency?((second||!routeKnown)?String("SQUAWK ")+f.squawk:String("!")):String();
+  String routeKey=emergency?((second||!routeKnown)?String(F("SQUAWK "))+f.squawk:String(F("!"))):String();
   if(full||routeKey!=lastPlaneRoute||strcmp(f.origin,lastPlaneRendered.origin)||strcmp(f.destination,lastPlaneRendered.destination)||
     f.route.count!=lastPlaneRendered.route.count||f.route.truncated!=lastPlaneRendered.route.truncated||
     memcmp(f.route.airports,lastPlaneRendered.route.airports,sizeof(f.route.airports))){
