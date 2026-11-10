@@ -108,7 +108,7 @@ bool trackedFlightStatusPollDue(uint16_t pollMinutes) {
 }
 
 bool trackedFlightLivePollDue(uint16_t pollSeconds) {
-  if (serviceWaitMs(SERVICE_ADSB_LOL)||!g_t.valid || g_t.terminal || !g_t.flightIcao[0]) return false;
+  if (adsbLolWaitMs()||!g_t.valid || g_t.terminal || !g_t.flightIcao[0]) return false;
   if (g_lastLivePollMs == 0) return true;
   return (uint32_t)(millis() - g_lastLivePollMs) >= (uint32_t)pollSeconds * 1000UL;
 }
@@ -256,7 +256,7 @@ bool trackedFlightFetchLive() {
   DiagRequest trace(D_TRACK_LIVE);
   if(!networkHeapReady(D_TRACK_LIVE)){g_t.error=true;return false;}
   trace.stage(DS_TLS);
-  if(serviceWaitMs(SERVICE_ADSB_LOL))return false;
+  if(adsbLolWaitMs())return false;
   g_lastLivePollMs = millis();
   if (WiFi.status() != WL_CONNECTED || !g_t.valid || g_t.terminal || !g_t.flightIcao[0]) return false;
 

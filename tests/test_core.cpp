@@ -4,6 +4,9 @@
 #include "../src/RadarPolicy.h"
 #include "../src/WeatherVisual.h"
 #include "../src/TimeZones.h"
+#include "../src/WebGuard.h"
+#include "../src/AirlineName.h"
+#include "../src/AircraftLabel.h"
 #include <assert.h>
 #include <string>
 #include <vector>
@@ -15,7 +18,37 @@ static std::vector<uint32_t> decode(const std::string& s){
   while(nextDisplayCodepoint(s.data(),s.size(),i,cp))v.push_back(cp);
   return v;
 }
+static std::string parts(const char* name,int expect){char a[40],b[40];int n=airlineParts(name,18,a,b,sizeof(a));assert(n==expect);return std::string(a)+(b[0]?"|"+std::string(b):"");}
 int main(){
+ // WebGuard: DNS rebinding (Host) and foreign pages (Origin)
+ assert(webGuardHostAllowed("192.168.178.137","192.168.178.137","pixelstop"));
+ assert(webGuardHostAllowed("192.168.178.137:80","192.168.178.137","pixelstop"));
+ assert(webGuardHostAllowed("PixelStop.local","192.168.178.137","pixelstop"));
+ assert(webGuardHostAllowed("pixelstop.fritz.box","192.168.178.137","pixelstop"));
+ assert(webGuardHostAllowed("pixelstop","192.168.178.137","pixelstop"));
+ assert(webGuardHostAllowed("192.168.4.1","0.0.0.0","pixelstop"));
+ assert(!webGuardHostAllowed("pixelstop.evil.example","192.168.178.137","pixelstop"));
+ assert(!webGuardHostAllowed("rebind.example","192.168.178.137","pixelstop"));
+ assert(!webGuardHostAllowed("192.168.178.13","192.168.178.137","pixelstop"));
+ assert(webGuardOriginAllowed("","192.168.178.137"));
+ assert(webGuardOriginAllowed("http://192.168.178.137","192.168.178.137"));
+ assert(webGuardOriginAllowed("http://pixelstop.local","pixelstop.local:80"));
+ assert(!webGuardOriginAllowed("https://evil.example","192.168.178.137"));
+ assert(!webGuardOriginAllowed("http://evil.example","192.168.178.137"));
+ assert(!webGuardOriginAllowed("null","192.168.178.137"));
+ assert(webGuardHostnameValid("pixelstop")&&webGuardHostnameValid("pixel-stop-2"));
+ assert(!webGuardHostnameValid("")&&!webGuardHostnameValid("Pixel Stop")&&!webGuardHostnameValid("-pixel")&&!webGuardHostnameValid("pixelstöp")&&!webGuardHostnameValid("abcdefghijabcdefghijabcdefghijabc"));
+ // Airline names: brand, shortened, two parts, small type
+ {char b[19];assert(airlineBrand("KLM1234",b,sizeof(b))&&!strcmp(b,"KLM"));assert(airlineBrand("VOI700",b,sizeof(b))&&!strcmp(b,"Volaris"));assert(!airlineBrand("ZZZ123",b,sizeof(b)));assert(!airlineBrand("KLM",b,sizeof(b)));}
+ assert(parts("Turkish Airlines",1)=="Turkish Airlines");
+ assert(parts("Cargolux Airlines International",1)=="Cargolux Airlines");
+ assert(parts("KLM Royal Dutch Airlines",1)=="KLM Royal Dutch");
+ assert(parts("Air Mobility Command",2)=="Air Mobility|Command");
+ assert(parts("Aerovias de Mexico SA de CV",2)=="Aerovias de Mexico|SA de CV");
+ assert(parts("Internationalairlinesgroupholding",0).size());
+ {char a[40];airlineShorten("The Very Long Name Airlines Inc.",a,sizeof(a),18);assert(!strcmp(a,"Very Long Name"));}
+ // Aircraft: manufacturer + model
+ {char o[24];assert(aircraftMakerModel("Northrop Grumman E-2D Advanced Hawkeye",o,sizeof(o))&&!strcmp(o,"Northrop E-2D"));assert(!aircraftMakerModel("Unknown Jet",o,sizeof(o)));assert(aircraftDisplayLabel("F5",o,sizeof(o))&&!strcmp(o,"Northrop F-5"));}
  assert(!metadataTypeMatches("","A3","ST75"));
  assert(metadataTypeMatches("","A3","A21N"));
  assert(metadataTypeMatches("B39M","A3","B39M"));

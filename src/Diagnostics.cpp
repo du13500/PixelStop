@@ -9,14 +9,14 @@ static Event events[24]={};static uint8_t next=0,count=0;
 struct Marker {uint32_t magic,version,boot,at,heap,block,value,code,op,stage,checksum;};
 static Marker marker={},previous={};static bool previousValid=false;
 static char resetReason[64]={},resetInfo[192]={};
-static uint32_t deferredAt=0,deferredFor=0;
-static const char ops[][20] PROGMEM={"Start","Radar.Position","Radar.Route","Radar.Metadata","Radar.Airline","Wetter","VVO.Abfahrten","VVO.Suche","Ort.Suche","Ort.Karte","Tracker.Status","Tracker.Position","Tracker.Route","Speichern","Neustart","Countdown","WLAN"};
-static const char stages[][24] PROGMEM={"Start","TLS","HTTP","JSON","OK","Fehler","Heap-knapp","Pause","leer","Antwortformat","JSON:NoMemory","JSON:IncompleteInput","JSON:EmptyInput","JSON:TooDeep","JSON:InvalidInput","Empfang:Fehler","Datei:Fehler","Antwort:ZuGross","Geo:Vorbereitung","Geo:Verbinden","Geo:Empfang","Geo:TLS-frei","übersprungen"};
+static uint32_t deferredAt=0,deferredFor=0,answerAt=0,attemptAt=0;
+static const char ops[][20] PROGMEM={"Start","Radar.Position","Radar.Route","Radar.Metadata","Radar.Airline","Wetter","VVO.Abfahrten","VVO.Suche","Ort.Suche","Ort.Karte","Tracker.Status","Tracker.Position","Tracker.Route","Speichern","Neustart","Countdown","WLAN","Web"};
+static const char stages[][24] PROGMEM={"Start","TLS","HTTP","JSON","OK","Fehler","Heap-knapp","Pause","leer","Antwortformat","JSON:NoMemory","JSON:IncompleteInput","JSON:EmptyInput","JSON:TooDeep","JSON:InvalidInput","Empfang:Fehler","Datei:Fehler","Antwort:ZuGross","Geo:Vorbereitung","Geo:Verbinden","Geo:Empfang","Geo:TLS-frei","übersprungen","kein WLAN","verworfen:Anbieter","verworfen:Position","verworfen:Sinkflug","verworfen:Rufzeichen","getrennt","verbunden","neu verbinden","Rettungsmodus","abgelehnt"};
 static uint32_t checksum(const Marker& m){uint32_t h=2166136261UL;const uint8_t* p=(const uint8_t*)&m;for(size_t i=0;i<sizeof(m)-sizeof(m.checksum);i++)h=(h^p[i])*16777619UL;return h;}
 static void writeMarker(){marker.checksum=checksum(marker);ESP.rtcUserMemoryWrite(32,(uint32_t*)&marker,sizeof(marker));}
 void diagInit(){
  hasLastError=false;
- previousValid=ESP.rtcUserMemoryRead(32,(uint32_t*)&previous,sizeof(previous))&&previous.magic==0x53445439UL&&previous.version==1&&previous.checksum==checksum(previous)&&previous.op<D_COUNT&&previous.stage<=DS_SKIPPED;
+ previousValid=ESP.rtcUserMemoryRead(32,(uint32_t*)&previous,sizeof(previous))&&previous.magic==0x53445439UL&&previous.version==1&&previous.checksum==checksum(previous)&&previous.op<D_COUNT&&previous.stage<=DS_LAST;
  strlcpy(resetReason,ESP.getResetReason().c_str(),sizeof(resetReason));strlcpy(resetInfo,ESP.getResetInfo().c_str(),sizeof(resetInfo));
  marker.magic=0x53445439UL;marker.version=1;marker.boot=previousValid?previous.boot+1:1;diagEvent(D_BOOT,DS_DONE);
 }
@@ -31,6 +31,8 @@ void diagEvent(DiagOp op,DiagStage stage,int code,uint32_t value){
  marker.at=e.at;marker.heap=e.heap;marker.block=e.block;marker.value=value;marker.code=(uint32_t)(int32_t)code;marker.op=op;marker.stage=stage;writeMarker();
 }
 void deferBackgroundNetwork(uint32_t ms){deferredAt=millis();deferredFor=ms;}
+uint32_t diagNetworkAnswerMs(){return answerAt;}
+uint32_t diagNetworkAttemptMs(){return attemptAt;}
 bool backgroundNetworkReady(){return (uint32_t)(millis()-deferredAt)>=deferredFor;}
 void DiagRequest::note(DiagStage stage,int code){
  if(!compact_){diagEvent(op_,stage,code);return;}
@@ -41,7 +43,7 @@ void DiagRequest::note(DiagStage stage,int code){
  if(stage==DS_BEGIN)lookupContext[0]=0;
  markerFrom(e); // the RTC marker still follows every step for crash analysis
 }
-DiagRequest::DiagRequest(DiagOp op):op_(op),started_(millis()),compact_(op==D_RADAR){note(DS_BEGIN,0);}
+DiagRequest::DiagRequest(DiagOp op):op_(op),started_(millis()),compact_(op==D_RADAR){attemptAt=started_;note(DS_BEGIN,0);}
 DiagRequest::~DiagRequest(){
  if(compact_&&(result_==DS_DONE||result_==DS_EMPTY)){
   uint32_t heap=ESP.getFreeHeap(),block=ESP.getMaxFreeBlockSize();
@@ -54,13 +56,13 @@ DiagRequest::~DiagRequest(){
  deferBackgroundNetwork();
 }
 void DiagRequest::stage(DiagStage stage){note(stage,code_);}
-void DiagRequest::http(int code){code_=code;note(DS_HTTP,code);}
+void DiagRequest::http(int code){code_=code;if(code>0)answerAt=millis();note(DS_HTTP,code);}
 static void printEvent(Print& out,const Event& e){
  char op[20],stage[24];strncpy_P(op,ops[e.op],sizeof(op));strncpy_P(stage,stages[e.stage],sizeof(stage));
  char b[160];snprintf(b,sizeof(b),"%lu ms | %s | %s | HTTP %d | Heap %lu B | Block %lu B | Wert %lu\n",(unsigned long)e.at,op,stage,e.code,(unsigned long)e.heap,(unsigned long)e.block,(unsigned long)e.value);out.print(b);
 }
 void diagPrint(Print& out){
- out.print(F(FW_NAME " v" FW_VERSION " Diagnose\nWert: bei OK/Fehler Dauer in ms; bei Pause Wartezeit in ms. Zeit: seit jeweiligem Start.\nHTTP -1: Verbindung fehlgeschlagen; -11: Antwort-Timeout; 429: Anbieterlimit.\nRadar.Position: erfolgreiche Abrufe als eine Zeile mit dem kleinsten Heap waehrend des Abrufs.\nleer: Anbieter kennt keine Daten zum Flugzeug. uebersprungen (Wert): 1 Budget, 2 Pause, 3 Mindestintervall, 4 Speicher.\nReset: "));out.println(resetReason);out.print(F("Reset-Info: "));out.println(resetInfo);
+ out.print(F(FW_NAME " v" FW_VERSION " Diagnose\nWert: bei OK/Fehler Dauer in ms; bei Pause Wartezeit in ms. Zeit: seit jeweiligem Start.\nHTTP -1: Verbindung fehlgeschlagen; -11: Antwort-Timeout; 429: Anbieterlimit.\nRadar.Position: erfolgreiche Abrufe als eine Zeile mit dem kleinsten Heap waehrend des Abrufs.\nleer: Anbieter kennt keine Daten zum Flugzeug. uebersprungen (Wert): 1 Kontingent, 2 Pause, 4 Speicher. verworfen: Route passt nicht (Wert = Entfernung in km).\nReset: "));out.println(resetReason);out.print(F("Reset-Info: "));out.println(resetInfo);
  if(previousValid){out.print(F("Letzter RTC-Marker des vorherigen Starts (Hinweis, kein Ursachenbeweis):\n"));Event e={previous.at,previous.heap,previous.block,previous.value,(int16_t)previous.code,(uint8_t)previous.op,(uint8_t)previous.stage};printEvent(out,e);}else out.println(F("Kein gueltiger vorheriger RTC-Marker. Stromverlust/OTA kann ihn loeschen."));
  if(hasLastError){out.println(F("Letzter Fehler dieses Starts (separat behalten):"));printEvent(out,lastError);if(lastErrorLookup[0])out.println(lastErrorLookup);}
  out.println(F("Letzte 24 Ereignisse dieses Starts:"));for(uint8_t i=0;i<count;i++)printEvent(out,events[(next+24-count+i)%24]);

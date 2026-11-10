@@ -31,6 +31,7 @@ pre=r'''
 #include "RadarMotion.h"
 #include "RadarFilter.h"
 #include "MilitaryOperator.h"
+#include "AirlineName.h"
 #define PSTR(x) (x)
 #define F(x) (x)
 #define FPSTR(x) (x)
@@ -211,6 +212,11 @@ int main(){
  strcpy(plane.callsign,"RCHX12");assert(planeOperatorText(plane)=="Air Mobility Command");
  cfg.planeMarkMilitary=false;strcpy(plane.callsign,"RCH5060");clearDraws();drawPlane(false);for(auto d:draws)assert(d.text!="MIL");
  cfg.planeOperator=0;plane.military=false;cfg.planeMarkMilitary=true;
+ // Long operator names: two parts at a word boundary in the 3 s rhythm (AirlineName.h).
+ clockMs=290000;clearDraws();drawPlane(false);{bool a=false;for(auto d:draws)if(d.text=="Air Mobility"&&d.y==80)a=true;assert(a);}
+ clockMs=293000;clearDraws();drawPlane(false);{bool b=false;for(auto d:draws)if(d.text=="Command"&&d.y==80)b=true;assert(b);}
+ strcpy(plane.airline,"KLM Royal Dutch Airlines");clockMs=296000;clearDraws();drawPlane(false);{bool k=false;for(auto d:draws)if(d.text=="KLM Royal Dutch")k=true;assert(k);}
+ strcpy(plane.airline,"Turkish Airlines");clockMs=296000;clearDraws();drawPlane(false);
  // Speed alternates with the registration; without registration it stays.
  plane.speedKnown=true;plane.speedKt=467;cfg.planeSpeed=1;clockMs=300000;clearDraws();drawPlane();
  clockMs=303000;clearDraws();drawPlane(false);assert(draws.size()==1&&draws[0].text=="865 km/h"&&rects[0].y==161);
@@ -247,6 +253,9 @@ int main(){
  plane.onGround=true;assert(planeAltitude(plane)=="GND");plane.onGround=false;plane.altitudeKnown=false;assert(planeAltitude(plane)=="N/A");plane.altitudeKnown=true;plane.altitudeFt=0;assert(planeAltitude(plane)=="0 m");
  strcpy(plane.typeName,"Reims-Cessna F172N Skyhawk");strcpy(plane.typeCode,"C172");assert(compactType(plane)=="Cessna 172");
  strcpy(plane.typeCode,"ZZ72");assert(compactType(plane)=="Cessna F172N");
+ strcpy(plane.typeName,"Northrop Grumman E-2D Advanced Hawkeye");strcpy(plane.typeCode,"ZZ73");assert(compactType(plane)=="Northrop E-2D");
+ strcpy(plane.typeName,"Lockheed Martin F-16C Fighting Falcon");assert(compactType(plane)=="Lockheed F-16C");
+ strcpy(plane.typeCode,"F5");assert(compactType(plane)=="Northrop F-5");strcpy(plane.typeName,"Reims-Cessna F172N Skyhawk");strcpy(plane.typeCode,"ZZ72");
  strcpy(plane.typeName,"A very long unrecognized manufacturer and model");assert(compactType(plane)=="ZZ72");
  // Weather: an identical refresh draws nothing; changed temperature restores its unit.
  cfg.weatherCity="Dresden";weather.valid=true;weather.code=2;weather.isDay=false;weather.currentC=15;weather.highC=20;weather.lowC=8;weather.rainPct=10;

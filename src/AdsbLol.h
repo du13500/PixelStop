@@ -10,11 +10,19 @@
 void adsbLolSetKey(const String& key);
 bool adsbLolHasKey();
 
-// Daily request budget without a key (see RadarBudget.h). Every prepared
-// request counts, including failed ones.
+// Request quota (AdsbQuota.h): every prepared request counts, including
+// failed ones. Counters survive restarts (RTC memory) and power loss (file).
+void adsbLolQuotaBegin();                 // after LittleFS.begin()
+void adsbLolQuotaSave(bool force = false); // call regularly; writes at most every 10 min
 uint16_t adsbLolRequestsToday();
+// Smallest radar interval that keeps every window below its limit.
 uint32_t adsbLolBudgetIntervalMs(float visibleShare);
-bool adsbLolBudgetLow();
+// Time until the next request fits the quota, and the larger of that and a
+// provider pause (Retry-After). Every adsb.lol request waits for it.
+uint32_t adsbLolQuotaWaitMs();
+uint32_t adsbLolWaitMs();
+// Used and planned requests of a window (Q_HOUR ... Q_MONTH) for the status.
+void adsbLolQuotaUsage(uint8_t window, uint16_t& used, uint16_t& limit);
 
 // Call after http.begin(): HTTP/1.1, optional x-api-key, collected headers.
 void adsbLolPrepare(HTTPClient& http, const char* userAgent);

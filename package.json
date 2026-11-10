@@ -1,6 +1,6 @@
 {
   "name": "pixelstop-checks",
-  "version": "0.5.1-dev",
+  "version": "0.5.4-dev",
   "private": true,
   "scripts": {
     "test:webui": "node tests/webui.cjs"

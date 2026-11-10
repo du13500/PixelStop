@@ -5,8 +5,8 @@ EXACT: whole text nodes, attribute values and JavaScript messages.
 PREFIX: messages that start with a fixed German part followed by data.
 LINES: label prefixes in the multi-line status box.
 
-tools/check.py verifies that every German text in the page has an entry, and
-src/webui_en.h is generated from this file:  python3 tools/webui_en.py
+tools/check.py verifies that every German text in the page has an entry;
+tools/webui_build.py packs them into src/webui_html.h.
 """
 from pathlib import Path
 import json
@@ -89,8 +89,6 @@ EXACT = {
  "adsb.lol lehnt Anfragen ohne Key ab. Mit einem kostenlosen Key geht es weiter.":
    "adsb.lol rejects requests without a key. A free key gets it working again.",
  "adsb.lol API-Key": "adsb.lol API key", "optional": "optional",
- "Ohne Schlüssel erlaubt adsb.lol nur eine begrenzte Zahl von Anfragen pro Tag und Internetanschluss; für den Dauerbetrieb ohne Schlüssel 3 min wählen. „-“ eintragen und speichern entfernt einen gespeicherten Schlüssel.":
-   "Without a key adsb.lol only allows a limited number of requests per day and internet connection; for continuous use without a key choose 3 min. Enter “-” and save to remove a stored key.",
  "adsb.lol kann Abfragen je nach Serverauslastung vorübergehend begrenzen. Während einer Anbieterpause bleibt das zuletzt empfangene Flugzeug stehen. Nach einer Anbieterbegrenzung verlängert sich das Aktualisierungsintervall automatisch. Nach 10 Minuten ohne erneute Begrenzung gilt wieder das ausgewählte Intervall.":
    "adsb.lol may temporarily limit requests depending on server load. During a provider pause the last received aircraft stays on screen. After a limit the refresh interval is extended automatically; after 10 minutes without another limit the selected interval applies again.",
  # Tracker
@@ -159,6 +157,26 @@ EXACT = {
  "Wird gespeichert…": "Saving…", "suche Ort…": "searching place…", "suche WLAN-Netze…": "scanning Wi-Fi…",
  "✓ Einstellungen gespeichert": "✓ Settings saved",
  "Countdown 1": "Countdown 1", "Countdown 2": "Countdown 2", "Countdown 3": "Countdown 3", "Countdown 4": "Countdown 4",
+ # v0.5.4
+ "Ein kostenloser Schlüssel erlaubt 150 Anfragen pro Stunde, 500 pro Tag, 2.000 pro Woche und 5.000 pro Monat; ohne Schlüssel gilt eine ähnliche Tagesgrenze je Internetanschluss. Wiederholtes Überschreiten kann den Schlüssel kosten – PixelStop hält deshalb einen Sicherheitsabstand ein. „-“ eintragen und speichern entfernt einen gespeicherten Schlüssel.":
+   "A free key allows 150 requests per hour, 500 per day, 2,000 per week and 5,000 per month; without a key a similar daily limit applies per internet connection. Exceeding the limits repeatedly can cost the key – PixelStop therefore keeps a safety margin. Enter “-” and save to remove a stored key.",
+ "Die Aktualisierung ist ein Wunschwert. PixelStop teilt die Anfragen so ein, dass die Grenzen von adsb.lol (pro Stunde, Tag, Woche und Monat) nie überschritten werden, und fragt nur ab, während das Radar angezeigt wird. Das tatsächliche Intervall steht unter System → Status.":
+   "The refresh is a target value. PixelStop spreads its requests so that the adsb.lol limits (per hour, day, week and month) are never exceeded, and only asks while the radar is shown. The actual interval is listed under System → Status.",
+ "Rettungsmodus": "Rescue mode",
+ "PixelStop ist mehrmals kurz hintereinander abgestürzt und ruft deshalb keine Daten ab. Hier kann eine andere Firmware eingespielt werden (System → Firmware-Update). Ein normaler Neustart beendet den Rettungsmodus.":
+   "PixelStop crashed several times in a row and therefore does not request any data. Another firmware can be installed here (System → Firmware update). A normal restart ends rescue mode.",
+ "Neuer Standort – Anzeigename behalten?": "New location – keep the display name?", "Leeren": "Clear", "Behalten": "Keep",
+ "Nur Kleinbuchstaben, Ziffern und Bindestrich (1–32 Zeichen), z. B. pixelstop. Erreichbar dann als pixelstop.local.":
+   "Only lowercase letters, digits and hyphens (1–32 characters), e.g. pixelstop. Then reachable as pixelstop.local.",
+ "Ungültiger Hostname: nur a–z, 0–9 und Bindestrich, 1–32 Zeichen.": "Invalid hostname: only a–z, 0–9 and hyphen, 1–32 characters.",
+ "Anfrage von fremder Seite abgelehnt.": "Request from a foreign page rejected.",
+ # Status values sent by the firmware
+ "keine": "none", "nicht verfügbar": "not available", "nicht geprüft": "not checked", "positionsgeprüft": "position checked",
+ "verworfen: Position/Alter": "rejected: position/age", "Daten veraltet": "data outdated", "Abrufpause: Anbieter": "provider pause",
+ "Abrufpause: Rate-Limit": "rate-limit pause", "Abrufpause: Kontingent": "quota pause", "kein WLAN": "no Wi-Fi", "übersprungen: Heap": "skipped: memory",
+ "Verbindung fehlgeschlagen": "connection failed", "HTTP-Fehler": "HTTP error", "Zugriff abgelehnt": "access denied",
+ "JSON-Fehler": "JSON error", "JSON-Speicher knapp": "JSON memory low", "Antwortformat-Fehler": "response format error",
+ "Positionsdaten fehlen": "position data missing", "keine Flugzeuge": "no aircraft", "ok": "ok", "Rettungsmodus aktiv": "rescue mode active",
 }
 
 PREFIX = {
@@ -174,8 +192,9 @@ FRAGMENTS = {
 
 LINES = {
  "Netz: ": "Network: ", "Freier Heap: ": "Free heap: ", " B größter Block)": " B largest block)", "Flugradar: ": "Radar: ",
- "Mindestintervall": "minimum interval", "Radar-Route: ": "Radar route: ", "adsb.lol heute: ": "adsb.lol today: ",
- " Anfragen": " requests", " · mit Schlüssel": " · with key", " von 450 · Tagesbudget-Intervall ": " of 450 · daily budget interval ",
+ "Mindestintervall": "minimum interval", "Radar-Route: ": "Radar route: ",
+ " · mit Schlüssel": " · with key", " · ohne Schlüssel": " · without key", "WLAN-Neuverbindungen: ": "Wi-Fi reconnects: ",
+ "Radar-Intervall: ": "Radar interval: ", "adsb.lol: Stunde ": "adsb.lol: hour ", " · Tag ": " · day ", " · Woche ": " · week ", " · Monat ": " · month ",
  "Tracker: ": "Tracker: ", "Aktuelles Flugzeug: ": "Current aircraft: ", " Flugzeuge geprüft": " aircraft checked",
 }
 
@@ -184,10 +203,6 @@ def js():
     return json.dumps(data, ensure_ascii=False, separators=(',', ':'))
 
 if __name__ == '__main__':
-    root = Path(__file__).resolve().parents[1]
-    out = root / 'src/webui_en.h'
-    body = js()
-    assert ')EN"' not in body
-    out.write_text('// Generated by tools/webui_en.py. English texts for the web interface.\n#pragma once\n'
-                   'static const char WEBUI_EN[] PROGMEM = R"EN(' + body + ')EN";\n')
-    print(out, len(body.encode()), 'bytes')
+    # The English texts are packed together with the page.
+    import runpy
+    runpy.run_path(str(Path(__file__).resolve().parent / 'webui_build.py'), run_name='__main__')

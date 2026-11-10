@@ -6,9 +6,9 @@
 Gekauft als kleiner WLAN-Würfel mit eher bescheidener Werksfirmware – und von Anfang an mit dem Plan, etwas Eigenes daraus zu machen.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.3.1--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.4--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
-![Hardwaretest](https://img.shields.io/badge/hardwaretest-v0.5.3%20offen-yellow)
+![Hardwaretest](https://img.shields.io/badge/hardwaretest-v0.5.4%20offen-yellow)
 ![Hobbyprojekt](https://img.shields.io/badge/hobbyprojekt-nicht%20kommerziell-lightgrey)
 ![Lizenz](https://img.shields.io/badge/lizenz-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
@@ -59,18 +59,20 @@ Dazu kommen Nachtmodus, Helligkeit ab 1 %, Ortssuche mit Karte, griechische und 
 
 </details>
 
-## Entwicklungsstand: v0.5.3.1-dev
+## Entwicklungsstand: v0.5.4-dev
 
 | Bereich | Stand |
 | --- | --- |
 | Abfahrten (VVO), Wetter, Uhr, Countdowns | ✅ im Alltag stabil |
 | Flugradar über HTTP/1.1, Pausen bei abgelehnten Anfragen | ✅ auf Hardware bestätigt (v0.4.14.7) |
-| Radar nur bei sichtbarer Ansicht, Tagesbudget ohne Schlüssel | ✅ läuft auf Hardware (v0.4.14.8), Langzeitbeobachtung läuft |
+| Radar nur bei sichtbarer Ansicht | ✅ läuft auf Hardware (v0.4.14.8) |
+| Kontingent-Wächter für adsb.lol (30 s bis Monat), Zähler über Neustarts | ⏳ Hardwaretest offen (v0.5.4) |
 | Hintergrundbeleuchtung bei 1 % ohne Aufblitzen | ⚠️ gelegentliches Aufblitzen, Test mit Sigma-Delta läuft (v0.5.3) |
 | Sprachumschaltung Deutsch/Englisch, abgekürzte Fahrtziele | ✅ auf Hardware bestätigt (v0.5.0) |
 | 3-Tage-Vorhersage, aufgeräumtes Webinterface, „Jetzt anzeigen“, Ort der Haltestelle | ✅ auf Hardware bestätigt (v0.5.1) |
 | Radar: Entfernung und Höhe zwischen den Abrufen weitergerechnet, Statuspunkt | ✅ auf Hardware bestätigt (v0.5.2) |
-| Radar-Optionen und Filter, 232 Flugzeugtypen, Menü, Vorhersage als Ansicht, Dimmverfahren Sigma-Delta | ⏳ Hardwaretest offen |
+| Radar-Optionen und Filter, Flugzeugtypen, Vorhersage als Ansicht | ✅ läuft auf Hardware (v0.5.3) |
+| Schutz gegen fremde Webseiten, Rettungsmodus, Wiederverbinden nach Stromausfall, Netzwerk-Wächter, komprimiertes Webinterface | ⏳ Hardwaretest offen (v0.5.4) |
 | Flug-Tracker mit eigenem aviationstack-Schlüssel | ⏳ nicht vollständig auf Hardware getestet |
 
 Alle Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md), offene Prüfungen in [`ROADMAP.md`](ROADMAP.md).
@@ -120,16 +122,20 @@ Die Screenshots dieser README erzeugt `python3 tools/render_screens.py docs/scre
 | --- | --- | --- |
 | **VVO** | Abfahrten | Region Dresden/Oberelbe |
 | **Open-Meteo** | Wetter | kostenlose API für nichtkommerzielle Nutzung |
-| **adsb.lol** | Radarpositionen, Routen | Daten unter ODbL; ohne Schlüssel begrenzte Anfragen, kostenloser Schlüssel empfohlen (siehe unten) |
+| **adsb.lol** | Radarpositionen, Routen | Daten unter ODbL; feste Kontingente pro Stunde, Tag, Woche und Monat (siehe unten) |
 | **adsbdb** | Airline, Flugzeugtyp, Routen | eigene Weiterverwendungsbedingungen für Routen |
 | **aviationstack** | Flug-Tracker | eigener Schlüssel, Tarifgrenzen |
 | **OpenStreetMap / Nominatim** | Karte, Ortsnamen | nur manuelle Suche, über den Browser |
+
+Die Datenquellen sind nur für nicht-kommerzielle Nutzung gedacht; das gilt auch für PixelStop als Hobbyprojekt. Der ESP8266 prüft bei HTTPS-Verbindungen keine Zertifikate (zu wenig Speicher für Zertifikatsketten). Die Verbindungen sind verschlüsselt, aber jemand mit Zugriff auf das eigene Netz könnte sich theoretisch dazwischenschalten und z. B. den adsb.lol-Schlüssel mitlesen.
 
 Radar-Routen stammen aus Zusatzdatenbanken und können trotz Positionsprüfung falsch oder unvollständig sein; unpassende Routen werden nicht durch geratene Flughäfen ersetzt. `N/A` steht für fehlende Daten, `GND` für ein ausdrücklich gemeldetes Flugzeug am Boden. Höhen sind Flughöhen, keine Höhe über Grund. Weitere Hinweise in [`THIRD_PARTY_SERVICES.md`](THIRD_PARTY_SERVICES.md).
 
 ### Schlüssel für adsb.lol
 
 adsb.lol vergibt kostenlose Schlüssel; mit Schlüssel hat jedes Gerät sein eigenes Kontingent. Den Schlüssel im Reiter **Flugradar** eintragen, dort stehen auch die Links.
+
+Ein kostenloser Schlüssel erlaubt **5 Anfragen pro 30 s, 20 pro Minute, 150 pro Stunde, 500 pro Tag, 2.000 pro Woche und 5.000 pro Monat** (Fenster in UTC: volle Stunde, Mitternacht, Montag, Monatsanfang). Wiederholtes Überschreiten kann den Schlüssel kosten. PixelStop zählt deshalb jede Anfrage (auch über Neustarts und Stromausfälle hinweg), plant mit Sicherheitsabstand und verteilt die Anfragen so, dass keine Grenze erreicht wird. Gefragt wird nur, während das Radar angezeigt wird. Bei Dauerbetrieb nur mit Radar bestimmt das Monatslimit den Takt (etwa alle 9 Minuten); in einer Rotation mit anderen Ansichten entsprechend öfter. Dazwischen werden Entfernung und Höhe weitergerechnet. Verbrauch und tatsächliches Intervall stehen unter **System → Status**.
 
 | Weg | Für wen |
 | --- | --- |
@@ -180,11 +186,18 @@ Zur Veranschaulichung ein Blick aus dem CIC der Galactica:
 - **Mehr Regionen:** Abfahrten nicht nur vom VVO, sondern auswählbar je Verkehrsverbund bzw. deutschlandweit (geplant für v0.6.0).
 - **Eigene Ersetzungen für Fahrtziele** im Webinterface.
 - Englische Diagnosetexte.
-- **Ausweichquellen fürs Radar** (airplanes.live, adsb.fi), wenn adsb.lol pausiert oder das Kontingent aufgebraucht ist.
+- **Ausweichquellen fürs Radar** (airplanes.live, adsb.fi), wenn das adsb.lol-Kontingent aufgebraucht ist (geplant für v0.5.5).
 
 ## Diagnose und Fehlerberichte
 
-Unter **System → Diagnose** zeigt **Log laden** die letzten Ereignisse. Nach einem Aussetzer den Log möglichst direkt laden; nach einem Neustart bleiben nur Reset-Grund und letzter Marker erhalten. Hilfreich für Fehlerberichte sind Firmwareversion, betroffene Ansicht, Schritte zum Nachstellen und ein Foto. Bitte **keine WLAN-Passwörter oder API-Schlüssel** veröffentlichen.
+Unter **System → Diagnose** zeigt **Log laden** die letzten Ereignisse. Nach einem Aussetzer den Log möglichst direkt laden; nach einem Neustart bleiben nur Reset-Grund und letzter Marker erhalten. Ist das Webinterface nicht erreichbar, hilft oft direkt die Adresse `http://<IP>/api/log`.
+
+**Selbsthilfe der Firmware:**
+
+- **Stromausfall:** Startet der Router langsamer als der Würfel, wartet dieser im Setup-Hotspot und versucht das gespeicherte WLAN jede Minute erneut – aber nicht, solange ein Gerät mit dem Hotspot verbunden ist.
+- **Netzwerk-Hänger:** 10 Minuten ohne eine einzige Antwort trotz Anfragen führen zu einer neuen WLAN-Verbindung, 5 Minuten später zu einem Neustart (der Marker bleibt erhalten).
+- **Rettungsmodus:** Nach drei Abstürzen kurz hintereinander startet PixelStop ohne Abrufe; Webinterface und Firmware-Update funktionieren, auf dem Display steht „RETTUNGSMODUS“. Ein normaler Neustart beendet ihn.
+- **Fremde Webseiten** können weder Einstellungen ändern noch eine Firmware einspielen; Werkzeuge wie `curl` im Heimnetz funktionieren weiterhin. Hilfreich für Fehlerberichte sind Firmwareversion, betroffene Ansicht, Schritte zum Nachstellen und ein Foto. Bitte **keine WLAN-Passwörter oder API-Schlüssel** veröffentlichen.
 
 ## Credits und Lizenz
 

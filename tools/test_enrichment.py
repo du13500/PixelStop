@@ -21,6 +21,7 @@ static RoutePoint g_position={51,13};
 static Enrichment g_cache[3]={};static uint8_t g_cacheNext=0;static uint32_t g_lastEnrichmentMs=0;
 static const char *g_routeStatus="",*g_routeSource="",*g_stage="";
 enum {SERVICE_ADSB_LOL,SERVICE_ADSB_DB};uint32_t waits[2]={};uint32_t serviceWaitMs(int i){return waits[i];}
+static uint32_t quotaWait=0,minInterval=0,g_lastPollMs=0;uint32_t adsbLolWaitMs(){return waits[SERVICE_ADSB_LOL]>quotaWait?waits[SERVICE_ADSB_LOL]:quotaWait;}uint32_t serviceMinIntervalMs(int){return minInterval;}
 static int calls[3]={};
 static bool pauseRoute=false;
 static bool lookupRouteAdsbLol(const FlightSnapshot&,RoutePoint,Enrichment&){calls[0]++;if(pauseRoute)waits[SERVICE_ADSB_LOL]=30000;return false;}
@@ -31,7 +32,7 @@ struct=source[source.index('struct Enrichment {'):source.index('\nstatic Enrichm
 # include actual route policy plus only minimal Arduino shim for route-header types
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp);(p/'Arduino.h').write_text('#pragma once\n#include <cstdint>\n#include <cstring>\n#include <cctype>\n#include <algorithm>\n#define strlcpy testStrlcpy\ninline size_t testStrlcpy(char*d,const char*s,size_t n){size_t l=strlen(s);if(n){memcpy(d,s,std::min(l,n-1));d[std::min(l,n-1)]=0;}return l;}\n')
- text='#include "Arduino.h"\n#include "RoutePolicy.h"\n#include "AircraftPolicy.h"\n#include "FlightRoute.h"\n'+struct+'\n'+code+'\n'+'\n'.join(fn(n) for n in ['enrichFlight','currentEnrichment','flightEnrichmentDue','flightEnrich'])+r'''
+ text='#include "Arduino.h"\n#include "RoutePolicy.h"\n#include "AirlineName.h"\n#include "AircraftPolicy.h"\n#include "FlightRoute.h"\n'+struct+'\n'+code+'\n'+'\n'.join(fn(n) for n in ['enrichFlight','currentEnrichment','routeSlotFree','flightEnrichmentDue','flightEnrich'])+r'''
 int main(){
  assert(flightEnrichmentDue());flightEnrich();assert(calls[0]==1&&calls[1]==0&&calls[2]==0);
  // Rendering/position updates only apply cached fields, without provider requests.
@@ -44,6 +45,10 @@ int main(){
  flightEnrich();assert(calls[2]==1);assert(!flightEnrichmentDue());now=120999;assert(!flightEnrichmentDue());now=121000;assert(flightEnrichmentDue());
  g_f.error=true;assert(!flightEnrichmentDue());g_f.error=false;
  g_f.callsign[0]='A';now=2000;assert(!flightEnrichmentDue());now=61000;assert(flightEnrichmentDue());
+ // The route lookup needs a free quota slot and keeps the minimum distance after a 429.
+ g_cache[0]={};g_cache[1]={};g_cache[2]={};g_lastEnrichmentMs=0;
+ quotaWait=5000;assert(!flightEnrichmentDue());quotaWait=0;
+ minInterval=20000;g_lastPollMs=now-19999;assert(!flightEnrichmentDue());g_lastPollMs=now-20000;assert(flightEnrichmentDue());minInterval=0;
  g_position.lat=NAN;assert(!flightEnrichmentDue());
  // A route request can impose the shared provider pause as well.
  g_position={51,13};g_f.error=false;g_cache[0]={};g_cache[1]={};g_cache[2]={};g_lastEnrichmentMs=0;pauseRoute=true;

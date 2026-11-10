@@ -1,11 +1,11 @@
 const {webkit,chromium}=require('playwright');
 const fs=require('fs');const path=require('path');const assert=require('assert');
-const source=fs.readFileSync(path.join(__dirname,'../src/main.cpp'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../src/webui.html'),'utf8');
 const version=(fs.readFileSync(path.join(__dirname,'../src/Version.h'),'utf8').match(/FW_VERSION "([^"]+)"/)||[])[1];
-const html=[...source.matchAll(/R"HTML\(([\s\S]*?)\)HTML"/g)].map(m=>m[1]).join('').replace(/(<span class="chip">v)(<\/span>)/,`$1${version}$2`);
+const html=source.replace('@FW_VERSION@',version);
 const fixture={ssid:'Testnetz',hostname:'pixelstop',timeZone:'Europe/Berlin',stopName:'Pohlandplatz',stopId:'fixture',weatherCity:'Dresden',weatherLat:51,weatherLon:13,planePlace:'Dresden',planeLat:51,planeLon:13,nightStart:1320,nightEnd:420,nightEnabled:true,brightness:70,nightBrightness:12,rotationMask:1,rotationSec:[30,20,20,15,20,20,20,20,20],departureCount:4,departurePoll:30,weatherPoll:600,planeRadiusKm:25,planePoll:10,planePlaceToggleSec:10,trackerStatusPollMin:15,vvoMotMask:127,countdowns:[]};
-// Pages are reached through the menu button (drawer), like a user would.
-async function go(page,id){await page.locator('#menuBtn').click();await page.locator(`[data-p="${id}"]`).click();assert(await page.locator('#mainMenu').evaluate(e=>e.classList.contains('hidden')),'Menu closes after choosing a page');}
+// Pages are reached through the tab bar under the title, like a user would.
+async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();assert(await page.locator(`#${id}`).evaluate(e=>e.classList.contains('on')),'Tab shows its page');}
 (async()=>{
  const engine=process.env.SMALLTV_BROWSER==='chromium'?chromium:webkit;
  const browser=await engine.launch({headless:true,...(process.env.SMALLTV_WEBKIT_EXECUTABLE?{executablePath:process.env.SMALLTV_WEBKIT_EXECUTABLE}:{})});
@@ -44,7 +44,23 @@ async function go(page,id){await page.locator('#menuBtn').click();await page.loc
    if(width<=560)assert(layout.b.top>=layout.a.bottom+5);
    else {assert(layout.b.left-layout.a.right>=9);assert(Math.abs(layout.a.width-layout.b.width)<1);}
    assert(!layout.overflow,`Page overflow at ${width}`);
+   // Tabs wrap instead of scrolling; every row is centred, at most two rows on a phone.
+   const tabs=await page.evaluate(()=>{const nav=document.querySelector('nav').getBoundingClientRect();const rows={};for(const b of document.querySelectorAll('nav .tab')){const r=b.getBoundingClientRect();const k=Math.round(r.top);(rows[k]=rows[k]||[]).push([r.left,r.right])}return {nav:[nav.left,nav.right],rows:Object.values(rows).map(r=>[Math.min(...r.map(x=>x[0])),Math.max(...r.map(x=>x[1]))]),scroll:document.querySelector('nav').scrollWidth>document.querySelector('nav').clientWidth}});
+   assert(!tabs.scroll,'Tab bar must not scroll');
+   assert(tabs.rows.length<=(width<380?3:2),`Too many tab rows at ${width}: ${tabs.rows.length}`);
+   for(const [l,r] of tabs.rows)assert(Math.abs((l-tabs.nav[0])-(tabs.nav[1]-r))<=2,`Tab row not centred at ${width}`);
+   assert.deepStrictEqual(await page.locator('#planePoll option').evaluateAll(o=>o.map(x=>x.value)),['10','15','30','60','180']);
    await go(page,'flugradar');
+   // Display name: hint only after a clear move of the location, "Leeren" empties the name.
+   await page.locator('#planeDisplayName').fill('ZUHAUSE');
+   await page.evaluate(()=>setMapPoint('plane',51.001,13.001));
+   assert(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden')),'Small moves keep the name silently');
+   await page.evaluate(()=>setMapPoint('plane',41.97,-87.9));
+   assert(!(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden'))),'Name hint after a clear move');
+   await page.locator('#planeNameHint [data-name="clear"]').click();
+   assert.strictEqual(await page.locator('#planeDisplayName').inputValue(),'');
+   assert(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden')));
+   await page.evaluate(()=>setMapPoint('plane',51,13));
    assert(await page.locator('#planePlaceToggleSec').isDisabled());
    await page.locator('#planeShowPlace').check();assert(await page.locator('#planePlaceToggleSec').isEnabled());
    await page.locator('#planePlaceToggleSec').selectOption('0');
@@ -159,6 +175,13 @@ async function go(page,id){await page.locator('#menuBtn').click();await page.loc
     await page.locator('#geoAdvanced summary').click();
     await page.locator('#geoProviderUrl').fill('https://geo.example.test/nominatim/');await page.locator('#geoProviderBtn').click();
     assert.strictEqual(await page.evaluate(()=>localStorage.getItem('smalltv.geoProvider')),'https://geo.example.test/nominatim/','Provider must be replaceable without firmware update');
+    // Wi-Fi names are shown as text (no markup) and keep blanks at the end.
+    await page.route('http://smalltv.test/api/wifi/scan',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({networks:[{ssid:'<img src=x onerror=alert(1)>',rssi:-50,open:false},{ssid:'Heim ',rssi:-60,open:true}]})}));
+    await page.locator('#wifiScanBtn').click();
+    await page.locator('#wifiResults .pickres').nth(1).waitFor();
+    assert.strictEqual(await page.locator('#wifiResults img').count(),0,'SSIDs must render as text');
+    await page.locator('#wifiResults .pickres').nth(1).click();
+    assert.strictEqual(await page.locator('#ssid').inputValue(),'Heim ','Trailing blank of an SSID must be kept');
     await page.route('http://smalltv.test/api/log',r=>r.fulfill({contentType:'text/plain',body:'Radar.Position | HTTP 429 | Heap 23000 B'}));
     await page.locator('#logBtn').click();
     await page.waitForFunction(()=>document.getElementById('diagnosticLog').textContent.includes('HTTP 429'));

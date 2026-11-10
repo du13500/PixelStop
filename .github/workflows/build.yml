@@ -49,7 +49,6 @@ jobs:
       - name: Quellen und Display prüfen
         run: |
           python3 tools/check.py
-          python3 tools/webui_en.py >/dev/null && git diff --exit-code src/webui_en.h
           python3 tools/test_radar.py
           python3 tools/test_motion.py
           python3 tools/test_policy.py
@@ -72,7 +71,7 @@ jobs:
       - name: PlatformIO installieren
         run: pip install platformio==6.1.19
 
-      - name: JSON- und Geo-Speicherschutz prüfen
+      - name: JSON-, Geo- und Netzwerk-Speicherschutz prüfen
         run: |
           pio pkg install -e smalltv_ultra
           python3 tools/test_network_json.py
@@ -80,6 +79,8 @@ jobs:
           python3 tools/test_airline_cache.py
           python3 tools/test_vvo_response.py
           python3 tools/test_geo_buffer.py
+          python3 tools/test_geo_transfer.py
+          python3 tools/test_network_guard.py
 
       - name: ESP8266-Firmware bauen
         run: |

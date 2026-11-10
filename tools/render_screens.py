@@ -233,6 +233,7 @@ MAIN = r'''
 #include "WeatherVisual.h"
 #include "AircraftLabel.h"
 #include "MilitaryOperator.h"
+#include "AirlineName.h"
 #include "RadarFilter.h"
 #include "DestinationFormat.h"
 static inline bool adsbLolAccessDenied(int c){return c==401||c==403||c==426;}

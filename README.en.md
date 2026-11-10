@@ -6,9 +6,9 @@
 Bought as a small Wi-Fi cube with a rather modest stock firmware – and from day one with the plan to turn it into something of my own.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.3.1--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.4--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
-![Hardware test](https://img.shields.io/badge/hardware%20test-v0.5.3%20pending-yellow)
+![Hardware test](https://img.shields.io/badge/hardware%20test-v0.5.4%20pending-yellow)
 ![Hobby project](https://img.shields.io/badge/hobby%20project-non--commercial-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
@@ -59,18 +59,20 @@ Plus night mode, brightness down to 1 %, place search with a map, Greek and Cyri
 
 </details>
 
-## Status: v0.5.3.1-dev
+## Status: v0.5.4-dev
 
 | Area | Status |
 | --- | --- |
 | Departures (VVO), weather, clock, countdowns | ✅ stable in daily use |
 | Flight radar over HTTP/1.1, pauses on rejected requests | ✅ confirmed on hardware (v0.4.14.7) |
-| Radar only while visible, daily budget without a key | ✅ running on hardware (v0.4.14.8), long-term observation ongoing |
+| Radar only while visible | ✅ running on hardware (v0.4.14.8) |
+| Quota guard for adsb.lol (30 s to month), counters across restarts | ⏳ hardware test pending (v0.5.4) |
 | Backlight at 1 % without flashes | ⚠️ occasional flashes, sigma-delta test running (v0.5.3) |
 | German/English language switch, abbreviated destinations | ✅ confirmed on hardware (v0.5.0) |
 | 3-day forecast, tidier web interface, “Show now”, town of the stop | ✅ confirmed on hardware (v0.5.1) |
 | Radar: distance and altitude continued between requests, status dot | ✅ confirmed on hardware (v0.5.2) |
-| Radar options and filters, 232 aircraft types, menu, forecast as a view, sigma-delta dimming | ⏳ hardware test pending |
+| Radar options and filters, aircraft types, forecast as a view | ✅ running on hardware (v0.5.3) |
+| Protection against foreign web pages, rescue mode, reconnect after power cuts, network watchdog, compressed web interface | ⏳ hardware test pending (v0.5.4) |
 | Flight tracker with your own aviationstack key | ⏳ not fully tested on hardware |
 
 All changes are listed in [`CHANGELOG.md`](CHANGELOG.md) (German), open checks in [`ROADMAP.md`](ROADMAP.md).
@@ -120,16 +122,20 @@ The screenshots in this README are produced from the real display code by `pytho
 | --- | --- | --- |
 | **VVO** | Departures | Dresden / Upper Elbe region |
 | **Open-Meteo** | Weather | free API for non-commercial use |
-| **adsb.lol** | Radar positions, routes | data under ODbL; limited requests without a key, a free key is recommended (see below) |
+| **adsb.lol** | Radar positions, routes | data under ODbL; fixed quotas per hour, day, week and month (see below) |
 | **adsbdb** | Airline, aircraft type, routes | separate reuse terms for route data |
 | **aviationstack** | Flight tracker | your own key, plan limits |
 | **OpenStreetMap / Nominatim** | Map, place names | manual search only, via the browser |
+
+The data sources are meant for non-commercial use only; this also applies to PixelStop as a hobby project. The ESP8266 does not verify certificates on HTTPS connections (not enough memory for certificate chains). The connections are encrypted, but someone with access to your own network could in theory sit in between and read, for example, the adsb.lol key.
 
 Radar routes come from additional databases and can be wrong or incomplete despite a position check; unsuitable routes are not replaced by guessed airports. `N/A` means missing data, `GND` an aircraft explicitly reported on the ground. Altitudes are flight altitudes, not height above ground. More in [`THIRD_PARTY_SERVICES.md`](THIRD_PARTY_SERVICES.md).
 
 ### Key for adsb.lol
 
 adsb.lol hands out free keys; with a key every device gets its own quota. Enter the key in the **Flight radar** tab, where the links are shown as well.
+
+A free key allows **5 requests per 30 s, 20 per minute, 150 per hour, 500 per day, 2,000 per week and 5,000 per month** (windows in UTC: full hour, midnight, Monday, first of the month). Exceeding them repeatedly can cost the key. PixelStop therefore counts every request (also across restarts and power cuts), plans with a safety margin and spreads the requests so that no limit is reached. It only asks while the radar is shown. With the radar as the only view, the monthly limit sets the pace (about every 9 minutes); in a rotation with other views correspondingly more often. Distance and altitude are continued in between. Usage and the actual interval are listed under **System → Status**.
 
 | Way | For whom |
 | --- | --- |
@@ -180,11 +186,18 @@ For illustration, a view from Galactica’s CIC:
 - **More regions:** departures not only from VVO but selectable per transport association or Germany-wide (planned for v0.6.0).
 - **Custom destination replacements** in the web interface.
 - English diagnostics texts.
-- **Fallback sources for the radar** (airplanes.live, adsb.fi) when adsb.lol pauses or the quota is used up.
+- **Fallback sources for the radar** (airplanes.live, adsb.fi) when the adsb.lol quota is used up (planned for v0.5.5).
 
 ## Diagnostics and bug reports
 
-Under **System → Diagnostics**, **Load log** shows the latest events. After a glitch, load the log right away; after a restart only the reset reason and the last marker remain. Helpful for bug reports: firmware version, affected view, steps to reproduce and a photo. Please **never publish Wi-Fi passwords or API keys**.
+Under **System → Diagnostics**, **Load log** shows the latest events. After a glitch, load the log right away; after a restart only the reset reason and the last marker remain. If the web interface does not respond, the address `http://<IP>/api/log` often still works.
+
+**Self-help of the firmware:**
+
+- **Power cut:** if the router starts more slowly than the cube, the cube waits in the setup hotspot and retries the stored Wi-Fi every minute – but not while a device is connected to the hotspot.
+- **Network hang:** 10 minutes without a single answer despite requests lead to a new Wi-Fi connection, 5 minutes later to a restart (the marker is kept).
+- **Rescue mode:** after three crashes in quick succession PixelStop starts without requests; the web interface and firmware update work, the display shows “RESCUE MODE”. A normal restart ends it.
+- **Foreign web pages** can neither change settings nor install firmware; tools like `curl` on the home network keep working. Helpful for bug reports: firmware version, affected view, steps to reproduce and a photo. Please **never publish Wi-Fi passwords or API keys**.
 
 ## Credits and license
 
