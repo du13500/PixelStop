@@ -11,6 +11,16 @@
 #include <strings.h>
 #include <ctype.h>
 #include <stddef.h>
+#ifdef ARDUINO
+#include <pgmspace.h>
+#else
+#ifndef PROGMEM
+#define PROGMEM
+#endif
+#ifndef memcpy_P
+#define memcpy_P memcpy
+#endif
+#endif
 
 // Host header without port, lower case; false if it does not fit.
 inline bool webGuardHostName(const char* host, char* out, size_t cap) {
@@ -34,9 +44,12 @@ inline bool webGuardHostAllowed(const char* host, const char* ip, const char* ho
   if (!hl || strncasecmp(h, hostname, hl)) return false;
   const char* rest = h + hl;
   if (!*rest) return true;
-  static const char* const suffixes[] = {".local", ".fritz.box", ".lan", ".home", ".home.arpa",
-                                         ".localdomain", ".box", ".internal", ".intranet"};
-  for (const char* s : suffixes) if (!strcmp(rest, s)) return true;
+  static const char suffixes[][13] PROGMEM = {".local", ".fritz.box", ".lan", ".home", ".home.arpa",
+                                              ".localdomain", ".box", ".internal", ".intranet"};
+  for (size_t i = 0; i < sizeof(suffixes) / sizeof(suffixes[0]); i++) {
+    char sfx[13]; memcpy_P(sfx, suffixes[i], sizeof(sfx));
+    if (!strcmp(rest, sfx)) return true;
+  }
   return false;
 }
 

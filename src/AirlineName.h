@@ -65,7 +65,7 @@ inline size_t airlineGlyphs(const char* s) {
 
 // Removes generic and legal endings while the name is longer than `limit`.
 inline void airlineShorten(const char* in, char* out, size_t cap, size_t limit) {
-  static const char* const endings[] = {
+  static const char endings[][16] PROGMEM = {
     " Inc.", " Inc", " Ltd.", " Ltd", " Limited", " LLC", " PLC", " plc", " S.A.", " SA", " S.p.A.", " AG",
     " GmbH", " Co.", " Corp.", " Corporation", " Company", " International", " Intl", " Airlines",
     " Air Lines", " Airways", " Airline", " Aviation"};
@@ -76,7 +76,8 @@ inline void airlineShorten(const char* in, char* out, size_t cap, size_t limit) 
     changed = false;
     size_t len = strlen(out);
     while (len && (out[len - 1] == ' ' || out[len - 1] == ',')) out[--len] = 0;
-    for (const char* e : endings) {
+    for (size_t k = 0; k < sizeof(endings) / sizeof(endings[0]); k++) {
+      char e[16]; memcpy_P(e, endings[k], sizeof(e));
       size_t el = strlen(e);
       if (len > el && !strcmp(out + len - el, e)) { out[len - el] = 0; changed = true; break; }
     }
