@@ -1,5 +1,11 @@
 # Änderungen
 
+## v0.5.4.1-dev
+
+- **WLAN wie in v0.5.3.1:** Das feste Setzen von PHY-Modus und Sendeleistung vor jeder Verbindung (v0.5.4) ist zurückgenommen. Damit fand der Würfel das WLAN beim Start oft nicht innerhalb von 18 s, landete im Setup-Hotspot und startete nach rund 83 s neu; Abrufe dauerten zwei- bis dreimal so lange, das Webinterface reagierte zäh.
+- **Kein unnötiger Neustart beim Speichern:** Der Hostname wird beim Laden still kleingeschrieben; ein Unterschied nur in Groß-/Kleinschreibung löst keinen Neustart mehr aus. Vorher konnte das erste Speichern nach dem Update (z. B. ein Ortswechsel) einen Neustart auslösen.
+- **Hinweis zum Anzeigenamen** verschwindet, sobald das Feld leer ist.
+
 ## v0.5.4-dev
 
 **Flugradar und adsb.lol**
@@ -15,7 +21,7 @@
 **Netz, Sicherheit, Stabilität**
 - **Schutz gegen fremde Webseiten** ohne Passwort: Der Host muss den Würfel nennen (gegen DNS-Rebinding), Änderungen werden nur ohne fremden Origin angenommen (gegen CSRF). Gilt für alle POST-Anfragen, `/api/reboot` und ausdrücklich das **Firmware-Update**, das deshalb einen eigenen Handler hat. `curl` im Heimnetz funktioniert weiter.
 - **WLAN-Namen** im Suchergebnis werden als Text dargestellt (ein präparierter Netzname konnte bisher HTML einschleusen); Leerzeichen am Ende bleiben erhalten und werden in der Liste als „␣“ sichtbar.
-- **WLAN-Grundeinstellungen** (PHY-Modus, Sendeleistung) vor jeder Verbindung.
+- ~~WLAN-Grundeinstellungen (PHY-Modus, Sendeleistung) vor jeder Verbindung~~ – in v0.5.4.1 zurückgenommen.
 - **Nach Stromausfall:** Startet der Router langsamer, sucht der Setup-Hotspot jede Minute das gespeicherte WLAN – nicht, solange ein Gerät mit dem Hotspot verbunden ist – und startet bei Erfolg normal neu.
 - **Rettungsmodus:** Nach drei Abstürzen in Folge startet PixelStop ohne Abrufe; Webinterface und Firmware-Update laufen, auf dem Display steht „RETTUNGSMODUS“. Ein normaler Neustart beendet ihn.
 - **Netzwerk-Wächter:** 10 Minuten ohne eine einzige Antwort trotz Anfragen (oder ohne WLAN) führen zu einer neuen WLAN-Verbindung, 5 Minuten später zu einem Neustart mit erhaltenem RTC-Marker; nach solchen Neustarts verdoppelt sich die Wartezeit. WLAN-Abbrüche und Neuverbindungen stehen im Log, der Log endet mit dem aktuellen WLAN-Zustand.

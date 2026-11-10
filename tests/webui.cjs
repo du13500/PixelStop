@@ -57,6 +57,9 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
    assert(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden')),'Small moves keep the name silently');
    await page.evaluate(()=>setMapPoint('plane',41.97,-87.9));
    assert(!(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden'))),'Name hint after a clear move');
+   await page.locator('#planeDisplayName').fill('');
+   assert(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden')),'Hint disappears with an empty name');
+   await page.locator('#planeDisplayName').fill('ZUHAUSE');await page.evaluate(()=>checkNameHint('plane'));
    await page.locator('#planeNameHint [data-name="clear"]').click();
    assert.strictEqual(await page.locator('#planeDisplayName').inputValue(),'');
    assert(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden')));
