@@ -1,8 +1,10 @@
 # Testplan
 
-Stand: v0.5.3-dev (09.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: v0.5.3.1-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Hardwaretest v0.5.3-dev
+
+0. **v0.5.3.1:** Radar über mehrere Stunden ohne „JSON:NoMemory“ im Log; kleinster freier Speicher der Radar-Zeilen wieder um 5 KB.
 
 1. **Dimmverfahren:** Nachts bei 1–10 % unter *Anzeige → Dimmverfahren* zwischen Standard (PWM) und Sigma-Delta wechseln. Aufblitzen, Fiepen und saubere Helligkeitsstufen vergleichen; dabei auch Radar mit Abrufen und offenes Webinterface laufen lassen.
 2. **Webinterface:** Menü hinter ☰ öffnen und schließen (Tippen daneben, Escape), Seitenname unter dem Titel; Auge-Symbol nur beim Tippen, nach dem Speichern wieder verdeckt und leer.

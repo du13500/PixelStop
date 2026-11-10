@@ -1,5 +1,10 @@
 # Änderungen
 
+## v0.5.3.1-dev
+
+- **Radar: Speicher zurückgeholt.** v0.5.3 belegte 748 Byte mehr festen Arbeitsspeicher als v0.5.2; während einer TLS-Abfrage blieben dadurch zeitweise nur ~4,3 KB frei, und die Antwort ließ sich nicht mehr einlesen („JSON:NoMemory“, Radar ohne Daten). Die Militär-Tabelle liegt jetzt im Flash, ebenso einige kurze Anzeigetexte.
+- **Build-Prüfung:** `tools/check_ram.py` lässt den Build scheitern, wenn der feste RAM-Verbrauch über 51.600 Byte steigt.
+
 ## v0.5.3-dev
 
 - **Webinterface-Menü:** Die wischbare Reiterleiste ist ersetzt durch ein Menü hinter der Taste ☰ (ausklappend wie beim RavestickBoard). Unter dem Titel steht die aktuelle Seite.

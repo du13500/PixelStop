@@ -85,6 +85,7 @@ jobs:
         run: |
           set -o pipefail
           pio run -e smalltv_ultra 2>&1 | tee build.log
+          python3 tools/check_ram.py build.log
 
       - name: Ergebnis vorbereiten
         if: always()

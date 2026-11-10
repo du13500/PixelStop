@@ -6,7 +6,7 @@
 Gekauft als kleiner WLAN-Würfel mit eher bescheidener Werksfirmware – und von Anfang an mit dem Plan, etwas Eigenes daraus zu machen.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.3--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.3.1--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
 ![Hardwaretest](https://img.shields.io/badge/hardwaretest-v0.5.3%20offen-yellow)
 ![Hobbyprojekt](https://img.shields.io/badge/hobbyprojekt-nicht%20kommerziell-lightgrey)
@@ -59,7 +59,7 @@ Dazu kommen Nachtmodus, Helligkeit ab 1 %, Ortssuche mit Karte, griechische und 
 
 </details>
 
-## Entwicklungsstand: v0.5.3-dev
+## Entwicklungsstand: v0.5.3.1-dev
 
 | Bereich | Stand |
 | --- | --- |

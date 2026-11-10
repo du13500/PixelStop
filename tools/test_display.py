@@ -32,6 +32,7 @@ pre=r'''
 #include "RadarFilter.h"
 #include "MilitaryOperator.h"
 #define PSTR(x) (x)
+#define F(x) (x)
 #define FPSTR(x) (x)
 #define PGM_P const char*
 struct String:std::string {
