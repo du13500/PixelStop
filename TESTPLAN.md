@@ -29,14 +29,14 @@ Stand: v0.5.4-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert;
 
 ## Stand des letzten Builds
 
-v0.5.3.1-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
+v0.5.4-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
 
 | | belegt | von | Anteil |
 | --- | --- | --- | --- |
-| Statischer RAM | 51.360 Byte | 81.920 Byte | 62,7 % |
-| Flash | 765.599 Byte | 1.044.464 Byte | 73,3 % |
+| Statischer RAM | 51.328 Byte | 81.920 Byte | 62,7 % |
+| Flash | 723.775 Byte | 1.044.464 Byte | 69,3 % |
 
-`tools/check_ram.py` lässt den Build ab 51.600 Byte statischem RAM scheitern, damit für TLS-Abrufe genug Speicher frei bleibt.
+Das komprimierte Webinterface spart gegenüber v0.5.3.1 rund 42 KB Flash. `tools/check_ram.py` lässt den Build ab 51.600 Byte statischem RAM scheitern, damit für TLS-Abrufe genug Speicher frei bleibt.
 
 ## Lokale Prüfungen
 
