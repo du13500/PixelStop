@@ -51,18 +51,19 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
    for(const [l,r] of tabs.rows)assert(Math.abs((l-tabs.nav[0])-(tabs.nav[1]-r))<=2,`Tab row not centred at ${width}`);
    assert.deepStrictEqual(await page.locator('#planePoll option').evaluateAll(o=>o.map(x=>x.value)),['10','15','30','60','180']);
    await go(page,'flugradar');
-   // Display name: hint only after a clear move of the location, "Leeren" empties the name.
+   // Display name: dialog only after a clear move of the location; "Leeren" empties the name.
    await page.locator('#planeDisplayName').fill('ZUHAUSE');
    await page.evaluate(()=>setMapPoint('plane',51.001,13.001));
-   assert(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden')),'Small moves keep the name silently');
+   assert(await page.locator('#nameDialog').evaluate(e=>e.classList.contains('hidden')),'Small moves keep the name silently');
    await page.evaluate(()=>setMapPoint('plane',41.97,-87.9));
-   assert(!(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden'))),'Name hint after a clear move');
-   await page.locator('#planeDisplayName').fill('');
-   assert(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden')),'Hint disappears with an empty name');
-   await page.locator('#planeDisplayName').fill('ZUHAUSE');await page.evaluate(()=>checkNameHint('plane'));
-   await page.locator('#planeNameHint [data-name="clear"]').click();
+   assert(await page.locator('#nameDialog').isVisible(),'Dialog after a clear move');
+   assert.strictEqual(await page.locator('#nameDialogName').textContent(),'„ZUHAUSE“');
+   await page.locator('#nameDialog [data-name="clear"]').click();
    assert.strictEqual(await page.locator('#planeDisplayName').inputValue(),'');
-   assert(await page.locator('#planeNameHint').evaluate(e=>e.classList.contains('hidden')));
+   assert(!(await page.locator('#nameDialog').isVisible()));
+   await page.locator('#planeDisplayName').fill('ZUHAUSE');
+   await page.evaluate(()=>setMapPoint('plane',48.35,11.79));
+   assert(!(await page.locator('#nameDialog').isVisible()),'Asked once per location change until saved');
    await page.evaluate(()=>setMapPoint('plane',51,13));
    assert(await page.locator('#planePlaceToggleSec').isDisabled());
    await page.locator('#planeShowPlace').check();assert(await page.locator('#planePlaceToggleSec').isEnabled());

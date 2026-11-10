@@ -165,7 +165,7 @@ EXACT = {
  "Rettungsmodus": "Rescue mode",
  "PixelStop ist mehrmals kurz hintereinander abgestürzt und ruft deshalb keine Daten ab. Hier kann eine andere Firmware eingespielt werden (System → Firmware-Update). Ein normaler Neustart beendet den Rettungsmodus.":
    "PixelStop crashed several times in a row and therefore does not request any data. Another firmware can be installed here (System → Firmware update). A normal restart ends rescue mode.",
- "Neuer Standort – Anzeigename behalten?": "New location – keep the display name?", "Leeren": "Clear", "Behalten": "Keep",
+ "Neuer Standort": "New location", "Der Anzeigename": "The display name", "passt vielleicht nicht mehr zum neuen Ort.": "may no longer fit the new location.", "Leeren": "Clear", "Behalten": "Keep",
  "Nur Kleinbuchstaben, Ziffern und Bindestrich (1–32 Zeichen), z. B. pixelstop. Erreichbar dann als pixelstop.local.":
    "Only lowercase letters, digits and hyphens (1–32 characters), e.g. pixelstop. Then reachable as pixelstop.local.",
  "Ungültiger Hostname: nur a–z, 0–9 und Bindestrich, 1–32 Zeichen.": "Invalid hostname: only a–z, 0–9 and hyphen, 1–32 characters.",
