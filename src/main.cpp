@@ -34,6 +34,7 @@
 #include "RadarPolicy.h"
 #include "DestinationFormat.h"
 #include "WebGuard.h"
+#include "NetWatch.h"
 #include "AdsbQuota.h"
 
 // -----------------------------------------------------------------------------
@@ -169,6 +170,8 @@ static DNSServer dns;
 static bool apMode = false;
 // Rescue mode after repeated crashes: web interface and update only (no requests).
 static bool rescueMode = false;
+// millis() of the first radio association (Wi-Fi event), for the start-up log.
+static volatile uint32_t wifiAssocMs = 0;
 static uint32_t lastSecond = 0;
 static uint8_t lastMinute = 255;
 static uint32_t lastModeSwitchMs = 0;
@@ -1178,14 +1181,19 @@ static void connectWiFi() {
   WiFi.hostname(cfg.hostname.c_str());
   WiFi.setAutoReconnect(true);
   // The SSID is used exactly as stored, including blanks at the end.
+  const uint32_t begun=millis();
   WiFi.begin(cfg.ssid.c_str(), cfg.pass.c_str());
   gfx->fillScreen(C_BLACK);
   centerText(TR("WLAN","WI-FI"), 80, 4, C_YELLOW);
   centerText(TR("verbinden...","connecting..."), 126, 2, C_GRAY);
 
+  // 30 s: the radio link may stand while the address (DHCP) still takes a moment.
   uint32_t start=millis();
-  while(WiFi.status()!=WL_CONNECTED && millis()-start<18000){delay(200);yield();}
-  if(WiFi.status()!=WL_CONNECTED){startAP();return;}
+  while(WiFi.status()!=WL_CONNECTED && millis()-start<30000){delay(200);yield();}
+  // Log: HTTP field = radio link after ms (0 = none), value = address after ms / Wi-Fi status.
+  const uint32_t assoc=netAfter(wifiAssocMs,begun)?wifiAssocMs-begun:0;
+  if(WiFi.status()!=WL_CONNECTED){diagEvent(D_WIFI,DS_FAILED,(int)assoc,WiFi.status());startAP();return;}
+  diagEvent(D_WIFI,DS_WIFI_UP,(int)assoc,millis()-begun);
 
   apMode=false;
   if(MDNS.begin(cfg.hostname.c_str())) MDNS.addService("http","tcp",80);
@@ -1235,42 +1243,36 @@ static void drawRescue() {
 }
 
 // Wi-Fi events arrive outside loop(); they are only noted there.
-static WiFiEventHandler wifiLostHandler, wifiGotIpHandler;
+static WiFiEventHandler wifiLostHandler, wifiGotIpHandler, wifiAssocHandler;
 static volatile uint8_t wifiEvents = 0, wifiLostReason = 0;
-static uint32_t wifiLostAt = 0, netWatchStart = 0, netStageAt = 0;
+static uint32_t wifiLostAt = 0;
+static NetWatch netWatch = {};
 static uint16_t wifiReconnects = 0;
-static uint8_t netStage = 0;
 static void wifiEventsBegin() {
   wifiLostHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& e) { wifiLostReason = e.reason; wifiEvents |= 1; });
   wifiGotIpHandler = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP&) { wifiEvents |= 2; });
+  wifiAssocHandler = WiFi.onStationModeConnected([](const WiFiEventStationModeConnected&) { if (!wifiAssocMs) wifiAssocMs = millis(); });
 }
 static void wifiEventsHandle(uint32_t now) {
-  if (!netWatchStart) { wifiEvents = 0; return; }  // first connection during start-up
+  if (!netWatch.start) { wifiEvents = 0; return; }  // first connection during start-up
   if (wifiEvents & 1) { wifiEvents &= ~1; if (!wifiLostAt) { wifiLostAt = now ? now : 1; diagEvent(D_WIFI, DS_WIFI_LOST, wifiLostReason); } }
   if (wifiEvents & 2) {
     wifiEvents &= ~2;
     if (wifiLostAt) { wifiReconnects++; diagEvent(D_WIFI, DS_WIFI_UP, WiFi.RSSI(), (now - wifiLostAt) / 1000UL); wifiLostAt = 0; }
   }
 }
-// Network watchdog: 10 minutes without any HTTP answer although requests were
-// tried (or without Wi-Fi) -> reconnect Wi-Fi; 5 more minutes -> restart. The
-// waiting time doubles after each such restart in a row (RTC), so an outage
-// of one provider does not restart the cube every quarter of an hour.
-static const uint32_t NET_SILENT_MS = 600000UL, NET_RECONNECT_MS = 300000UL;
+// Network watchdog (NetWatch.h): reconnect after 10 silent minutes, restart 5 minutes later.
 static void networkWatchdog(uint32_t now) {
-  const uint32_t answer = diagNetworkAnswerMs(), attempt = diagNetworkAttemptMs();
-  uint32_t ref = netWatchStart;
-  if (answer && (uint32_t)(answer - ref) < 0x80000000UL) ref = answer;
-  if (ref == answer && answer) { netStage = 0; if (bootState.hangRestarts) { bootState.hangRestarts = 0; bootStateWrite(); } }
-  const bool tried = attempt && (uint32_t)(attempt - ref) < 0x80000000UL && attempt != ref;
+  const uint32_t answer = diagNetworkAnswerMs();
+  if (bootState.hangRestarts && netAfter(answer, netWatch.start)) { bootState.hangRestarts = 0; bootStateWrite(); }
   const uint32_t factor = 1UL << (bootState.hangRestarts > 3 ? 3 : bootState.hangRestarts);
-  const bool wifiDown = WiFi.status() != WL_CONNECTED && wifiLostAt;
-  const uint32_t silent = now - ref, down = wifiDown ? now - wifiLostAt : 0;
-  if (netStage == 0 && ((tried && silent >= NET_SILENT_MS * factor) || down >= NET_SILENT_MS * factor)) {
+  uint32_t silent = 0;
+  const NetAction action = netWatchStep(netWatch, now, answer, diagNetworkAttemptMs(),
+                                        WiFi.status() != WL_CONNECTED && wifiLostAt, wifiLostAt, factor, silent);
+  if (action == NET_RECONNECT) {
     diagEvent(D_WIFI, DS_WIFI_RETRY, WiFi.status(), silent / 1000UL);
     WiFi.disconnect(); WiFi.begin(cfg.ssid.c_str(), cfg.pass.c_str());
-    netStage = 1; netStageAt = now;
-  } else if (netStage == 1 && (uint32_t)(now - netStageAt) >= NET_RECONNECT_MS && (tried || wifiDown)) {
+  } else if (action == NET_RESTART) {
     if (bootState.hangRestarts < 255) bootState.hangRestarts++;
     diagEvent(D_WIFI, DS_REJECTED, WiFi.status(), silent / 1000UL);
     restartNow();
@@ -1606,7 +1608,7 @@ void setup() {
   wifiEventsBegin();
   connectWiFi();
   setupWeb();
-  netWatchStart=millis();
+  netWatch.start=millis();
   if(apMode)apRetryAt=millis()+60000UL;
 
   if(rescueMode){drawRescue();return;}

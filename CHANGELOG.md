@@ -1,5 +1,11 @@
 # Änderungen
 
+## v0.5.4.2-dev
+
+- **Netzwerk-Wächter repariert:** In v0.5.4 setzte er sich jede Sekunde selbst zurück, sobald seit dem Start irgendeine Antwort kam. Löste er aus, verband er das WLAN jede Sekunde neu – der Würfel kam nie wieder ins Netz, und der geplante Neustart wurde nie erreicht. Jetzt beendet nur eine *neue* Antwort nach dem Neuverbinden den Alarm; bleibt sie aus, folgt nach 5 Minuten der Neustart. Logik in `src/NetWatch.h` mit Tests.
+- **Start-Verbindung:** 30 s statt 18 s, bevor der Setup-Hotspot öffnet. Der Log hält fest, nach wie vielen ms die Funkverbindung und die IP-Adresse kamen (bzw. den WLAN-Status bei Fehler).
+- **Anzeigename bei Ortswechsel** als Dialog („Der Anzeigename „…“ passt vielleicht nicht mehr zum neuen Ort.“ – Leeren/Behalten) statt als Hinweis zwischen den Feldern.
+
 ## v0.5.4.1-dev
 
 - **WLAN wie in v0.5.3.1:** Das feste Setzen von PHY-Modus und Sendeleistung vor jeder Verbindung (v0.5.4) ist zurückgenommen. Damit fand der Würfel das WLAN beim Start oft nicht innerhalb von 18 s, landete im Setup-Hotspot und startete nach rund 83 s neu; Abrufe dauerten zwei- bis dreimal so lange, das Webinterface reagierte zäh.

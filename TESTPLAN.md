@@ -1,8 +1,10 @@
 # Testplan
 
-Stand: v0.5.4.1-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: v0.5.4.2-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
 
-## Hardwaretest v0.5.4.1-dev
+## Hardwaretest v0.5.4.2-dev
+
+0a. **v0.5.4.2:** Im Log nach jedem Start eine Zeile „WLAN | verbunden“ (HTTP-Feld = Funkverbindung nach ms, Wert = IP nach ms). Bei Problemen „WLAN | Fehler“ mit Status. Anzeigename: Ort um mehr als 5 km verschieben → Dialog mit Leeren/Behalten.
 
 0. **v0.5.4.1:** Nach dem Flashen und nach mehreren Neustarts verbindet sich der Würfel wieder in wenigen Sekunden (kein Setup-Hotspot, kein Neustart nach ~83 s); Radarabrufe wieder um 1–2 s; Speichern ohne geänderten Hostnamen startet nicht neu.
 

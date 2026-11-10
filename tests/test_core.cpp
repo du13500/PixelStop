@@ -5,6 +5,7 @@
 #include "../src/WeatherVisual.h"
 #include "../src/TimeZones.h"
 #include "../src/WebGuard.h"
+#include "../src/NetWatch.h"
 #include "../src/AirlineName.h"
 #include "../src/AircraftLabel.h"
 #include <assert.h>
@@ -20,6 +21,19 @@ static std::vector<uint32_t> decode(const std::string& s){
 }
 static std::string parts(const char* name,int expect){char a[40],b[40];int n=airlineParts(name,18,a,b,sizeof(a));assert(n==expect);return std::string(a)+(b[0]?"|"+std::string(b):"");}
 int main(){
+ // Network watchdog: one reconnect, then a restart -- not a reconnect every second (v0.5.4 bug)
+ {NetWatch w={1000,0,0};uint32_t sil=0;const uint32_t M=60000;
+  assert(netWatchStep(w,5*M,2*M,4*M,false,0,1,sil)==NET_OK);                    // answer 3 min ago
+  assert(netWatchStep(w,12*M+1,2*M,11*M,false,0,1,sil)==NET_RECONNECT&&sil==10*M+1);
+  for(uint32_t t=12*M+2;t<17*M;t+=1000)assert(netWatchStep(w,t,2*M,11*M,false,0,1,sil)==NET_OK); // no reconnect storm
+  assert(netWatchStep(w,17*M+1,2*M,16*M,false,0,1,sil)==NET_RESTART);          // tried after reconnect, still silent
+  NetWatch r={1000,0,0};assert(netWatchStep(r,12*M+1,2*M,11*M,false,0,1,sil)==NET_RECONNECT);
+  assert(netWatchStep(r,13*M,12*M+500,12*M+400,false,0,1,sil)==NET_OK&&r.stage==0); // new answer ends the alarm
+  NetWatch q={1000,0,0};assert(netWatchStep(q,30*M,0,0,false,0,1,sil)==NET_OK);   // nothing tried: nothing to do
+  assert(netWatchStep(q,30*M,0,0,true,19*M,1,sil)==NET_RECONNECT);                  // Wi-Fi down for 11 min
+  NetWatch f={1000,0,0};assert(netWatchStep(f,12*M+1,2*M,11*M,false,0,2,sil)==NET_OK);      // after a hang restart: 20 min
+  assert(netWatchStep(f,22*M+1,2*M,21*M,false,0,2,sil)==NET_RECONNECT);
+ }
  // WebGuard: DNS rebinding (Host) and foreign pages (Origin)
  assert(webGuardHostAllowed("192.168.178.137","192.168.178.137","pixelstop"));
  assert(webGuardHostAllowed("192.168.178.137:80","192.168.178.137","pixelstop"));
