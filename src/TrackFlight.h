@@ -34,7 +34,7 @@ struct TrackedFlightSnapshot {
 
 void trackedFlightReset();
 bool trackedFlightStatusPollDue(uint16_t pollMinutes);
-bool trackedFlightLivePollDue(uint16_t pollSeconds = 15);
+bool trackedFlightLivePollDue(uint16_t pollSeconds = 15, float visibleShare = 1.0f);
 bool trackedFlightFetchStatus(const String& apiKey, const String& flightNumber);
 bool trackedFlightFetchLive();
 const TrackedFlightSnapshot& trackedFlightData();

@@ -17,7 +17,7 @@ struct RadarMotion {
 
 // Estimates stop after this time at the latest; slower polls freeze the values.
 static const uint32_t RADAR_MOTION_MIN_MS = 60000UL;
-static const uint32_t RADAR_MOTION_MAX_MS = 240000UL;
+static const uint32_t RADAR_MOTION_MAX_MS = 600000UL;  // up to 10 min (quota intervals)
 // The altitude follows the vertical rate for a shorter time: aircraft level off.
 static const uint32_t RADAR_MOTION_ALT_MS = 45000UL;
 // Grace for request duration before a value counts as overdue.

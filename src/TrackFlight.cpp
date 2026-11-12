@@ -107,10 +107,13 @@ bool trackedFlightStatusPollDue(uint16_t pollMinutes) {
   return (uint32_t)(millis() - g_lastStatusPollMs) >= (uint32_t)pollMinutes * 60000UL;
 }
 
-bool trackedFlightLivePollDue(uint16_t pollSeconds) {
+bool trackedFlightLivePollDue(uint16_t pollSeconds, float visibleShare) {
   if (adsbLolWaitMs()||!g_t.valid || g_t.terminal || !g_t.flightIcao[0]) return false;
   if (g_lastLivePollMs == 0) return true;
-  return (uint32_t)(millis() - g_lastLivePollMs) >= (uint32_t)pollSeconds * 1000UL;
+  // Same quota planning as the radar (AdsbQuota.h): spread over every window.
+  uint32_t interval = (uint32_t)pollSeconds * 1000UL, budget = adsbLolBudgetIntervalMs(visibleShare);
+  if (interval < budget) interval = budget;
+  return (uint32_t)(millis() - g_lastLivePollMs) >= interval;
 }
 
 const TrackedFlightSnapshot& trackedFlightData() { return g_t; }

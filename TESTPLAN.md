@@ -1,8 +1,10 @@
 # Testplan
 
-Stand: v0.5.4.2-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: v0.5.4.3-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
 
-## Hardwaretest v0.5.4.2-dev
+## Hardwaretest v0.5.4.3-dev
+
+0b. **v0.5.4.3:** Radar über eine Stunde: Im Log kommen regelmäßig „Radar.Position | OK“-Zeilen (Abstand ≈ „Radar-Intervall“ im Status); höchstens eine „Radar.Route“ zwischen zwei Positionen; spätere Prüfungen desselben Flugzeugs nur als „Radar.Metadata“.
 
 0a. **v0.5.4.2:** Im Log nach jedem Start eine Zeile „WLAN | verbunden“ (HTTP-Feld = Funkverbindung nach ms, Wert = IP nach ms). Bei Problemen „WLAN | Fehler“ mit Status. Anzeigename: Ort um mehr als 5 km verschieben → Dialog mit Leeren/Behalten.
 
@@ -49,6 +51,7 @@ Dieselben Prüfungen führt der Workflow [`build.yml`](.github/workflows/build.y
 ```sh
 python3 tools/check.py
 python3 tools/test_radar.py
+python3 tools/test_radar_schedule.py
 python3 tools/test_motion.py
 python3 tools/test_policy.py
 python3 tools/test_chunked.py

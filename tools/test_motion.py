@@ -37,7 +37,7 @@ int main(){
  m.hasRate=true;m.rateFpm=600;m.sampleMs=0xFFFFF000U;assert(radarMotionAltitudeFt(m,1000,0xFFFFF000U+6000U,lim)==1060);
  m.sampleMs=5000;assert(radarMotionAltitudeFt(m,1000,4000,lim)==1000);
  // Limits follow the interval: at least 60 s, at most 4 min.
- assert(radarMotionLimitMs(5000)==60000&&radarMotionLimitMs(120000)==135000&&radarMotionLimitMs(900000)==240000);
+ assert(radarMotionLimitMs(5000)==60000&&radarMotionLimitMs(120000)==135000&&radarMotionLimitMs(420000)==435000&&radarMotionLimitMs(900000)==600000);
  // Status dot.
  assert(radarDotState(500,30000,false)==RADAR_DOT_NEW);
  assert(radarDotState(500,30000,true)==RADAR_DOT_ESTIMATED);
