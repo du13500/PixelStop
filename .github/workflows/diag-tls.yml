@@ -11,9 +11,12 @@ jobs:
       - name: Probe
         shell: bash
         run: |
+          set +e +o pipefail
           openssl version
           probe() { # host ip
             local host=$1 ip=$2
+            for i in 1 2 3; do st=$(date +%s%N); if timeout 8 bash -c "</dev/tcp/$ip/443" 2>/dev/null; then echo "  TCP $i: ok $(( ($(date +%s%N)-st)/1000000 )) ms"; else echo "  TCP $i: KEINE Verbindung nach $(( ($(date +%s%N)-st)/1000000 )) ms"; fi; done
+            st=$(date +%s%N); out=$(timeout 15 openssl s_client -connect "$ip:443" -servername "$host" -tls1_2 </dev/null 2>&1); echo "  TLS-Handshake: exit $? nach $(( ($(date +%s%N)-st)/1000000 )) ms"
             for len in 512 1024 2048 4096; do
               out=$(timeout 15 openssl s_client -connect "$ip:443" -servername "$host" -tls1_2 -maxfraglen $len -tlsextdebug </dev/null 2>&1)
               if grep -q '"max fragment length"' <<<"$out"; then mf=zugesagt; elif grep -q '^New, TLS' <<<"$out"; then mf="NICHT zugesagt (Handshake ok)"; else mf="Handshake gescheitert: $(grep -m1 -iE 'alert|error' <<<"$out")"; fi
