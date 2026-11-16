@@ -1,0 +1,44 @@
+name: diag-tls
+# Temporary diagnostics: which servers still negotiate TLS Max Fragment Length
+# (needed for small ESP8266 receive buffers), and how large their handshake records are.
+on:
+  push:
+    branches: [diag-tls]
+jobs:
+  tls:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        shell: bash
+        run: |
+          openssl version
+          probe() { # host ip
+            local host=$1 ip=$2
+            for len in 512 1024 2048 4096; do
+              out=$(timeout 15 openssl s_client -connect "$ip:443" -servername "$host" -tls1_2 -maxfraglen $len -tlsextdebug </dev/null 2>&1)
+              if grep -q '"max fragment length"' <<<"$out"; then mf=zugesagt; elif grep -q '^New, TLS' <<<"$out"; then mf="NICHT zugesagt (Handshake ok)"; else mf="Handshake gescheitert: $(grep -m1 -iE 'alert|error' <<<"$out")"; fi
+              echo "  maxfraglen $len -> $mf"
+            done
+            out=$(timeout 15 openssl s_client -connect "$ip:443" -servername "$host" -tls1_2 -msg </dev/null 2>&1)
+            echo "  cipher: $(grep -m1 -E '^ *Cipher *:' <<<"$out" | sed 's/ *Cipher *: //')  key: $(grep -m1 'Server Temp Key' <<<"$out")"
+            echo "  ticket: $(grep -m1 'lifetime hint' <<<"$out")"
+            # handshake messages from the server and incoming record sizes
+            grep -E '^<<< TLS 1.2, Handshake' <<<"$out" | sed 's/^/    /'
+            # incoming record headers: lines after "<<< ??? [length 0005]" or "RecordHeader"
+            grep -A1 -E '^<<< .*(RecordHeader|\?\?\?) \[length 0005\]' <<<"$out" | grep -E '^ +[0-9a-f]{2} ' | head -12 | while read t a b h l; do echo "    Record: Typ $t Laenge $((16#$h$l))"; done
+            chain=$(timeout 15 openssl s_client -connect "$ip:443" -servername "$host" -tls1_2 -showcerts </dev/null 2>/dev/null | awk '/BEGIN CERT/,/END CERT/' | (d=$(mktemp -d); csplit -s -z -f $d/c - '/BEGIN CERT/' '{*}' 2>/dev/null; t=0; for f in $d/c*; do s=$(openssl x509 -in $f -outform DER 2>/dev/null | wc -c); t=$((t+s)); done; rm -rf $d; echo $t))
+            echo "  Zertifikatskette (DER, ohne Root): $chain B"
+            out=$(timeout 15 openssl s_client -connect "$ip:443" -servername "$host" -tls1_2 -sess_out /tmp/s </dev/null 2>&1)
+            out=$(timeout 15 openssl s_client -connect "$ip:443" -servername "$host" -tls1_2 -sess_in /tmp/s </dev/null 2>&1)
+            echo "  Sitzung wiederverwendet: $(grep -m1 -E '^(Reused|New),' <<<"$out")"; rm -f /tmp/s
+          }
+          for host in api.adsb.lol adsb.lol api.airplanes.live api.adsbdb.com api.open-meteo.com webapi.vvo-online.de api.aviationstack.com; do
+            echo "=================== $host"
+            ips=$(dig +short A "$host" | grep -E '^[0-9.]+$')
+            echo "A: $(echo $ips)  AAAA: $(dig +short AAAA $host | tr '\n' ' ')"
+            for ip in $ips; do echo "--- $host @ $ip"; probe "$host" "$ip"; done
+          done
+          echo "=================== HTTP-Header api.adsb.lol"
+          curl -sS -o /dev/null -D - --max-time 20 https://api.adsb.lol/v2/closest/51.05/13.74/20 | grep -viE '^(set-cookie|date):'
+          echo "=================== HTTP-Header api.airplanes.live"
+          curl -sS -o /dev/null -D - --max-time 20 https://api.airplanes.live/v2/point/51.05/13.74/20 | grep -viE '^(set-cookie|date):'
