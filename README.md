@@ -6,9 +6,9 @@
 Gekauft als kleiner WLAN-Würfel mit eher bescheidener Werksfirmware – und von Anfang an mit dem Plan, etwas Eigenes daraus zu machen.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.4.3--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.4.4--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
-![Hardwaretest](https://img.shields.io/badge/hardwaretest-v0.5.4.3%20offen-yellow)
+![Hardwaretest](https://img.shields.io/badge/hardwaretest-v0.5.4.4%20offen-yellow)
 ![Hobbyprojekt](https://img.shields.io/badge/hobbyprojekt-nicht%20kommerziell-lightgrey)
 ![Lizenz](https://img.shields.io/badge/lizenz-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
@@ -59,7 +59,7 @@ Dazu kommen Nachtmodus, Helligkeit ab 1 %, Ortssuche mit Karte, griechische und 
 
 </details>
 
-## Entwicklungsstand: v0.5.4.3-dev
+## Entwicklungsstand: v0.5.4.4-dev
 
 | Bereich | Stand |
 | --- | --- |
@@ -67,7 +67,7 @@ Dazu kommen Nachtmodus, Helligkeit ab 1 %, Ortssuche mit Karte, griechische und 
 | Flugradar über HTTP/1.1, Pausen bei abgelehnten Anfragen | ✅ auf Hardware bestätigt (v0.4.14.7) |
 | Radar nur bei sichtbarer Ansicht | ✅ läuft auf Hardware (v0.4.14.8) |
 | Kontingent-Wächter für adsb.lol (30 s bis Monat), Zähler über Neustarts | ⏳ Hardwaretest offen (v0.5.4) |
-| Hintergrundbeleuchtung bei 1 % ohne Aufblitzen | ⚠️ gelegentliches Aufblitzen, Test mit Sigma-Delta läuft (v0.5.3) |
+| Hintergrundbeleuchtung bei 1 % ohne Aufblitzen | ⚠️ gelegentliches Aufblitzen; der Versuch mit Sigma-Delta legte das WLAN lahm und ist entfernt, neuer Ansatz offen |
 | Sprachumschaltung Deutsch/Englisch, abgekürzte Fahrtziele | ✅ auf Hardware bestätigt (v0.5.0) |
 | 3-Tage-Vorhersage, aufgeräumtes Webinterface, „Jetzt anzeigen“, Ort der Haltestelle | ✅ auf Hardware bestätigt (v0.5.1) |
 | Radar: Entfernung und Höhe zwischen den Abrufen weitergerechnet, Statuspunkt | ✅ auf Hardware bestätigt (v0.5.2) |
@@ -186,7 +186,7 @@ Zur Veranschaulichung ein Blick aus dem CIC der Galactica:
 - **Mehr Regionen:** Abfahrten nicht nur vom VVO, sondern auswählbar je Verkehrsverbund bzw. deutschlandweit (geplant für v0.6.0).
 - **Eigene Ersetzungen für Fahrtziele** im Webinterface.
 - Englische Diagnosetexte.
-- **Ausweichquellen fürs Radar** (airplanes.live, adsb.fi), wenn das adsb.lol-Kontingent aufgebraucht ist (geplant für v0.5.5).
+- **Radar ehrlich** (v0.5.5): Pause-Bildschirm, wenn eine adsb.lol-Grenze erreicht ist, Anzeige der Reichweite des Kontingents im Webinterface und eine eigene Datenquelle im Heimnetz. Danach **Ausweichquellen** (v0.5.6).
 
 ## Diagnose und Fehlerberichte
 

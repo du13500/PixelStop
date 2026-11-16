@@ -31,7 +31,9 @@ static BearSSL::Session g_adsbSession;
 static BearSSL::Session g_routeSession;
 static BearSSL::Session g_adsbDbSession;
 static uint16_t g_adsbDbRx=0;
-static uint16_t g_adsbLolRx = 0;
+// Last request failed before an answer (no connection, name or TLS); the next
+// attempt then comes earlier (RadarPolicy.h, radarRetryIntervalMs).
+static bool g_connectionFailed = false;
 static int g_lastHttp = 0;
 static const char* g_stage = "bereit";
 struct Enrichment {
@@ -49,14 +51,6 @@ static int g_routeHttp=0;
 static uint16_t g_scanned=0;
 static float g_homeLat=NAN,g_homeLon=NAN;
 static uint32_t g_intervalMs=0;
-
-static uint16_t adsbLolRx() {
-  if (g_adsbLolRx) return g_adsbLolRx;
-  if (BearSSL::WiFiClientSecure::probeMaxFragmentLength("api.adsb.lol", 443, 512)) g_adsbLolRx = 512;
-  else if (BearSSL::WiFiClientSecure::probeMaxFragmentLength("api.adsb.lol", 443, 1024)) g_adsbLolRx = 1024;
-  else g_adsbLolRx = 4096;
-  return g_adsbLolRx;
-}
 
 static bool tlsHeapReady(uint16_t rx) {
   return radarTlsFits(ESP.getFreeHeap(), ESP.getMaxFreeBlockSize(), rx, sizeof(br_ssl_client_context));
@@ -90,11 +84,13 @@ static bool routeContradicted(const FlightSnapshot& f,RoutePoint pos,const Route
 static bool lookupRouteAdsbLol(const FlightSnapshot& f,RoutePoint pos,Enrichment& out) {
   // Skipped requests are logged with a reason (value): 1 quota, 2 pause, 4 memory.
   // A route lookup takes the place of the next position request (savings mode).
-  uint8_t skip=adsbLolQuotaWaitMs()?1:(serviceWaitMs(SERVICE_ADSB_LOL)?2:(!tlsHeapReady(adsbLolRx())?4:0));
+  uint8_t skip=adsbLolQuotaWaitMs()?1:(serviceWaitMs(SERVICE_ADSB_LOL)?2:(!tlsHeapReady(ADSB_LOL_TLS_RX)?4:0));
   if(skip){diagLookup(f.hex,f.callsign);diagEvent(D_RADAR_ROUTE,DS_SKIPPED,0,skip);return false;}
   g_lastPollMs=millis();g_routeSincePoll=true;
-  DiagRequest trace(D_RADAR_ROUTE);diagLookup(f.hex,f.callsign);trace.stage(DS_TLS);
-  BearSSL::WiFiClientSecure client;makeSecure(client,&g_routeSession,adsbLolRx());
+  DiagRequest trace(D_RADAR_ROUTE);diagLookup(f.hex,f.callsign);
+  if(!adsbLolResolve(trace))return false;
+  trace.stage(DS_TLS);
+  BearSSL::WiFiClientSecure client;makeSecure(client,&g_routeSession,ADSB_LOL_TLS_RX);
   HTTPClient http;http.setTimeout(5000);http.setReuse(false);
   if(!http.begin(client,"https://api.adsb.lol/api/0/routeset"))return false;
   adsbLolPrepare(http,FW_USER_AGENT);
@@ -106,6 +102,7 @@ static bool lookupRouteAdsbLol(const FlightSnapshot& f,RoutePoint pos,Enrichment
   int code=http.POST(body);request.clear();body=String();trace.http(code);g_routeHttp=code;
   serviceResponse(SERVICE_ADSB_LOL,code,http.header("Retry-After").c_str());
   if(serviceWaitMs(SERVICE_ADSB_LOL))diagEvent(D_RADAR,DS_WAIT,code,serviceWaitMs(SERVICE_ADSB_LOL));
+  if(code<0)adsbLolTlsError(trace,client);
   if(code!=200){if(code==201)trace.finish(true,DS_EMPTY);http.end();client.stop();return false;}
   JsonDocument filter(networkJsonAllocator());JsonObject item=filter.to<JsonArray>().add<JsonObject>();
   item["callsign"]=true;item["plausible"]=true;item["_airport_codes_iata"]=true;
@@ -273,6 +270,7 @@ void flightReset() {
   g_providerPaused = false;
   g_firstFailureMs = 0;
   g_consecutiveFailures = 0;
+  g_connectionFailed = false;
   // Keep bounded enrichment and provider cooldowns when saving settings.
   g_lastHttp = 0;
   g_stage = "bereit";
@@ -287,6 +285,7 @@ bool flightPollDue(uint16_t pollSec, float visibleShare) {
   uint32_t interval=(uint32_t)pollSec*1000UL;
   uint32_t minimum=serviceMinIntervalMs(SERVICE_ADSB_LOL);
   if(interval<minimum)interval=minimum;
+  interval=radarRetryIntervalMs(interval,g_connectionFailed,g_consecutiveFailures);
   uint32_t budget=adsbLolBudgetIntervalMs(visibleShare);
   if(interval<budget)interval=budget;
   g_intervalMs=interval;
@@ -312,8 +311,8 @@ uint32_t flightWaitSec() { return (serviceWaitMs(SERVICE_ADSB_LOL)+999)/1000; }
 const char* flightRouteStatus() { return g_routeStatus; }
 const char* flightRouteSource() { return g_routeSource; }
 int flightRouteHttp() { return g_routeHttp; }
-uint16_t flightTlsRx() { return g_adsbLolRx; }
-uint32_t flightTlsMinBlock() { return radarTlsBudget(g_adsbLolRx ? g_adsbLolRx : 512, sizeof(br_ssl_client_context)).block; }
+uint16_t flightTlsRx() { return ADSB_LOL_TLS_RX; }
+uint32_t flightTlsMinBlock() { return radarTlsBudget(ADSB_LOL_TLS_RX, sizeof(br_ssl_client_context)).block; }
 bool flightExpire() {
   if(g_providerPaused||!g_f.error||!radarExpired(millis(),g_lastOkMs,g_f.valid))return false;
   g_f.valid=false;g_f.error=true;g_stage="Daten veraltet";
@@ -337,6 +336,7 @@ static bool flightFailure(const char* stage = "Fehler", bool providerPause = fal
 
 static void flightSuccess(const char* stage = "ok") {
   g_providerPaused = false;
+  g_connectionFailed = false;
   g_stage = stage;
   g_consecutiveFailures = 0;
   g_firstFailureMs = 0;
@@ -408,10 +408,11 @@ bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm, uint8_t hideMa
   g_routeSincePoll = false;
   g_lastHttp = 0;
   if (WiFi.status() != WL_CONNECTED) { trace.stage(DS_NO_WIFI); return flightFailure("kein WLAN"); }
-  if (!tlsHeapReady(g_adsbLolRx ? g_adsbLolRx : 512)) { trace.stage(DS_HEAP); return flightFailure("übersprungen: Heap"); }
+  g_connectionFailed = false;
+  if (!tlsHeapReady(ADSB_LOL_TLS_RX)) { trace.stage(DS_HEAP); return flightFailure("übersprungen: Heap"); }
+  if (!adsbLolResolve(trace)) { g_connectionFailed = true; return flightFailure("Name nicht gefunden"); }
   trace.stage(DS_TLS);
-  const uint16_t rx=adsbLolRx();
-  if (!tlsHeapReady(rx)) { trace.stage(DS_HEAP); return flightFailure("übersprungen: Heap"); }
+  const uint16_t rx=ADSB_LOL_TLS_RX;
 
   uint16_t radiusNm = (uint16_t)ceilf(radiusKm / 1.852f);
   if (radiusNm < 1) radiusNm = 1;
@@ -441,6 +442,7 @@ bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm, uint8_t hideMa
     serviceResponse(SERVICE_ADSB_LOL,code,http.header("Retry-After").c_str());
   if(serviceWaitMs(SERVICE_ADSB_LOL))diagEvent(D_RADAR,DS_WAIT,code,serviceWaitMs(SERVICE_ADSB_LOL));
     g_lastHttp = code;
+    if (code < 0) { adsbLolTlsError(trace, client); g_connectionFailed = true; }
     if (code != HTTP_CODE_OK) { http.end(); client.stop(); const bool paused=(code==429||code==503)&&serviceWaitMs(SERVICE_ADSB_LOL);return flightFailure(adsbLolAccessDenied(code)?"Zugriff abgelehnt":(paused?"Abrufpause: Anbieter":(code < 0 ? "Verbindung fehlgeschlagen" : "HTTP-Fehler")),paused); }
 
     JsonDocument filter(networkJsonAllocator());

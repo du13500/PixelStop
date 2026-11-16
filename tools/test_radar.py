@@ -21,6 +21,8 @@ pre='''#include <cassert>
 #include <cstring>
 #include "RadarPolicy.h"
 enum {D_RADAR,DS_TLS,DS_HEAP,DS_NO_WIFI};struct DiagRequest {DiagRequest(int){} void stage(int){}};
+static const uint16_t ADSB_LOL_TLS_RX=4096;static bool nameFound=true;static int resolves=0;
+static bool adsbLolResolve(DiagRequest&){++resolves;return nameFound;}
 static uint32_t clockMs=10000;
 uint32_t millis(){return clockMs;}
 struct br_ssl_client_context { char bytes[3408]; };
@@ -39,22 +41,24 @@ struct Enrichment{uint8_t phase;};static Enrichment pending={0};static Enrichmen
 struct Snapshot {bool valid,error;} g_f={};
 static uint32_t g_lastPollMs=0,g_lastOkMs=0,g_firstFailureMs=0,g_intervalMs=0;
 static bool g_hasPolled=false,g_providerPaused=false;
-static uint8_t g_consecutiveFailures=0;
+static uint8_t g_consecutiveFailures=0;static bool g_connectionFailed=false;
 static int g_lastHttp=0;
 static const char* g_stage="bereit";
-static uint16_t g_adsbLolRx=512,g_scanned=0;
-static int probes=0,requests=0;
-static uint16_t adsbLolRx(){++probes;return g_adsbLolRx;}
+static uint16_t g_scanned=0;
+static int requests=0;
 '''
 funcs='\n'.join(function(n) for n in ['tlsHeapReady','flightPollDue','flightExpire','flightFailure','flightSuccess'])
 # Run the original pre-request section verbatim; replace only the network body.
 fetch=function('flightFetch').split('  uint16_t radiusNm',1)[0]
-fetch+='  (void)homeLat;(void)homeLon;(void)radiusKm;(void)scan;requests++;return true;\n}\n'
+fetch+='  (void)homeLat;(void)homeLon;(void)radiusKm;(void)scan;(void)rx;requests++;return true;\n}\n'
 tests='''int main(){
- for(auto rx:{512,1024,4096}){g_adsbLolRx=rx;ESP.heap=25248;ESP.block=11368;assert(flightFetch(51,13,25,0));}
- assert(requests==3&&probes==3);
+ // adsb.lol: fixed 4 KB buffer, no probe (no Max Fragment Length since ~9.11.2026)
+ const RadarTlsBudget need=radarTlsBudget(ADSB_LOL_TLS_RX,sizeof(br_ssl_client_context));
+ ESP.heap=need.total;ESP.block=need.block;assert(flightFetch(51,13,25,0));assert(requests==1&&resolves==1);
+ ESP.heap=need.total-1;assert(!flightFetch(51,13,25,0));assert(requests==1&&resolves==1&&!g_connectionFailed);
+ ESP.heap=need.total;g_consecutiveFailures=0;
  g_f.valid=true;g_f.error=false;g_lastOkMs=10000;clockMs=15000;
- ESP.block=6000;assert(!flightFetch(51,13,25,0));assert(requests==3&&probes==3);
+ ESP.block=6000;assert(!flightFetch(51,13,25,0));assert(requests==1);
  assert(g_f.valid&&g_f.error);assert(!strcmp(g_stage,"übersprungen: Heap"));
  // 5 s is no longer selectable: the radar asks at most every 10 s.
  assert(!flightPollDue(5,1.0f));clockMs=24999;assert(!flightPollDue(5,1.0f));clockMs=25000;assert(flightPollDue(5,1.0f)&&g_intervalMs==10000);
@@ -65,7 +69,7 @@ tests='''int main(){
  minimumInterval=15000;clockMs=29999;assert(!flightPollDue(5,1.0f));clockMs=30000;assert(flightPollDue(5,1.0f));minimumInterval=0;
  budgetInterval=12000;clockMs=26999;assert(!flightPollDue(5,0.25f)&&lastShare==0.25f);clockMs=27000;assert(flightPollDue(5,0.25f)&&g_intervalMs==12000);budgetInterval=0;
  clockMs=39999;assert(!flightExpire());clockMs=40000;assert(flightExpire());assert(!g_f.valid&&g_f.error);assert(!flightExpire());
- ESP.heap=25768;ESP.block=13192;g_adsbLolRx=512;assert(flightFetch(51,13,25,0));
+ ESP.heap=need.total;ESP.block=need.block;assert(flightFetch(51,13,25,0));
  g_f={true,false};flightSuccess();assert(!g_consecutiveFailures&&g_lastOkMs==40000);
  WiFi.state=0;clockMs=45000;assert(!flightFetch(51,13,25,0));assert(g_f.valid&&g_f.error);assert(!strcmp(g_stage,"kein WLAN"));
  clockMs=70000;assert(!flightFailure("HTTP-Fehler"));assert(!g_f.valid);
@@ -77,6 +81,15 @@ tests='''int main(){
  assert(!flightFailure("Verbindung fehlgeschlagen"));assert(!g_f.valid&&!g_providerPaused);
  g_f={true,false};flightSuccess();assert(!g_providerPaused&&!g_consecutiveFailures);
  g_f={false,false};flightFailure("Abrufpause: Anbieter",true);assert(!g_f.valid);flightSuccess();
+ // Name not found: marked as a connection failure, the next attempt comes after 45 s
+ // instead of the chosen 180 s (twice), then the normal pace again.
+ WiFi.state=WL_CONNECTED;g_f={true,false};flightSuccess();g_lastPollMs=clockMs;nameFound=false;
+ assert(!flightFetch(51,13,25,0)&&g_connectionFailed&&!strcmp(g_stage,"Name nicht gefunden")&&g_consecutiveFailures==1);
+ {uint32_t t0=g_lastPollMs;clockMs=t0+44999;assert(!flightPollDue(180,1.0f));clockMs=t0+45000;assert(flightPollDue(180,1.0f)&&g_intervalMs==45000);}
+ assert(!flightFetch(51,13,25,0)&&g_consecutiveFailures==2);clockMs=g_lastPollMs+45000;assert(flightPollDue(180,1.0f));
+ assert(!flightFetch(51,13,25,0)&&g_consecutiveFailures==3);clockMs=g_lastPollMs+45000;assert(!flightPollDue(180,1.0f));
+ clockMs=g_lastPollMs+180000;assert(flightPollDue(180,1.0f));
+ nameFound=true;assert(flightFetch(51,13,25,0));flightSuccess();assert(!g_connectionFailed);
  // Unsigned elapsed times remain valid across the millis wrap.
  g_f={true,true};g_lastOkMs=0xfffffff0U;clockMs=29983;assert(!flightExpire());clockMs=29984;assert(flightExpire());
 }
@@ -85,4 +98,4 @@ with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'radar.cpp';p.write_text('#include <initializer_list>\n'+pre+funcs+fetch+tests)
  out=Path(tmp)/'radar';subprocess.run(['g++','-std=c++11','-Wall','-Wextra','-Werror','-I'+str(root/'src'),str(p),'-o',str(out)],check=True)
  subprocess.run([str(out)],check=True)
-print('Real radar guard/retry: screenshot heap values admitted, 10 s minimum, quota and route priority, failures marked, expiry/recovery/wrap OK')
+print('Real radar guard/retry: fixed 4 KB adsb.lol buffer without probe, retry after 45 s, 10 s minimum, quota and route priority, failures marked, expiry/recovery/wrap OK')

@@ -6,6 +6,7 @@ root=Path(__file__).resolve().parents[1]
 s=(root/'src/main.cpp').read_text()
 setup=s[s.index('void setup()'):s.index('void loop()')]
 assert setup.index('enablePhaseLockedWaveform();')<setup.index('analogWriteFreq(BL_PWM_FREQ);')<setup.index('analogWriteRange(BL_PWM_RANGE);')<setup.index('applyBrightness();')
+assert 'sigmaDelta' not in s and 'backlightMode' not in s
 assert '#define BL_PWM_FREQ 300' in s and '#define BL_PWM_RANGE 1023' in s
 a=s.index('static bool nightWindow(');b=s.index('static bool modeEnabled(',a)
 code=s[a:b].replace('time(nullptr)','fakeNow')
@@ -16,15 +17,9 @@ with tempfile.TemporaryDirectory() as tmp:
 #include <cassert>
 #define TFT_BL 5
 #define BL_PWM_RANGE 1023
-struct {uint8_t brightness=1,nightBrightness=1,backlightMode=0;bool nightEnabled=false;uint16_t nightStart=1320,nightEnd=420;}cfg;
+struct {uint8_t brightness=1,nightBrightness=1;bool nightEnabled=false;uint16_t nightStart=1320,nightEnd=420;}cfg;
 static time_t fakeNow=0;static int writes=0,last=-1;
 void analogWrite(int pin,int duty){assert(pin==5);writes++;last=duty;}
-#define HIGH 1
-static int sdWrites=0,sdLast=-1,attached=0,detached=0,prescaler=-1;
-void digitalWrite(int pin,int v){assert(pin==5&&v==HIGH);}
-void sigmaDeltaEnable(){} void sigmaDeltaSetPrescaler(uint8_t p){prescaler=p;}
-void sigmaDeltaAttachPin(int pin,int ch){assert(pin==5&&ch==0);attached++;} void sigmaDeltaDetachPin(int pin){assert(pin==5);detached++;}
-void sigmaDeltaWrite(int ch,uint8_t v){assert(ch==0);sdWrites++;sdLast=v;}
 '''+code+r'''
 int main(){
  applyBrightness();assert(writes==1&&last==1013);
@@ -35,11 +30,7 @@ int main(){
  fakeNow+=8*3600;applyBrightness();assert(writes==4&&last==819);
  cfg.brightness=100;applyBrightness();assert(writes==5&&last==0);
  cfg.brightness=120;applyBrightness();assert(writes==5);
- // Sigma-delta: active-low pulse density, attach once, back to PWM detaches.
- cfg.nightEnabled=false;cfg.brightness=1;cfg.backlightMode=1;applyBrightness();assert(attached==1&&prescaler==255&&sdLast==253&&writes==5);
- applyBrightness();assert(sdWrites==1);cfg.brightness=50;applyBrightness();assert(sdLast==128&&attached==1);
- cfg.brightness=100;applyBrightness();assert(sdLast==0);
- cfg.backlightMode=0;applyBrightness();assert(detached==1&&writes==6&&last==0);
+ // Sigma-delta (v0.5.4) stopped Wi-Fi and was removed: PWM only.
 }
 ''')
  subprocess.run(['g++','-std=c++11',str(f),'-o',str(p/'test')],check=True)
