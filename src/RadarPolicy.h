@@ -25,6 +25,14 @@ static inline bool radarTlsFits(uint32_t freeHeap, uint32_t maxBlock,
 static constexpr uint32_t RADAR_MAX_AGE_MS = 30000;
 // Smallest selectable radar interval; values in between are continued (RadarMotion.h).
 static constexpr uint16_t RADAR_MIN_POLL_SEC = 10;
+// After a request that got no answer (no connection, name or TLS) the next
+// attempt comes after 45 s at the latest, for the first two failures in a row:
+// adsb.lol has two servers and a new attempt may reach the other one. Quota
+// limits (AdsbQuota.h) still apply on top.
+static constexpr uint32_t RADAR_RETRY_MS = 45000;
+static inline uint32_t radarRetryIntervalMs(uint32_t interval, bool connectionFailed, uint8_t failures) {
+  return connectionFailed && failures >= 1 && failures <= 2 && interval > RADAR_RETRY_MS ? RADAR_RETRY_MS : interval;
+}
 static inline bool radarExpired(uint32_t now, uint32_t lastOk, bool valid) {
   return valid && (uint32_t)(now - lastOk) >= RADAR_MAX_AGE_MS;
 }

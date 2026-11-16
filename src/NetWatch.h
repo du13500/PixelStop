@@ -5,10 +5,13 @@
 // The waiting time doubles after each such restart in a row (`factor`), so an
 // outage of one provider does not restart the cube every quarter of an hour.
 // Only a NEW answer (after the reconnect) ends the alarm.
+// Right after the start (no answer yet since watching began) the first step
+// comes after 2 minutes: on 16.11.2026 the cube had Wi-Fi after power-on but
+// no way out to the internet until the reconnect 10 minutes later.
 // Pure functions without Arduino dependencies so they can be tested on the host.
 #include <stdint.h>
 
-static const uint32_t NET_SILENT_MS = 600000UL, NET_RECONNECT_MS = 300000UL;
+static const uint32_t NET_SILENT_MS = 600000UL, NET_RECONNECT_MS = 300000UL, NET_FIRST_ANSWER_MS = 120000UL;
 
 struct NetWatch { uint32_t start; uint32_t stageAt; uint8_t stage; };
 enum NetAction : uint8_t { NET_OK, NET_RECONNECT, NET_RESTART };
@@ -23,7 +26,8 @@ inline NetAction netWatchStep(NetWatch& w, uint32_t now, uint32_t answer, uint32
   const uint32_t ref = netAfter(answer, w.start) ? answer : w.start;
   silent = now - ref;
   if (w.stage && netAfter(answer, w.stageAt)) w.stage = 0;          // new answer after reconnect
-  const uint32_t limit = NET_SILENT_MS * (factor ? factor : 1);
+  const bool answered = netAfter(answer, w.start);
+  const uint32_t limit = (answered ? NET_SILENT_MS : NET_FIRST_ANSWER_MS) * (factor ? factor : 1);
   const uint32_t down = wifiDown && wifiLostAt ? now - wifiLostAt : 0;
   if (w.stage == 0) {
     if ((netAfter(attempt, ref) && silent >= limit) || down >= limit) {

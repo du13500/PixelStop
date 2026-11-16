@@ -3,7 +3,7 @@ const fs=require('fs');const path=require('path');const assert=require('assert')
 const source=fs.readFileSync(path.join(__dirname,'../src/webui.html'),'utf8');
 const version=(fs.readFileSync(path.join(__dirname,'../src/Version.h'),'utf8').match(/FW_VERSION "([^"]+)"/)||[])[1];
 const html=source.replace('@FW_VERSION@',version);
-const fixture={ssid:'Testnetz',hostname:'pixelstop',timeZone:'Europe/Berlin',stopName:'Pohlandplatz',stopId:'fixture',weatherCity:'Dresden',weatherLat:51,weatherLon:13,planePlace:'Dresden',planeLat:51,planeLon:13,nightStart:1320,nightEnd:420,nightEnabled:true,brightness:70,nightBrightness:12,rotationMask:1,rotationSec:[30,20,20,15,20,20,20,20,20],departureCount:4,departurePoll:30,weatherPoll:600,planeRadiusKm:25,planePoll:10,planePlaceToggleSec:10,trackerStatusPollMin:15,vvoMotMask:127,countdowns:[]};
+const fixture={adsbLolKeySet:true,aviationstackKeySet:false,ssid:'Testnetz',hostname:'pixelstop',timeZone:'Europe/Berlin',stopName:'Pohlandplatz',stopId:'fixture',weatherCity:'Dresden',weatherLat:51,weatherLon:13,planePlace:'Dresden',planeLat:51,planeLon:13,nightStart:1320,nightEnd:420,nightEnabled:true,brightness:70,nightBrightness:12,rotationMask:1,rotationSec:[30,20,20,15,20,20,20,20,20],departureCount:4,departurePoll:30,weatherPoll:600,planeRadiusKm:25,planePoll:10,planePlaceToggleSec:10,trackerStatusPollMin:15,vvoMotMask:127,countdowns:[]};
 // Pages are reached through the tab bar under the title, like a user would.
 async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();assert(await page.locator(`#${id}`).evaluate(e=>e.classList.contains('on')),'Tab shows its page');}
 (async()=>{
@@ -90,6 +90,33 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
    assert.strictEqual(posted.planeShowAge,false,'Disabled age missing in save payload');
    await page.waitForFunction(()=>document.getElementById('timeZone').value==='Asia/Tokyo');
    assert(!(await page.locator('#planeShowAge').isChecked()),'Disabled age restored incorrectly');
+   if(width===375){
+    // Stop search results from the VVO are text, never markup (audit F-001).
+    await page.route('http://smalltv.test/api/vvo/search**',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({stops:[{id:'7',name:'Evil',place:'Dresden',label:'<img src=x onerror=alert(1)> Evil (Dresden)'}]})}));
+    await go(page,'abfahrten');await page.locator('#stopName').fill('Evil');await page.locator('#searchStopBtn').click();
+    await page.locator('#stopResults .pickres').waitFor();
+    assert.strictEqual(await page.locator('#stopResults img').count(),0,'Stop labels must render as text');
+    assert((await page.locator('#stopResults .pickres').textContent()).startsWith('<img'),'Label shown literally');
+    await page.locator('#stopResults .pickres').click();
+    assert.strictEqual(await page.locator('#stopId').inputValue(),'7');
+    // Deleting a stored key: button only with a stored key, asks first, sends only the delete flag.
+    await go(page,'flugtracker');
+    assert(!(await page.locator('#aviationstackKeyClear').isVisible()),'No delete button without a stored key');
+    await go(page,'flugradar');
+    assert(await page.locator('#adsbLolKeyClear').isVisible(),'Delete button for the stored adsb.lol key');
+    await page.locator('#adsbLolKeyClear').click();
+    assert(await page.locator('#keyDialog').isVisible());
+    assert.strictEqual(await page.locator('#keyDialogName').textContent(),'adsb.lol');
+    posted=null;await page.locator('#keyDialog [data-keyd="cancel"]').click();
+    assert(!(await page.locator('#keyDialog').isVisible())&&posted===null,'Cancel sends nothing');
+    await page.locator('#adsbLolKeyClear').click();await page.locator('#keyDialog [data-keyd="delete"]').click();
+    await page.waitForFunction(()=>document.querySelector('.toast')?.textContent.includes('gelöscht'));
+    assert.deepStrictEqual(posted,{clearAdsbLolKey:true},'Only the delete flag is sent');
+    assert(!(await page.locator('#adsbLolKeyClear').isVisible()),'Button hidden after deleting');
+    assert.strictEqual(await page.locator('#adsbLolKey').getAttribute('placeholder'),'API-Key eintragen');
+    // Sigma-delta dimming is gone (it stopped Wi-Fi, v0.5.4).
+    assert.strictEqual(await page.locator('#backlightMode').count(),0);
+   }
    if(width===390){
     await go(page,'wetter');
     const requests=[];let releaseFirst;

@@ -1,6 +1,5 @@
 
 #include <Arduino.h>
-#include <sigma_delta.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
@@ -11,6 +10,7 @@
 #include <DNSServer.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+#include <math.h>
 #include <Arduino_GFX_Library.h>
 #include <SPI.h>
 #include <time.h>
@@ -114,7 +114,6 @@ struct Settings {
   uint16_t rotationMask = (1U << MODE_DEPARTURES);
   uint16_t rotationSec[MODE_COUNT] = {30,20,20,15,20,20,20,20,20,15};
   uint8_t brightness = 70;
-  uint8_t backlightMode = 0;         // 0 = PWM, 1 = sigma-delta (test against flashes)
   String timeZone = "Europe/Berlin";
 
   bool nightEnabled = true;
@@ -321,19 +320,11 @@ static void applyBrightness() {
   // SmallTV backlight is active-low.
   int duty = BL_PWM_RANGE - ((int)b * BL_PWM_RANGE / 100);
   // Reapplying PWM can interrupt very dim backlighting. Update only on change.
-  static int lastDuty=-1,lastMode=-1;
-  if(duty==lastDuty&&cfg.backlightMode==lastMode)return;
-  if(cfg.backlightMode==1){
-    // Sigma-delta: the chip's own pulse generator, not interrupted by Wi-Fi.
-    // Active-low: the share of LOW (= light) is b %, at least one step.
-    uint16_t on=(uint16_t)(((uint32_t)b*256U+99U)/100U);if(on>256)on=256;
-    if(lastMode!=1){digitalWrite(TFT_BL,HIGH);sigmaDeltaEnable();sigmaDeltaSetPrescaler(255);sigmaDeltaAttachPin(TFT_BL,0);}
-    sigmaDeltaWrite(0,(uint8_t)(256-on));
-  } else {
-    if(lastMode==1)sigmaDeltaDetachPin(TFT_BL);
-    analogWrite(TFT_BL, duty);
-  }
-  lastDuty=duty;lastMode=cfg.backlightMode;
+  // (v0.5.4 tried sigma-delta dimming against flashes; it stopped Wi-Fi, see CHANGELOG.)
+  static int lastDuty=-1;
+  if(duty==lastDuty)return;
+  analogWrite(TFT_BL, duty);
+  lastDuty=duty;
 }
 
 static bool modeEnabled(uint8_t mode) {
@@ -389,7 +380,7 @@ static bool saveConfig() {
   JsonDocument d;
   d["ssid"] = cfg.ssid; d["pass"] = cfg.pass; d["hostname"] = cfg.hostname;
   d["timeZone"] = cfg.timeZone;
-  d["mode"] = cfg.mode; d["rotationMask"] = cfg.rotationMask; d["brightness"] = cfg.brightness; d["backlightMode"] = cfg.backlightMode;
+  d["mode"] = cfg.mode; d["rotationMask"] = cfg.rotationMask; d["brightness"] = cfg.brightness;
   JsonArray rs = d["rotationSec"].to<JsonArray>(); for(uint8_t i=0;i<MODE_COUNT;i++) rs.add(cfg.rotationSec[i]);
   d["nightEnabled"] = cfg.nightEnabled; d["nightStart"] = cfg.nightStart; d["nightEnd"] = cfg.nightEnd; d["nightBrightness"] = cfg.nightBrightness;
   d["stopName"] = cfg.stopName; d["stopPlace"] = cfg.stopPlace; d["stopId"] = cfg.stopId; d["departureCount"] = cfg.departureCount; d["departurePoll"] = cfg.departurePoll; d["vvoMotMask"] = cfg.vvoMotMask; d["lang"] = cfg.lang; d["departureCompactDestinations"] = cfg.departureCompactDestinations; d["departureAbbreviate"] = cfg.departureAbbreviate; d["departureDropTown"] = cfg.departureDropTown;
@@ -418,6 +409,11 @@ static bool saveConfig() {
   return true;
 }
 
+// Coordinates must be finite and on the globe (audit F-006/F-019).
+static bool coordValid(float lat, float lon) {
+  return isfinite(lat) && isfinite(lon) && fabsf(lat) <= 90.0f && fabsf(lon) <= 180.0f;
+}
+
 static void loadConfig() {
   if (!LittleFS.begin()) LittleFS.format(), LittleFS.begin();
   File f = LittleFS.open(CFG_PATH, "r"); if (!f) return;
@@ -432,11 +428,13 @@ static void loadConfig() {
   // v0.5.1/v0.5.2: the forecast alternated inside the weather view; now it is a view of its own.
   if(!rs.isNull() && rs.size()<MODE_COUNT && (d["weatherForecast"] | true) && (cfg.rotationMask & (1U<<MODE_WEATHER))) cfg.rotationMask |= (1U<<MODE_FORECAST);
   cfg.brightness = constrain((int)(d["brightness"] | cfg.brightness), 1, 100);
-  cfg.backlightMode = (uint8_t)(d["backlightMode"] | cfg.backlightMode) == 1 ? 1 : 0;
   cfg.nightEnabled = d["nightEnabled"] | cfg.nightEnabled; cfg.nightStart = constrain((int)(d["nightStart"] | cfg.nightStart), 0, 1439); cfg.nightEnd = constrain((int)(d["nightEnd"] | cfg.nightEnd), 0, 1439); cfg.nightBrightness = constrain((int)(d["nightBrightness"] | cfg.nightBrightness), 1, 100);
   cfg.stopName = d["stopName"] | cfg.stopName; cfg.stopPlace = d["stopPlace"] | cfg.stopPlace; cfg.stopId = d["stopId"] | cfg.stopId; {int dc=(int)(d["departureCount"] | cfg.departureCount); cfg.departureCount=(dc==10)?10:constrain(dc,3,5);} cfg.departurePoll = constrain((int)(d["departurePoll"] | cfg.departurePoll), 10, 300); cfg.vvoMotMask = ((uint8_t)(d["vvoMotMask"] | cfg.vvoMotMask)) & VVO_MOT_ALL; if(!cfg.vvoMotMask)cfg.vvoMotMask=VVO_MOT_ALL; cfg.lang = (uint8_t)(d["lang"] | cfg.lang) == LANG_EN ? LANG_EN : LANG_DE; cfg.departureCompactDestinations = d["departureCompactDestinations"] | cfg.departureCompactDestinations; cfg.departureAbbreviate = d["departureAbbreviate"] | cfg.departureAbbreviate; cfg.departureDropTown = d["departureDropTown"] | cfg.departureDropTown;
   cfg.weatherCity = d["weatherCity"] | cfg.weatherCity; cfg.weatherDisplayName = d["weatherDisplayName"] | cfg.weatherDisplayName; cfg.weatherLat = d["weatherLat"] | cfg.weatherLat; cfg.weatherLon = d["weatherLon"] | cfg.weatherLon; cfg.weatherPoll = constrain((int)(d["weatherPoll"] | cfg.weatherPoll), 60, 3600); cfg.weatherTempColor = d["weatherTempColor"] | cfg.weatherTempColor; cfg.weatherFahrenheit = d["weatherFahrenheit"] | cfg.weatherFahrenheit; cfg.geoGermanNames = d["geoGermanNames"] | cfg.geoGermanNames;
   cfg.planePlace = d["planePlace"] | cfg.planePlace; cfg.planeDisplayName = d["planeDisplayName"] | cfg.planeDisplayName; cfg.planeLat = d["planeLat"] | cfg.planeLat; cfg.planeLon = d["planeLon"] | cfg.planeLon; cfg.planeRadiusKm = constrain((int)(d["planeRadiusKm"] | cfg.planeRadiusKm), 1, 250); cfg.planePoll = constrain((int)(d["planePoll"] | cfg.planePoll), (int)RADAR_MIN_POLL_SEC, 300); cfg.planeShowAge = d["planeShowAge"] | cfg.planeShowAge; cfg.planeShowPlace = d["planeShowPlace"] | cfg.planeShowPlace; cfg.planePlaceToggleSec = (d["planePlaceToggleSec"] | cfg.planePlaceToggleSec)==0 ? 0 : constrain((int)(d["planePlaceToggleSec"] | cfg.planePlaceToggleSec), 5, 30);
+  {const Settings defaults{}; // a damaged file must not send requests to impossible places
+   if(!coordValid(cfg.weatherLat,cfg.weatherLon)){cfg.weatherLat=defaults.weatherLat;cfg.weatherLon=defaults.weatherLon;}
+   if(!coordValid(cfg.planeLat,cfg.planeLon)){cfg.planeLat=defaults.planeLat;cfg.planeLon=defaults.planeLon;}}
   cfg.planeOperator = constrain((int)(d["planeOperator"] | cfg.planeOperator), 0, 2); cfg.planeSpeed = constrain((int)(d["planeSpeed"] | cfg.planeSpeed), 0, 2); cfg.planeTrend = d["planeTrend"] | cfg.planeTrend; cfg.planeMarkMilitary = d["planeMarkMilitary"] | cfg.planeMarkMilitary; cfg.planeHide = ((uint8_t)(d["planeHide"] | cfg.planeHide)) & RADAR_HIDE_ALL;
   cfg.trackedFlightNo = d["trackedFlightNo"] | cfg.trackedFlightNo; cfg.aviationstackKey = d["aviationstackKey"] | cfg.aviationstackKey; cfg.adsbLolKey = d["adsbLolKey"] | cfg.adsbLolKey; cfg.trackerStatusPollMin = constrain((int)(d["trackerStatusPollMin"] | cfg.trackerStatusPollMin), 5, 120);
   JsonArrayConst cds = d["countdowns"].as<JsonArrayConst>();
@@ -640,6 +638,17 @@ static String trackedFlightDuration(const TrackedFlightSnapshot& f) {
   return padUnsigned(h,2)+":"+padUnsigned(m,2);
 }
 
+// Minutes until a departure, counted down from the last successful request
+// (audit F-009: before, a failed VVO request froze the minutes on screen).
+// -1 = unknown, -2 = already departed according to the clock.
+static int16_t departureMinutesNow(const VvoDeparture& d) {
+  if (d.minutes < 0) return -1;
+  const uint32_t ok = vvoLastOkMs();
+  const int32_t age = ok ? (int32_t)((uint32_t)(millis() - ok) / 60000UL) : 0;
+  const int32_t m = (int32_t)d.minutes - age;
+  return m < 0 ? -2 : (int16_t)m;
+}
+
 static void drawDepartures(bool force=true) {
   static uint8_t lastVisible=255,lastPage=255;static bool lastError=false,lastUnserved=false;
   uint8_t count=min(vvoCount(),cfg.departureCount);
@@ -684,22 +693,24 @@ static void drawDepartures(bool force=true) {
   int y0 = 41, step = paged ? 34 : (visible >= 5 ? 34 : (visible == 4 ? 42 : 52));
   for (uint8_t row = 0; row < visible; row++) {
     const VvoDeparture& d = vvoAt(start + row);
+    const int16_t minutes = departureMinutesNow(d);
     int y = y0 + row * step;
     String line = displayAscii(String(d.line));
     String rawDest = departureText(d.direction,cfg.departureAbbreviate);
     String right;
     uint16_t rightColor = C_WHITE;
     if (d.cancelled) { right = "X"; rightColor = C_RED; }
-    else if (d.minutes < 0) { right = "?"; rightColor = C_GRAY; }
-    else if (d.minutes <= 0) { right = TR("JETZT","NOW"); rightColor = C_GREEN; }
-    else { right = String(d.minutes); rightColor = d.delayed ? C_YELLOW : C_WHITE; }
+    else if (minutes == -2) { right = "-"; rightColor = C_GRAY; }
+    else if (minutes < 0) { right = "?"; rightColor = C_GRAY; }
+    else if (minutes == 0) { right = TR("JETZT","NOW"); rightColor = C_GREEN; }
+    else { right = String(minutes); rightColor = d.delayed ? C_YELLOW : C_WHITE; }
 
     uint16_t lc = glyphCount(line);
     uint8_t lineSize = lc <= 2 ? 3 : (lc <= 4 ? 2 : 1);
     int lineY = y + (lineSize == 3 ? 0 : (lineSize == 2 ? 6 : 12));
     visibleText(1+row*3,line,8,lineY,lineSize,C_YELLOW,8,y,50,step);
 
-    uint8_t rs = (d.minutes == 0 && !d.cancelled) ? 1 : 2;
+    uint8_t rs = (minutes == 0 && !d.cancelled) ? 1 : 2;
     int rightX = 232 - textW(right, rs);
     uint8_t destSize = 2;
     String dest = crop(rawDest, 9);
@@ -791,7 +802,9 @@ static void drawForecast(bool force) {
   static String shown;
   String sig=String(cfg.lang)+String(cfg.weatherFahrenheit)+String(w.days);
   for(uint8_t i=0;i<w.days;i++)sig+=String(w.day[i].code)+"/"+String((int)lroundf(w.day[i].highC))+"/"+String((int)lroundf(w.day[i].lowC))+"/"+String(w.day[i].rainPct)+";";
-  if(!force&&sig==shown){drawFooter("OPEN-METEO LIVE");return;}
+  // Footer follows the data state like the weather view (audit F-010).
+  const String footer=w.error?TR("LIVE / LETZTER STAND","LIVE / LAST DATA"):String(F("OPEN-METEO LIVE"));
+  if(!force&&sig==shown){drawFooter(footer);return;}
   shown=sig;beginView(true);
   String title=cfg.weatherDisplayName.length()?cfg.weatherDisplayName:(cfg.weatherCity.length()?cfg.weatherCity:String(TR("WETTER","WEATHER")));
   visibleText(0,crop(displayAscii(title),12),8,7,2,C_YELLOW,0,0,160,22);
@@ -811,7 +824,7 @@ static void drawForecast(bool force) {
     centerTextIn(String((int)lroundf(displayTempValue(d.lowC)))+"°",cx,158,2,C_GRAY);
     if(d.rainPct>=0)centerTextIn(String(d.rainPct)+"%",cx,186,2,C_CYAN);
   }
-  drawFooter("OPEN-METEO LIVE");
+  drawFooter(footer);
 }
 
 static void drawWeather(bool force=true) {
@@ -1256,6 +1269,9 @@ static void wifiEventsBegin() {
 }
 static void wifiEventsHandle(uint32_t now) {
   if (!netWatch.start) { wifiEvents = 0; return; }  // first connection during start-up
+  // "lost" and "got IP" in the same pass while connected: a leftover from
+  // connecting, not an outage (a real one takes seconds, not one loop pass).
+  if ((wifiEvents & 3) == 3 && !wifiLostAt && WiFi.status() == WL_CONNECTED) { wifiEvents = 0; return; }
   if (wifiEvents & 1) { wifiEvents &= ~1; if (!wifiLostAt) { wifiLostAt = now ? now : 1; diagEvent(D_WIFI, DS_WIFI_LOST, wifiLostReason); } }
   if (wifiEvents & 2) {
     wifiEvents &= ~2;
@@ -1318,7 +1334,7 @@ static void updateCountdownSettings(JsonObjectConst in,CountdownSlot& c) {
 
 static void apiGetConfig() {
   JsonDocument d;
-  d["ssid"]=cfg.ssid;d["hostname"]=cfg.hostname;d["mode"]=cfg.mode;d["rotationMask"]=cfg.rotationMask;d["brightness"]=cfg.brightness;d["backlightMode"]=cfg.backlightMode;d["timeZone"]=cfg.timeZone;
+  d["ssid"]=cfg.ssid;d["hostname"]=cfg.hostname;d["mode"]=cfg.mode;d["rotationMask"]=cfg.rotationMask;d["brightness"]=cfg.brightness;d["timeZone"]=cfg.timeZone;
   JsonArray rs=d["rotationSec"].to<JsonArray>();for(uint8_t i=0;i<MODE_COUNT;i++)rs.add(cfg.rotationSec[i]);
   d["nightEnabled"]=cfg.nightEnabled;d["nightStart"]=cfg.nightStart;d["nightEnd"]=cfg.nightEnd;d["nightBrightness"]=cfg.nightBrightness;
   d["stopName"]=cfg.stopName;d["stopPlace"]=cfg.stopPlace;d["stopId"]=cfg.stopId;d["departureCount"]=cfg.departureCount;d["departurePoll"]=cfg.departurePoll;d["vvoMotMask"]=cfg.vvoMotMask;d["lang"]=cfg.lang;d["departureCompactDestinations"]=cfg.departureCompactDestinations;d["departureAbbreviate"]=cfg.departureAbbreviate;d["departureDropTown"]=cfg.departureDropTown;
@@ -1330,10 +1346,35 @@ static void apiGetConfig() {
   sendJson(d);
 }
 
+// Server-side limits for the settings (audit F-006): the browser checks them
+// too, but a direct POST must not store impossible places or huge texts.
+// Checked before anything is changed; absent fields keep their stored value.
+static bool textFits(JsonDocument& d, const __FlashStringHelper* key, size_t max) {
+  JsonVariantConst v = d[key];
+  return v.isNull() || (v.is<const char*>() && strlen(v.as<const char*>()) <= max);
+}
+static bool coordFits(JsonDocument& d, const __FlashStringHelper* key, float max) {
+  JsonVariantConst v = d[key];
+  if (v.isNull()) return true;
+  if (!v.is<float>()) return false;
+  const float x = v.as<float>();
+  return isfinite(x) && fabsf(x) <= max;
+}
+static bool configInputValid(JsonDocument& d) {
+  return textFits(d,F("ssid"),32) && textFits(d,F("pass"),64) && textFits(d,F("hostname"),64) &&
+         textFits(d,F("stopName"),80) && textFits(d,F("stopPlace"),80) && textFits(d,F("stopId"),24) &&
+         textFits(d,F("weatherCity"),160) && textFits(d,F("weatherDisplayName"),40) &&
+         textFits(d,F("planePlace"),160) && textFits(d,F("planeDisplayName"),40) &&
+         textFits(d,F("trackedFlightNo"),12) && textFits(d,F("aviationstackKey"),72) && textFits(d,F("adsbLolKey"),72) &&
+         coordFits(d,F("weatherLat"),90) && coordFits(d,F("weatherLon"),180) &&
+         coordFits(d,F("planeLat"),90) && coordFits(d,F("planeLon"),180);
+}
+
 static void apiPostConfig() {
   if(!server.hasArg("plain")){server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Keine Daten empfangen.\"}"));return;}
   JsonDocument d;if(deserializeJson(d,server.arg("plain"))){server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Einstellungen konnten nicht gelesen werden.\"}"));return;}
   if(d["timeZone"].is<const char*>() && timeZoneIndex(d["timeZone"].as<const char*>())<0){server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Unbekannte Zeitzone.\"}"));return;}
+  if(!configInputValid(d)){server.send_P(400,"application/json; charset=utf-8",PSTR("{\"ok\":false,\"error\":\"Ungültige Werte: Text zu lang oder Koordinate außerhalb der Erde.\"}"));return;}
   Settings previous=cfg; String oldSsid=cfg.ssid,oldHost=cfg.hostname,oldTracked=cfg.trackedFlightNo,oldKey=cfg.aviationstackKey,oldAdsbKey=cfg.adsbLolKey;
   if(d["ssid"].is<const char*>())cfg.ssid=d["ssid"].as<String>();
   if(d["pass"].is<const char*>()){String x=d["pass"].as<String>();if(x.length())cfg.pass=x;}
@@ -1344,7 +1385,6 @@ static void apiPostConfig() {
   JsonArrayConst rs=d["rotationSec"].as<JsonArrayConst>();if(!rs.isNull())for(uint8_t i=0;i<MODE_COUNT&&i<rs.size();i++)cfg.rotationSec[i]=constrain((int)(rs[i]|cfg.rotationSec[i]),5,3600);
   if(!modeEnabled(cfg.mode))cfg.mode=firstEnabledMode();
   cfg.brightness=constrain((int)(d["brightness"]|cfg.brightness),1,100);
-  cfg.backlightMode=(uint8_t)(d["backlightMode"]|cfg.backlightMode)==1?1:0;
   if(d["timeZone"].is<const char*>())cfg.timeZone=d["timeZone"].as<String>();
   cfg.nightEnabled=d["nightEnabled"]|cfg.nightEnabled;cfg.nightStart=constrain((int)(d["nightStart"]|cfg.nightStart),0,1439);cfg.nightEnd=constrain((int)(d["nightEnd"]|cfg.nightEnd),0,1439);cfg.nightBrightness=constrain((int)(d["nightBrightness"]|cfg.nightBrightness),1,100);
   if(d["stopName"].is<const char*>()) cfg.stopName=d["stopName"].as<String>();
@@ -1378,6 +1418,9 @@ static void apiPostConfig() {
   if(d["aviationstackKey"].is<const char*>()){String x=d["aviationstackKey"].as<String>();x.trim();if(x.length())cfg.aviationstackKey=x;}
   // adsb.lol key: empty keeps the stored key, "-" removes it.
   if(d["adsbLolKey"].is<const char*>()){String x=d["adsbLolKey"].as<String>();x.trim();if(x=="-")cfg.adsbLolKey="";else if(x.length()&&x.length()<72)cfg.adsbLolKey=x;}
+  // Delete buttons in the web interface: remove a stored key explicitly.
+  if(d["clearAviationstackKey"]|false)cfg.aviationstackKey="";
+  if(d["clearAdsbLolKey"]|false)cfg.adsbLolKey="";
   cfg.trackerStatusPollMin=constrain((int)(d["trackerStatusPollMin"]|cfg.trackerStatusPollMin),5,120);
   JsonArrayConst a=d["countdowns"].as<JsonArrayConst>();if(!a.isNull())for(uint8_t i=0;i<4&&i<a.size();i++){updateCountdownSettings(a[i].as<JsonObjectConst>(),cfg.countdown[i]);if(cfg.countdown[i].active&&cfg.countdown[i].type==COUNTDOWN_DAYS){int32_t dd=0;if(countdownDayDifference(cfg.countdown[i].targetDate,dd)){uint32_t av=dd<0?(uint32_t)(-(int64_t)dd):(uint32_t)dd;cfg.countdown[i].dayDigits=max(cfg.countdown[i].dayDigits,max((uint8_t)3,decimalDigits(av)));}}}
   d.clear();
@@ -1409,7 +1452,8 @@ static void apiCountdown() {
   if(!server.hasArg("plain")){server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Keine Daten empfangen.\"}"));return;}
   JsonDocument d;if(deserializeJson(d,server.arg("plain"))){server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Ungültige Daten.\"}"));return;}
   int slot=d["slot"]|-1;if(slot<0||slot>3){server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Ungültiger Countdown-Slot.\"}"));return;}
-  Settings previous=cfg; CountdownSlot& c=cfg.countdown[slot];updateCountdownSettings(d.as<JsonObjectConst>(),c);String action=d["action"]|"";
+  // Prepared on a copy and taken over only when valid (audit F-002).
+  Settings previous=cfg; CountdownSlot c=cfg.countdown[slot];updateCountdownSettings(d.as<JsonObjectConst>(),c);String action=d["action"]|"";
   if(action=="stop"){c.active=false;}
   else if(action=="start"){
     if(c.type==COUNTDOWN_DAYS){
@@ -1421,6 +1465,7 @@ static void apiCountdown() {
       c.targetEpoch=(uint32_t)now+c.durationSec;c.active=true;
     }
   } else {server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Unbekannte Aktion.\"}"));return;}
+  cfg.countdown[slot]=c;
   if(!saveConfig()){cfg=previous;server.send_P(500,"application/json",PSTR("{\"ok\":false,\"error\":\"Countdown konnte nicht gespeichert werden.\"}"));return;}if(countdownSlotFromMode(cfg.mode)==slot)drawCountdown((uint8_t)slot);server.send_P(200,"application/json",PSTR("{\"ok\":true}"));
 }
 
@@ -1446,10 +1491,18 @@ static void apiGeoSearch() {
   server.send(200,"application/json; charset=utf-8",out);
 }
 
+// A query value as a number; false for text such as "foo" (toFloat() would give 0).
+static bool argFloat(const String& s, float& out) {
+  if (!s.length()) return false;
+  char* end = nullptr; const double v = strtod(s.c_str(), &end);
+  if (!end || *end || !isfinite(v)) return false;
+  out = (float)v; return true;
+}
+
 static void apiGeoReverse() {
   if(apMode||WiFi.status()!=WL_CONNECTED){server.send_P(503,"application/json; charset=utf-8",PSTR("{\"ok\":false,\"error\":\"Kein Internetzugang.\"}"));return;}
-  float lat=server.arg("lat").toFloat(),lon=server.arg("lon").toFloat();
-  if(lat<-90||lat>90||lon<-180||lon>180){server.send_P(400,"application/json; charset=utf-8",PSTR("{\"ok\":false,\"error\":\"Ungültige Koordinaten.\"}"));return;}
+  float lat=NAN,lon=NAN;
+  if(!argFloat(server.arg("lat"),lat)||!argFloat(server.arg("lon"),lon)||!coordValid(lat,lon)){server.send_P(400,"application/json; charset=utf-8",PSTR("{\"ok\":false,\"error\":\"Ungültige Koordinaten.\"}"));return;}
   if(serviceWaitMs(SERVICE_GEO)){server.send_P(429,"application/json; charset=utf-8",PSTR("{\"ok\":false,\"error\":\"Ortsdienst pausiert nach zu vielen Anfragen. Bitte später erneut versuchen.\"}"));return;}
   String out;
   bool german=server.arg("german")=="1";
@@ -1609,6 +1662,9 @@ void setup() {
   wifiEventsBegin();
   connectWiFi();
   setupWeb();
+  // Events from the first connection (failed scans before the AP answered)
+  // must not appear as a disconnect after the start (log 16.11.2026, 12.3 s).
+  wifiEvents=0;
   netWatch.start=millis();
   if(apMode)apRetryAt=millis()+60000UL;
 
@@ -1672,6 +1728,9 @@ void loop() {
     if(!departurePagingReady){departurePagingReady=true;departurePage=0;lastDeparturePageSwitchMs=nowMs;}
     else if((uint32_t)(nowMs-lastDeparturePageSwitchMs)>=5000UL){departurePage^=1;lastDeparturePageSwitchMs=nowMs;if(cfg.mode==MODE_DEPARTURES)drawDepartures(false);}
   }else{departurePagingReady=false;departurePage=0;lastDeparturePageSwitchMs=nowMs;}
+  // Minutes count down between requests and while VVO cannot be reached.
+  {static uint32_t shownAge=0;const uint32_t age=vvoLastOkMs()?(uint32_t)(nowMs-vvoLastOkMs())/60000UL:0;
+   if(age!=shownAge){shownAge=age;if(cfg.mode==MODE_DEPARTURES&&vvoCount())drawDepartures(false);}}
 
   if(cfg.mode==MODE_PLANE&&cfg.planeShowPlace&&cfg.planePlaceToggleSec>0&&planePlaceTitle().length()){
     if((uint32_t)(nowMs-lastPlanePlaceSwitchMs)>=(uint32_t)cfg.planePlaceToggleSec*1000UL){planePlacePhase=!planePlacePhase;lastPlanePlaceSwitchMs=nowMs;drawPlaneHeader();}

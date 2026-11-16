@@ -101,7 +101,7 @@ WeatherSnapshot weather={};VvoDeparture departures[10]={};uint8_t departureN=0;b
 const WeatherSnapshot& weatherData(){return weather;}
 uint8_t vvoCount(){return departureN;}
 const VvoDeparture& vvoAt(uint8_t i){return departures[i];}
-bool vvoError(){return departureError;}
+bool vvoError(){return departureError;}static uint32_t vvoOkMs=0;uint32_t vvoLastOkMs(){return vvoOkMs;}
 static bool departureUnserved=false;bool vvoNotServed(){return departureUnserved;}
 TrackedFlightSnapshot data={};FlightSnapshot plane={};FlightSnapshot lastPlaneRendered={};bool planeRendered=false;
 const TrackedFlightSnapshot& trackedFlightData(){return data;}
@@ -276,6 +276,14 @@ int main(){
  clearDraws();drawDepartures();assert(fullScreens==1);clearDraws();drawDepartures(false);assert(fullScreens==0&&draws.empty()&&rects.empty());
  departures[0].minutes=2;clearDraws();drawDepartures(false);assert(fullScreens==0&&draws.size()==1&&draws[0].text=="2");
  departures[0].minutes=0;clearDraws();drawDepartures(false);assert(fullScreens==0);bool now=false;for(auto d:draws)if(d.text=="JETZT")now=true;assert(now);
+ // Forecast footer follows the data state (audit F-010): no LIVE after a failed request.
+ {weather.valid=true;weather.days=3;weather.error=false;clearDraws();drawForecast(true);assert(footer=="OPEN-METEO LIVE");
+  weather.error=true;footer="";drawForecast(false);assert(footer=="LIVE / LETZTER STAND");weather={};}
+ // Minutes count down from the last successful request, also while VVO fails (audit F-009).
+ {departures[0].minutes=3;vvoOkMs=clockMs;clearDraws();drawDepartures(false);
+  clockMs+=2*60000;departureError=true;clearDraws();drawDepartures(false);bool one=false;for(auto d:draws)if(d.text=="1")one=true;assert(one);
+  clockMs+=4*60000;clearDraws();drawDepartures(false);bool gone=false;for(auto d:draws)if(d.text=="-")gone=true;assert(gone);
+  departureError=false;vvoOkMs=0;departures[0].minutes=0;}
  departureN=1;clearDraws();drawDepartures(false);assert(fullScreens==1);
  departureN=0;departureUnserved=true;departureError=false;clearDraws();drawDepartures(false);assert(fullScreens==1&&footer=="VVO");
  bool first=false,second=false;for(auto d:draws){if(d.text=="Haltestelle wird"){first=true;assert(d.color==C_GRAY);}if(d.text=="nicht bedient"){second=true;assert(d.color==C_GRAY);}assert(d.text!="nicht erreichbar");}assert(first&&second);
@@ -294,7 +302,7 @@ int main(){
 }
 '''
 pre+='\nstatic bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;\nstatic String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;static const int PLANE_FOOTER_X=18;static const char* planeSourceLabel="ADSB.LOL";\nstatic String lastPlaneCall,lastPlaneOperator,lastPlaneRoute,lastPlaneReg;static int8_t lastPlaneTrend=0;\n'
-names=['nextCodepoint','glyphCount','drawSpecialGlyph','textW','crop','stopTown','departureText','beginView','visibleText','visibleCenter','planePlaceTitle','drawPlaneHeader','routePart','drawFlightRoute','samePlane','planeDistance','planeAltitude','compactType','planeFooterLabel','drawPlaneAge','drawPlaneDot','drawPlaneFooter','planeSecondPhase','planeOperatorText','planeSpeedText','drawPlane','drawTrackedFlight','wxLen','drawCloud','drawSun','drawMoon','drawSnowflake','drawWeatherIconAt','drawWeatherIcon','drawSunEventIcon','centerTextIn','drawForecast','drawWeather','drawDepartures','segMask','drawSevenDigit','sevenUnit','sevenCharWidth','drawSevenString','drawCountdown','drawClock']
+names=['nextCodepoint','glyphCount','drawSpecialGlyph','textW','crop','stopTown','departureText','beginView','visibleText','visibleCenter','planePlaceTitle','drawPlaneHeader','routePart','drawFlightRoute','samePlane','planeDistance','planeAltitude','compactType','planeFooterLabel','drawPlaneAge','drawPlaneDot','drawPlaneFooter','planeSecondPhase','planeOperatorText','planeSpeedText','drawPlane','drawTrackedFlight','wxLen','drawCloud','drawSun','drawMoon','drawSnowflake','drawWeatherIconAt','drawWeatherIcon','drawSunEventIcon','centerTextIn','drawForecast','drawWeather','departureMinutesNow','drawDepartures','segMask','drawSevenDigit','sevenUnit','sevenCharWidth','drawSevenString','drawCountdown','drawClock']
 import collections
 _types=re.findall(r'\{"([A-Z0-9]{2,4})","([^"]*)"\}',(root/'src/AircraftLabel.h').read_text())
 assert len(_types)>=200 and all(len(n)<=18 and n.isascii() for _,n in _types),'aircraft names must be ASCII and at most 18 characters'

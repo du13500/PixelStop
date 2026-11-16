@@ -6,9 +6,9 @@
 Bought as a small Wi-Fi cube with a rather modest stock firmware – and from day one with the plan to turn it into something of my own.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.4.3--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.4.4--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
-![Hardware test](https://img.shields.io/badge/hardware%20test-v0.5.4.3%20pending-yellow)
+![Hardware test](https://img.shields.io/badge/hardware%20test-v0.5.4.4%20pending-yellow)
 ![Hobby project](https://img.shields.io/badge/hobby%20project-non--commercial-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
@@ -59,7 +59,7 @@ Plus night mode, brightness down to 1 %, place search with a map, Greek and Cyri
 
 </details>
 
-## Status: v0.5.4.3-dev
+## Status: v0.5.4.4-dev
 
 | Area | Status |
 | --- | --- |
@@ -67,7 +67,7 @@ Plus night mode, brightness down to 1 %, place search with a map, Greek and Cyri
 | Flight radar over HTTP/1.1, pauses on rejected requests | ✅ confirmed on hardware (v0.4.14.7) |
 | Radar only while visible | ✅ running on hardware (v0.4.14.8) |
 | Quota guard for adsb.lol (30 s to month), counters across restarts | ⏳ hardware test pending (v0.5.4) |
-| Backlight at 1 % without flashes | ⚠️ occasional flashes, sigma-delta test running (v0.5.3) |
+| Backlight at 1 % without flashes | ⚠️ occasional flashes; the sigma-delta attempt stopped Wi-Fi and was removed, new approach open |
 | German/English language switch, abbreviated destinations | ✅ confirmed on hardware (v0.5.0) |
 | 3-day forecast, tidier web interface, “Show now”, town of the stop | ✅ confirmed on hardware (v0.5.1) |
 | Radar: distance and altitude continued between requests, status dot | ✅ confirmed on hardware (v0.5.2) |
@@ -186,7 +186,7 @@ For illustration, a view from Galactica’s CIC:
 - **More regions:** departures not only from VVO but selectable per transport association or Germany-wide (planned for v0.6.0).
 - **Custom destination replacements** in the web interface.
 - English diagnostics texts.
-- **Fallback sources for the radar** (airplanes.live, adsb.fi) when the adsb.lol quota is used up (planned for v0.5.5).
+- **Honest radar** (v0.5.5): a pause screen when an adsb.lol limit is reached, how far the quota goes shown in the web interface, and an own data source in the home network. Then **fallback sources** (v0.5.6).
 
 ## Diagnostics and bug reports
 

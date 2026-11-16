@@ -1,27 +1,18 @@
 # Testplan
 
-Stand: v0.5.4.3-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: v0.5.4.4-dev (16.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
 
-## Hardwaretest v0.5.4.3-dev
+## Hardwaretest v0.5.4.4-dev
 
-0b. **v0.5.4.3:** Radar über eine Stunde: Im Log kommen regelmäßig „Radar.Position | OK“-Zeilen (Abstand ≈ „Radar-Intervall“ im Status); höchstens eine „Radar.Route“ zwischen zwei Positionen; spätere Prüfungen desselben Flugzeugs nur als „Radar.Metadata“.
-
-0a. **v0.5.4.2:** Im Log nach jedem Start eine Zeile „WLAN | verbunden“ (HTTP-Feld = Funkverbindung nach ms, Wert = IP nach ms). Bei Problemen „WLAN | Fehler“ mit Status. Anzeigename: Ort um mehr als 5 km verschieben → Dialog mit Leeren/Behalten.
-
-0. **v0.5.4.1:** Nach dem Flashen und nach mehreren Neustarts verbindet sich der Würfel wieder in wenigen Sekunden (kein Setup-Hotspot, kein Neustart nach ~83 s); Radarabrufe wieder um 1–2 s; Speichern ohne geänderten Hostnamen startet nicht neu.
-
-1. **Radar-Intervall danach selbst auf 10 s stellen** (5 s gibt es nicht mehr). Unter *System → Status* stehen „Radar-Intervall“ und „adsb.lol: Stunde … · Tag … · Woche … · Monat …“. Die Zahlen mit dem adsb.lol-Schlüsselportal vergleichen; **kein 429** im Log, auch nicht über Stunden mit Radar in der Rotation.
-2. **Zähler über Neustart:** *Neustart* drücken, Status erneut ansehen – die Zähler laufen weiter. Nach Stecker ziehen höchstens die letzten 10 Minuten verloren.
-3. **Webinterface:** Reiter unter dem Titel, auf dem Handy zwei zentrierte Reihen; Seite lädt auch während laufender Radarabrufe vollständig (mehrmals neu laden, auch auf Englisch).
-4. **Anzeigename:** Radar- oder Wetterort um mehr als 5 km verschieben → Hinweis „Leeren/Behalten“; kleine Korrekturen ohne Hinweis.
-5. **Firmware-Update** über *System → Firmware-Update* (eigene Seite, jetzt zweisprachig). Danach startet der Würfel normal, nicht im Rettungsmodus.
-6. **Schutz:** `curl http://<IP>/api/status` funktioniert; ein Aufruf über einen fremden Namen (z. B. per `curl -H "Host: evil.example" http://<IP>/api/status`) liefert 403 und im Log „Web | abgelehnt“.
-7. **Stromausfall:** WLAN der FRITZ!Box kurz ausschalten, Würfel neu starten → Setup-Hotspot mit „sucht gespeichertes WLAN“; WLAN wieder einschalten → nach spätestens etwa einer Minute normaler Start. Mit einem Gerät im Hotspot bleibt er dort.
-8. **Netzwerk-Hänger** (falls er wieder auftritt): vor dem Stecker ziehen in der FRITZ!Box nachsehen, ob „pixelstop“ aktiv ist, und `ping <IP>` versuchen. Nach 10 Minuten sollte die Firmware selbst neu verbinden („WLAN | neu verbinden“ im Log), nach weiteren 5 Minuten neu starten.
-9. **Routen:** Flüge im Sinkflug nahe ORD dürfen ORD nicht als Start zeigen; verworfene Routen stehen mit Grund im Log.
-10. **Airline-Namen:** lange Namen wechseln im 3-s-Takt (z. B. „Air Mobility“ / „Command“), Marken wie KLM, SAS, UPS Airlines, FedEx, Volaris erscheinen kurz.
-11. **Wetter:** „5°C“ ohne Lücke zwischen Zahl und Einheit; zweistellige und negative Werte bleiben mittig.
-12. **Dimmverfahren:** Sigma-Delta nachts bei 1–10 % weiter beobachten.
+1. **Radar über mehrere Stunden:** Im Log kommen regelmäßig „Radar.Position | OK“-Zeilen. Das „Radar-Intervall“ im Status liegt bei 10–27 s (nicht mehr bei Minuten). Scheitert ein Abruf, kommt der nächste Versuch nach 45 s.
+2. **Gescheiterte Abrufe** zeigen im Log eine Zeile „Adresse“ mit der Server-IP und danach „TLS-Fehler“. Erwartung, solange adsb.lol den Fehler hat: Fehler mit 159.195.60.218, Erfolge mit 159.195.81.163. Beide Adressen sind die von adsb.lol, nicht deine.
+3. **Status:** `flightTlsRx` steht fest auf 4096; nach einem Neustart vergehen bis zum ersten Radarabruf keine 10 s Puffertest mehr.
+4. **Keys löschen:** Unter *Flugradar* bzw. *Flug-Tracker* erscheint „Gespeicherten Key löschen“ nur mit gespeichertem Key; Abbrechen ändert nichts, Löschen entfernt nur den Key (ein vorher geändertes anderes Feld bleibt ungespeichert im Formular stehen). Danach im Status `adsbKey: false`.
+5. **Kein Dimmverfahren mehr** unter *Anzeige*; Helligkeit 1–100 % per PWM, FRITZ!Box zeigt für „pixelstop“ wieder um 72/30 Mbit/s, `ping` ohne Ausfälle. Aufblitzen nachts bei geringer Helligkeit weiter beobachten (offen, neuer Ansatz nötig).
+6. **Nach dem Einschalten:** keine Zeilen „WLAN | getrennt/verbunden“ in den ersten Sekunden. Kommt nach dem Start gar keine Antwort, steht nach etwa 2 Minuten „WLAN | neu verbinden“ im Log (nicht erst nach 10).
+7. **Abfahrten:** WLAN der FRITZ!Box kurz abschalten – die Minuten zählen weiter herunter, abgefahrene Bahnen zeigen „-“, Fußzeile „LIVE / LETZTER STAND“.
+8. **3-Tage-Vorhersage:** bei nicht erreichbarem Open-Meteo „LIVE / LETZTER STAND“ statt „OPEN-METEO LIVE“.
+9. Aus v0.5.4.3 weiter offen: Zähler über Neustart (Status vor/nach *Neustart*), Kontingent mit dem adsb.lol-Schlüsselportal vergleichen, Namensdialog bei Ortswechsel, Speichern ohne geänderten Hostnamen startet nicht neu, Firmware-Update über die eigene Seite.
 
 ## Dauerhafte Prüfungen
 
@@ -35,12 +26,12 @@ Stand: v0.5.4.3-dev (10.11.2026). Dieser Plan wird mit jeder Version aktualisier
 
 ## Stand des letzten Builds
 
-v0.5.4-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
+v0.5.4.3-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
 
 | | belegt | von | Anteil |
 | --- | --- | --- | --- |
-| Statischer RAM | 51.328 Byte | 81.920 Byte | 62,7 % |
-| Flash | 723.775 Byte | 1.044.464 Byte | 69,3 % |
+| Statischer RAM | 51.352 Byte | 81.920 Byte | 62,7 % |
+| Flash | 724.771 Byte | 1.044.464 Byte | 69,4 % |
 
 Das komprimierte Webinterface spart gegenüber v0.5.3.1 rund 42 KB Flash. `tools/check_ram.py` lässt den Build ab 51.600 Byte statischem RAM scheitern, damit für TLS-Abrufe genug Speicher frei bleibt.
 
