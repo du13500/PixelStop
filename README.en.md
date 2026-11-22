@@ -14,13 +14,13 @@ Bought as a small Wi-Fi cube with a rather modest stock firmware – and from da
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
 
 <p align="center">
-<img src="docs/screens/en/kachel-abfahrten.png" width="258" alt="Departures">
-<img src="docs/screens/en/kachel-wetter.png" width="258" alt="Weather">
-<img src="docs/screens/en/kachel-vorhersage.png" width="258" alt="3-day forecast">
-<img src="docs/screens/en/kachel-flugradar.png" width="258" alt="Flight radar">
-<img src="docs/screens/en/kachel-flugtracker.png" width="258" alt="Flight tracker">
-<img src="docs/screens/en/kachel-uhr.png" width="258" alt="Clock">
-<img src="docs/screens/en/kachel-countdown-tage.png" width="258" alt="Countdown">
+<img src="docs/screens/en/kachel-abfahrten.png" width="260" alt="Departures">
+<img src="docs/screens/en/kachel-wetter.png" width="260" alt="Weather">
+<img src="docs/screens/en/kachel-vorhersage.png" width="260" alt="3-day forecast">
+<img src="docs/screens/en/kachel-flugradar.png" width="260" alt="Flight radar">
+<img src="docs/screens/en/kachel-flugtracker.png" width="260" alt="Flight tracker">
+<img src="docs/screens/en/kachel-uhr.png" width="260" alt="Clock">
+<img src="docs/screens/en/kachel-countdown-tage.png" width="260" alt="Countdown">
 </p>
 <p align="center"><sub>Real firmware output with sample data · more images and explanations under <a href="#programs">Programs</a></sub></p>
 
@@ -39,9 +39,14 @@ Expand a program to see what it shows, what you can set and all example images. 
 Live departures of a stop of Verkehrsverbund Oberelbe (VVO, Dresden region): line, destination, minutes to departure, delay (yellow) and cancellation (✕). Three to five departures on one page, or ten on two pages switching every 5 seconds; filter by mode of transport. Destinations can be shown without the town of the stop and abbreviated. Minutes count down between requests – even while VVO cannot be reached.
 
 <p align="center">
-<img src="docs/screens/en/abfahrten.png" width="258" alt="Departures: Dresden Hbf with a delay and a cancellation">
-<img src="docs/screens/en/abfahrten-ziele.png" width="258" alt="Short destinations">
-<img src="docs/screens/en/abfahrten-seiten.gif" width="258" alt="Ten departures on two pages">
+<img src="docs/screens/en/abfahrten.png" width="260" alt="Departures: Dresden Hbf with a delay and a cancellation">
+<img src="docs/screens/en/abfahrten-ziele.png" width="260" alt="Short destinations">
+<img src="docs/screens/en/abfahrten-seiten.gif" width="260" alt="Ten departures on two pages">
+</p>
+
+<p align="center">
+<img src="docs/screens/en/abfahrten-nicht-bedient.png" width="260" alt="Stop not served">
+<img src="docs/screens/en/abfahrten-fehler.png" width="260" alt="VVO not reachable">
 </p>
 
 </details>
@@ -51,8 +56,8 @@ Live departures of a stop of Verkehrsverbund Oberelbe (VVO, Dresden region): lin
 Current temperature, day/night weather icon, high and low, chance of rain, sunrise and sunset, in °C or °F. The place is chosen by search, on the map or by coordinates; a display name of your own is possible.
 
 <p align="center">
-<img src="docs/screens/en/wetter.png" width="258" alt="Weather: Berlin by day">
-<img src="docs/screens/en/wetter-nacht.png" width="258" alt="Weather: Berlin at night">
+<img src="docs/screens/en/wetter.png" width="260" alt="Weather: Berlin by day">
+<img src="docs/screens/en/wetter-nacht.png" width="260" alt="Weather: Berlin at night">
 </p>
 
 </details>
@@ -62,7 +67,7 @@ Current temperature, day/night weather icon, high and low, chance of rain, sunri
 Weekday, weather icon, high and low and chance of rain for the next three days – as a view of its own in the rotation.
 
 <p align="center">
-<img src="docs/screens/en/vorhersage.png" width="258" alt="3-day forecast for Berlin">
+<img src="docs/screens/en/vorhersage.png" width="260" alt="3-day forecast for Berlin">
 </p>
 
 </details>
@@ -82,33 +87,35 @@ The **Flight radar** tab adjusts the view:
 
 <p align="center">
 <sub><b>Flight movements</b></sub><br>
-<img src="docs/screens/en/flugradar.gif" width="258" alt="Flight radar: Emirates A380 over Dresden">
-<img src="docs/screens/en/radar-steigflug.gif" width="258" alt="Climbing: ALROSA Tu-154M out of Mirny">
-<img src="docs/screens/en/radar-sinkflug.gif" width="258" alt="Descending: European Air Charter MD-82 to Varna">
+<img src="docs/screens/en/flugradar.gif" width="260" alt="Flight radar: Emirates A380 over Dresden">
+<img src="docs/screens/en/radar-steigflug.gif" width="260" alt="Climbing: ALROSA Tu-154M out of Mirny">
+<img src="docs/screens/en/radar-sinkflug.gif" width="260" alt="Descending: European Air Charter MD-82 to Varna">
+</p>
+<p align="center">
+<img src="docs/screens/en/radar-colone.gif" width="260" alt="4-character codes (fictional)">
+<img src="docs/screens/en/radar-apollo.gif" width="260" alt="Military (fictional)">
+<img src="docs/screens/en/radar-karma.gif" width="260" alt="Emergency (fictional)">
 </p>
 
 <p align="center">
 <sub><b>Display</b></sub><br>
-<img src="docs/screens/en/radar-name.gif" width="258" alt="Long airline name alternating">
-<img src="docs/screens/en/radar-boden.gif" width="258" alt="Aircraft on the ground">
-<img src="docs/screens/en/radar-leer.png" width="258" alt="No aircraft within the radius">
+<img src="docs/screens/en/radar-name.gif" width="260" alt="Long airline name alternating">
+<img src="docs/screens/en/radar-boden.gif" width="260" alt="Aircraft on the ground">
+<img src="docs/screens/en/radar-leer.png" width="260" alt="No aircraft within the radius">
 </p>
 
 <p align="center">
 <sub><b>Data state</b></sub><br>
-<img src="docs/screens/en/radar-gelb.gif" width="258" alt="Last data after a failed request">
-<img src="docs/screens/en/radar-pause.gif" width="258" alt="Paused">
-<img src="docs/screens/en/radar-grau.gif" width="258" alt="No data any more">
+<img src="docs/screens/en/radar-gelb.gif" width="260" alt="Last data after a failed request">
+<img src="docs/screens/en/radar-pause.gif" width="260" alt="Paused">
+<img src="docs/screens/en/radar-grau.gif" width="260" alt="No data any more">
 </p>
 
 <p align="center">
-<sub><b>Military and emergency · fictional data</b></sub><br>
-<img src="docs/screens/en/radar-colone.gif" width="258" alt="Speed (fictional)">
-<img src="docs/screens/en/radar-apollo.gif" width="258" alt="Military (fictional)">
-<img src="docs/screens/en/radar-karma.gif" width="258" alt="Emergency (fictional)">
+<sub><b>Errors</b></sub><br>
+<img src="docs/screens/en/radar-fehler.png" width="260" alt="Request failed">
+<img src="docs/screens/en/radar-abgelehnt.png" width="260" alt="adsb.lol: access denied">
 </p>
-
-The Tu-154M and the MD-82 recall real last flights: ALROSA RA-85757, Mirny – Novosibirsk on 28 Oct 2020 (the last civil Tu-154 scheduled flight in Russia), and European Air Charter LZ-LDP, Hurghada – Varna on 21 Oct 2023 (the last MD-82 flight of European Air Charter); flight numbers and values are recreated. Military and emergency show **fictional data** so that no real flight is depicted this way; their footer reads “DRADIS” instead of “ADSB.LOL”.
 
 | Radar footer | Meaning |
 | --- | --- |
@@ -132,7 +139,8 @@ The Tu-154M and the MD-82 recall real last flights: ALROSA RA-85757, Mirny – N
 One specific flight with scheduled and actual times, status, flight time and live altitude and speed. Requires your own aviationstack key.
 
 <p align="center">
-<img src="docs/screens/en/flugtracker.png" width="258" alt="Flight tracker LH1178">
+<img src="docs/screens/en/flugtracker.png" width="260" alt="Flight tracker LH1178">
+<img src="docs/screens/en/flugtracker-ohne-key.png" width="260" alt="Flight tracker without API key">
 </p>
 
 </details>
@@ -142,7 +150,7 @@ One specific flight with scheduled and actual times, status, flight time and liv
 Time and date with a selectable time zone; the time is also shown in the footer of the other views.
 
 <p align="center">
-<img src="docs/screens/en/uhr.png" width="258" alt="Clock with date">
+<img src="docs/screens/en/uhr.png" width="260" alt="Clock with date">
 </p>
 
 </details>
@@ -151,22 +159,22 @@ Time and date with a selectable time zone; the time is also shown in the footer 
 
 Four independent countdowns in days, in hours : minutes : seconds or in minutes : seconds, each with its own title and colours. The digits look like an LED clock radio; unlit segments glow faintly.
 
-- **Style:** “Classic” or “HUD” with frame, “T-MINUS”/“T-PLUS” and a progress bar.
+- **Style:** “Classic” or “Modern” with frame, “T-MINUS”/“T-PLUS” and a progress bar.
 - **Sign:** “−” before the target and “+” after it – or no sign; then the countdown stops at zero.
-- **Start date** (days): sets the HUD progress bar; if left empty, today is filled in when the countdown is started.
+- **Start date** (days): sets the progress bar of the “Modern” style; if left empty, today is filled in when the countdown is started.
 
 <p align="center">
 <sub><b>Classic</b></sub><br>
-<img src="docs/screens/en/countdown-tage.png" width="258" alt="Countdown in days">
-<img src="docs/screens/en/countdown-timer.gif" width="258" alt="Countdown timer">
-<img src="docs/screens/en/countdown-plus.gif" width="258" alt="Countdown after the target">
+<img src="docs/screens/en/countdown-tage.png" width="260" alt="Countdown in days">
+<img src="docs/screens/en/countdown-timer.gif" width="260" alt="Countdown timer">
+<img src="docs/screens/en/countdown-plus.gif" width="260" alt="Countdown after the target">
 </p>
 
 <p align="center">
-<sub><b>HUD</b></sub><br>
-<img src="docs/screens/en/countdown-tage-hud.png" width="258" alt="HUD in days">
-<img src="docs/screens/en/countdown-hud.gif" width="258" alt="HUD timer">
-<img src="docs/screens/en/countdown-hud-null.png" width="258" alt="HUD at the target without a sign">
+<sub><b>Modern</b></sub><br>
+<img src="docs/screens/en/countdown-tage-modern.png" width="260" alt="Modern in days">
+<img src="docs/screens/en/countdown-modern.gif" width="260" alt="Modern timer">
+<img src="docs/screens/en/countdown-modern-null.png" width="260" alt="Modern at the target without a sign">
 </p>
 
 </details>
@@ -186,7 +194,7 @@ Four independent countdowns in days, in hours : minutes : seconds or in minutes 
 | Radar options and filters, aircraft types, forecast as a view | ✅ running on hardware (v0.5.3) |
 | Protection against foreign web pages, rescue mode, reconnect after power cuts, network watchdog, compressed web interface | ⏳ hardware test pending (v0.5.4) |
 | Flight tracker with your own aviationstack key | ⏳ not fully tested on hardware |
-| Countdown in clock-radio style, “HUD” style, selectable sign | ⏳ hardware test pending (v0.5.4.5) |
+| Countdown in clock-radio style, “Modern” style, selectable sign | ⏳ hardware test pending (v0.5.4.5) |
 
 All changes are listed in [`CHANGELOG.md`](CHANGELOG.md) (German), open checks in [`ROADMAP.md`](ROADMAP.md).
 

@@ -201,8 +201,9 @@ static time_t fakeTime(time_t* t) { if (t) *t = fakeNow; return fakeNow; }
 static VvoDeparture deps[10]; static uint8_t depN = 0;
 uint8_t vvoCount() { return depN; }
 const VvoDeparture& vvoAt(uint8_t i) { return deps[i]; }
-bool vvoError() { return false; } uint32_t vvoLastOkMs() { return 0; }
-bool vvoNotServed() { return false; }
+static bool vvoErr = false, vvoNotSrv = false;
+bool vvoError() { return vvoErr; } uint32_t vvoLastOkMs() { return 0; }
+bool vvoNotServed() { return vvoNotSrv; }
 static WeatherSnapshot wx = {};
 const WeatherSnapshot& weatherData() { return wx; }
 const char* weatherLabel(int c) { return weatherVisual(c).label; }
@@ -212,7 +213,8 @@ static uint32_t okAgeMs = 4000;
 uint32_t flightLastOkMs() { return clockMs - okAgeMs; }
 static bool providerPaused = false;
 bool flightProviderPaused() { return providerPaused; }
-int flightLastHttp() { return 200; }
+static int lastHttp = 200;
+int flightLastHttp() { return lastHttp; }
 uint32_t flightWaitSec() { return 0; }
 float flightLiveDistanceKm(const FlightSnapshot& f) { return f.distanceKm; }
 int32_t flightLiveAltitudeFt(const FlightSnapshot& f) { return f.altitudeFt; }
@@ -279,6 +281,10 @@ int main(int argc, char** argv) {
   dep("11", "Bühlau", 5); dep("2", "Gorbitz", 7); dep("4", "Radebeul West", 8); dep("12", "Leutewitz", 10); dep("62", "Johannstadt", 11, false, true);
   for (int i = 0; i < 10; i++) { departurePage = i < 5 ? 0 : 1; drawDepartures(i == 0); frame("abfahrten-seiten", i); }
   departurePage = 0; cfg.departureCount = 5; depN = 0;
+  // Haltestelle ohne Fahrten: Synagoge (seit dem Einsturz der Carolabrücke nicht bedient)
+  cfg.stopName = "Synagoge"; vvoNotSrv = true; drawDepartures(); dump((out + "/abfahrten-nicht-bedient.ppm").c_str()); vvoNotSrv = false;
+  // VVO nicht erreichbar
+  cfg.stopName = "Postplatz"; vvoErr = true; drawDepartures(); dump((out + "/abfahrten-fehler.ppm").c_str()); vvoErr = false;
 
   // ---- Wetter: deutsch Dresden in °C, englisch Berlin in °F ----
   cfg.mode = MODE_WEATHER; cfg.weatherCity = en ? "Berlin" : "Dresden"; cfg.weatherDisplayName = ""; cfg.weatherFahrenheit = en;
@@ -316,16 +322,16 @@ int main(int argc, char** argv) {
   cfg.planePlace = "Dresden-Klotzsche";
   plane("896180", "UAE45", "Emirates", "A6-EVK", "A388", "Airbus A380-800", "DXB-FRA");
   radarGif("flugradar", 6, 11.4f, 9.8f, 37000, 37000, 4);
-  // Steigflug: Alrosa Tu-154M RA-85757 nach dem Start in Mirny (letzter ziviler
-  // Tu-154-Linienflug in Russland, 28.10.2020, Mirny - Nowosibirsk)
+  // Steigflug: ALROSA Tu-154M RA-85757 nach dem Start in Mirny (Flug 6R529,
+  // letzter ziviler Tu-154-Linienflug in Russland, 28.10.2020, Mirny - Nowosibirsk)
   cfg.planePlace = "Mirny"; cfg.planeTrend = true;
-  plane("15a5f1", "DRU154", "ALROSA", "RA-85757", "T154", "Tupolev Tu-154", "MJZ-OVB");
+  plane("15a5f1", "DRU529", "ALROSA", "RA-85757", "T154", "Tupolev Tu-154", "MJZ-OVB");
   fl.motion.hasRate = true; fl.motion.rateFpm = 2600;
   radarGif("radar-steigflug", 6, 6.2f, 7.9f, 6400, 6660, 3);
-  // Sinkflug: European Air Charter MD-82 LZ-LDP im Anflug auf Varna (letzter
-  // Flug einer MD-80 in Europa, 21.10.2023, Hurghada - Varna)
+  // Sinkflug: European Air Charter MD-82 LZ-LDP im Anflug auf Varna (BUC606,
+  // letzter Passagierflug der LZ-LDP, 21.10.2023, Hurghada - Varna)
   cfg.planePlace = "Varna";
-  plane("450a8e", "BUC7302", "European Air Charter", "LZ-LDP", "MD82", "MD-82", "HRG-VAR");
+  plane("450a8e", "BUC606", "European Air Charter", "LZ-LDP", "MD82", "MD-82", "HRG-VAR");
   fl.motion.hasRate = true; fl.motion.rateFpm = -1100;
   radarGif("radar-sinkflug", 6, 14.8f, 13.5f, 5200, 5090, 2);
   cfg.planeTrend = false;
@@ -359,6 +365,9 @@ int main(int argc, char** argv) {
   // Kein Flugzeug im Radius
   cfg.planePlace = "Helgoland"; fl = FlightSnapshot{}; okAgeMs = 4000;
   drawPlane(); dump((out + "/radar-leer.ppm").c_str());
+  // Fehler: Abruf fehlgeschlagen ohne vorherigen Stand, und adsb.lol lehnt ab
+  cfg.planePlace = "Dresden"; fl.error = true; drawPlane(); dump((out + "/radar-fehler.ppm").c_str());
+  lastHttp = 403; drawPlane(); dump((out + "/radar-abgelehnt.ppm").c_str()); lastHttp = 200; fl = FlightSnapshot{};
 
   // Fiktive Daten (Battlestar Galactica) für Militär und Notfall, damit keine
   // echten Flüge so aussehen: Quelle "DRADIS" statt adsb.lol, 4-stellige Codes.
@@ -395,30 +404,32 @@ int main(int argc, char** argv) {
   strlcpy(tf.typeCode, "A319", 8); tf.altitudeM = 10970; tf.speedKmh = 812;
   tf.depScheduledEpoch = fakeNow - 1800; tf.depActualEpoch = fakeNow - 1080; tf.arrScheduledEpoch = fakeNow + 2400; tf.arrEstimatedEpoch = fakeNow + 2880;
   drawTrackedFlight(); dump((out + "/flugtracker.ppm").c_str());
+  // Ohne aviationstack-Schlüssel
+  cfg.aviationstackKey = ""; drawTrackedFlight(true); dump((out + "/flugtracker-ohne-key.ppm").c_str()); cfg.aviationstackKey = "sample";
 
   // ---- Countdowns ----
   const time_t base = fakeNow;
   CountdownSlot& c1 = cfg.countdown[0]; c1.title = en ? "Vacation" : "Urlaub"; c1.type = COUNTDOWN_DAYS; c1.targetDate = "2026-12-23"; c1.active = true; c1.dayDigits = 3;
   cfg.mode = MODE_COUNTDOWN1; drawCountdown(0); dump((out + "/countdown-tage.ppm").c_str());
-  // HUD, ohne Vorzeichen, Startdatum 1.10. -> Balken
-  c1.style = COUNTDOWN_HUD; c1.showSign = false; c1.startDay = (int32_t)daysFromCivilDate(2026, 10, 1); c1.countColor = "#FF4F6E"; c1.titleColor = "#FF4F6E";
-  drawCountdown(0); dump((out + "/countdown-tage-hud.ppm").c_str());
+  // Modern, ohne Vorzeichen, Startdatum 1.10. -> Balken
+  c1.style = COUNTDOWN_MODERN; c1.showSign = false; c1.startDay = (int32_t)daysFromCivilDate(2026, 10, 1); c1.countColor = "#FF4F6E"; c1.titleColor = "#FF4F6E";
+  drawCountdown(0); dump((out + "/countdown-tage-modern.ppm").c_str());
   CountdownSlot& c2 = cfg.countdown[1]; c2.title = "Pizza"; c2.type = COUNTDOWN_MS; c2.titleColor = "#F3CE00"; c2.countColor = "#5DD78B";
   c2.durationSec = 720; c2.targetEpoch = (uint32_t)base + 534; c2.active = true;
   cfg.mode = MODE_COUNTDOWN2;
   for (int i = 0; i < 6; i++) { fakeNow = base + i; drawCountdown(1, i == 0); frame("countdown-timer", i); }
-  CountdownSlot& c3 = cfg.countdown[2]; c3.title = en ? "Departure" : "Abflug"; c3.type = COUNTDOWN_HMS; c3.style = COUNTDOWN_HUD;
+  CountdownSlot& c3 = cfg.countdown[2]; c3.title = en ? "Departure" : "Abflug"; c3.type = COUNTDOWN_HMS; c3.style = COUNTDOWN_MODERN;
   c3.titleColor = "#FF4F6E"; c3.countColor = "#FF4F6E"; c3.durationSec = 3 * 3600; c3.targetEpoch = (uint32_t)base + 4983; c3.active = true;
   cfg.mode = MODE_COUNTDOWN3;
-  for (int i = 0; i < 6; i++) { fakeNow = base + i; drawCountdown(2, i == 0); frame("countdown-hud", i); }
+  for (int i = 0; i < 6; i++) { fakeNow = base + i; drawCountdown(2, i == 0); frame("countdown-modern", i); }
   // Klassisch nach dem Ziel: zählt mit "+" weiter
   CountdownSlot& c4 = cfg.countdown[3]; c4.title = en ? "Tea" : "Tee"; c4.type = COUNTDOWN_MS; c4.titleColor = "#FFFFFF"; c4.countColor = "#F3CE00";
   c4.durationSec = 240; c4.targetEpoch = (uint32_t)base - 75; c4.active = true;
   cfg.mode = MODE_COUNTDOWN4;
   for (int i = 0; i < 6; i++) { fakeNow = base + i; drawCountdown(3, i == 0); frame("countdown-plus", i); }
-  // HUD ohne Vorzeichen: bleibt am Ziel bei null stehen, Balken voll
-  c4.style = COUNTDOWN_HUD; c4.showSign = false; c4.countColor = "#5DD78B"; c4.titleColor = "#5DD78B";
-  fakeNow = base; drawCountdown(3); dump((out + "/countdown-hud-null.ppm").c_str());
+  // Modern ohne Vorzeichen: bleibt am Ziel bei null stehen, Balken voll
+  c4.style = COUNTDOWN_MODERN; c4.showSign = false; c4.countColor = "#5DD78B"; c4.titleColor = "#5DD78B";
+  fakeNow = base; drawCountdown(3); dump((out + "/countdown-modern-null.ppm").c_str());
   fakeNow = base;
   return 0;
 }
@@ -450,6 +461,8 @@ with tempfile.TemporaryDirectory() as tmp:
             'abfahrten': ('Abfahrten', 'Dresden Hbf · Verspätung und Ausfall'),
             'abfahrten-ziele': ('Kurze Fahrtziele', 'ohne eigenen Ort, „Meißen T.“ gekürzt'),
             'abfahrten-seiten': ('Zwei Seiten', 'zehn Abfahrten, Wechsel alle 5 s'),
+            'abfahrten-nicht-bedient': ('Nicht bedient', 'Synagoge, seit dem Carolabrücken-Einsturz'),
+            'abfahrten-fehler': ('VVO nicht erreichbar', 'keine Verbindung zur Auskunft'),
             'wetter': ('Wetter', 'Dresden am Tag, leichter Regen'),
             'wetter-nacht': ('Nachts', 'Dresden, heiter'),
             'vorhersage': ('3-Tage-Vorhersage', 'Dresden, die nächsten drei Tage'),
@@ -462,22 +475,27 @@ with tempfile.TemporaryDirectory() as tmp:
             'radar-gelb': ('Letzter Stand', 'Abruf fehlgeschlagen, Werte geschätzt'),
             'radar-pause': ('Abrufpause', 'adsb.lol bittet um eine Pause'),
             'radar-grau': ('Keine Daten', 'zu lange ohne Abruf, Werte stehen'),
-            'radar-colone': ('Geschwindigkeit', '4-stellige Codes, N/A ohne Höhe', True),
+            'radar-fehler': ('Abruf fehlgeschlagen', 'noch kein Stand vorhanden'),
+            'radar-abgelehnt': ('Zugriff abgelehnt', 'adsb.lol lehnt ab, lange Pause'),
+            'radar-colone': ('4-stellige Codes', 'Flughafencodes mit 4 Zeichen, Höhe N/A', True),
             'radar-apollo': ('Militär', 'MIL-Markierung neben dem Rufzeichen', True),
             'radar-karma': ('Notfall', 'Squawk 7700 im Wechsel mit der Route', True),
             'flugtracker': ('Flug-Tracker', 'LH1178 Dresden – Frankfurt'),
+            'flugtracker-ohne-key': ('Ohne API-Key', 'aviationstack-Schlüssel fehlt'),
             'uhr': ('Uhr', 'mit Datum und Zeitzone'),
             'countdown-tage': ('Tage', 'klassisch, mit Vorzeichen'),
             'countdown-timer': ('Timer', 'Minuten : Sekunden'),
             'countdown-plus': ('Nach dem Ziel', 'zählt mit Plus weiter'),
-            'countdown-tage-hud': ('HUD in Tagen', 'ohne Vorzeichen, Balken ab Start'),
-            'countdown-hud': ('HUD-Timer', 'Std : Min : Sek mit Fortschritt'),
-            'countdown-hud-null': ('Am Ziel', 'ohne Vorzeichen bleibt er bei null'),
+            'countdown-tage-modern': ('Modern in Tagen', 'ohne Vorzeichen, Balken ab Start'),
+            'countdown-modern': ('Modern als Timer', 'Std : Min : Sek mit Fortschritt'),
+            'countdown-modern-null': ('Am Ziel', 'ohne Vorzeichen bleibt er bei null'),
         },
         'en': {
             'abfahrten': ('Departures', 'Dresden Hbf · delay and cancellation'),
             'abfahrten-ziele': ('Short destinations', 'town dropped, “Meißen T.” abbreviated'),
             'abfahrten-seiten': ('Two pages', 'ten departures, switching every 5 s'),
+            'abfahrten-nicht-bedient': ('Not served', 'Synagoge, since the Carola Bridge collapse'),
+            'abfahrten-fehler': ('VVO not reachable', 'no connection to the timetable service'),
             'wetter': ('Weather', 'Berlin by day, light rain'),
             'wetter-nacht': ('At night', 'Berlin, clear'),
             'vorhersage': ('3-day forecast', 'Berlin, the next three days'),
@@ -490,17 +508,20 @@ with tempfile.TemporaryDirectory() as tmp:
             'radar-gelb': ('Last data', 'request failed, values estimated'),
             'radar-pause': ('Paused', 'adsb.lol asks for a pause'),
             'radar-grau': ('No data', 'too long without a request, frozen'),
-            'radar-colone': ('Speed', '4-character codes, N/A without altitude', True),
+            'radar-fehler': ('Request failed', 'no data received yet'),
+            'radar-abgelehnt': ('Access denied', 'adsb.lol refuses, long pause'),
+            'radar-colone': ('4-character codes', 'airport codes with 4 characters, altitude N/A', True),
             'radar-apollo': ('Military', 'MIL marking next to the callsign', True),
             'radar-karma': ('Emergency', 'squawk 7700 alternating with the route', True),
             'flugtracker': ('Flight tracker', 'LH1178 Dresden – Frankfurt'),
+            'flugtracker-ohne-key': ('Without API key', 'aviationstack key missing'),
             'uhr': ('Clock', 'with date and time zone'),
             'countdown-tage': ('Days', 'classic, with sign'),
             'countdown-timer': ('Timer', 'minutes : seconds'),
             'countdown-plus': ('After the target', 'counts on with a plus'),
-            'countdown-tage-hud': ('HUD in days', 'no sign, bar from the start date'),
-            'countdown-hud': ('HUD timer', 'hrs : min : sec with progress'),
-            'countdown-hud-null': ('At the target', 'without a sign it stops at zero'),
+            'countdown-tage-modern': ('Modern in days', 'no sign, bar from the start date'),
+            'countdown-modern': ('Modern timer', 'hrs : min : sec with progress'),
+            'countdown-modern-null': ('At the target', 'without a sign it stops at zero'),
         },
     }
     # Overview: one card per programme (picture, title, subtitle).
@@ -519,34 +540,32 @@ with tempfile.TemporaryDirectory() as tmp:
         return ImageFont.load_default()
     S = args.scale
     F_TITLE, F_SUB, F_TAG = font('Inter-SemiBold.otf', 14 * S), font('Inter-Regular.otf', 11 * S), font('Inter-SemiBold.otf', 8 * S)
-    BORDER, PANEL, RULE = (72, 77, 84), (22, 25, 29), (44, 49, 56)
-    CAP = 48 * S   # caption height
-    PAD = 8 * S    # transparent margin: the gap between cards in the README
+    # Light orange housing like the real cube; dark text on it.
+    BODY, INK, INK2 = (247, 148, 29), (26, 18, 8), (70, 42, 10)
+    TAG_BG, TAG_FG = (26, 18, 8), (247, 200, 60)
+    BEZEL = 6 * S  # housing around the screen
+    CAP = 44 * S   # caption height below the screen
+    PAD = 4 * S    # transparent margin: the gap between cards in the README
 
     def card(img, title, sub, fictional, lang):
-        """Screen (scaled, no smoothing) with a caption panel below, a thin border
-        and rounded transparent corners: one fixed size for every picture."""
+        """Screen (scaled, no smoothing) in an orange housing with the caption
+        below, rounded transparent corners: one fixed size for every picture."""
         img = img.resize((240 * S, 240 * S), Image.NEAREST)
-        b, r = S, 7 * S
-        w, h = img.width + 2 * b + 2 * PAD, img.height + CAP + 2 * b + 2 * PAD
+        w, h = img.width + 2 * BEZEL + 2 * PAD, img.height + BEZEL + CAP + 2 * PAD
         out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(out)
-        d.rounded_rectangle((PAD, PAD, w - 1 - PAD, h - 1 - PAD), r, fill=BORDER + (255,))
-        inner = Image.new('RGB', (img.width, img.height + CAP), PANEL)
-        inner.paste(img, (0, 0))
-        di = ImageDraw.Draw(inner)
-        di.line((0, img.height, img.width, img.height), fill=RULE, width=1)
-        x, y = 12 * S, img.height + 9 * S
-        di.text((x, y), title, font=F_TITLE, fill=(242, 244, 247))
+        d.rounded_rectangle((PAD, PAD, w - 1 - PAD, h - 1 - PAD), 11 * S, fill=BODY + (255,))
+        mask = Image.new('L', img.size, 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, img.width - 1, img.height - 1), 4 * S, fill=255)
+        out.paste(img, (PAD + BEZEL, PAD + BEZEL), mask)
+        x, y = PAD + BEZEL + 2 * S, PAD + BEZEL + img.height + 7 * S
+        d.text((x, y), title, font=F_TITLE, fill=INK)
         if fictional:
-            tag = 'fiktiv' if lang == 'de' else 'fictional'
-            tw = di.textlength(tag, font=F_TAG); tx = img.width - 12 * S - tw - 10 * S; ty = y + 2 * S
-            di.rounded_rectangle((tx, ty, tx + tw + 10 * S, ty + 13 * S), 6 * S, fill=(58, 47, 0))
-            di.text((tx + 5 * S, ty + 2 * S), tag, font=F_TAG, fill=(243, 206, 0))
-        di.text((x, y + 19 * S), sub, font=F_SUB, fill=(163, 173, 184))
-        mask = Image.new('L', inner.size, 0)
-        ImageDraw.Draw(mask).rounded_rectangle((0, 0, inner.width - 1, inner.height - 1), r - b, fill=255)
-        out.paste(inner, (PAD + b, PAD + b), mask)
+            tag = 'fiktive Daten' if lang == 'de' else 'fictional data'
+            tw = d.textlength(tag, font=F_TAG); tx = w - PAD - BEZEL - 2 * S - tw - 10 * S; ty = y + 2 * S
+            d.rounded_rectangle((tx, ty, tx + tw + 10 * S, ty + 13 * S), 7 * S, fill=TAG_BG)
+            d.text((tx + 5 * S, ty + 2 * S), tag, font=F_TAG, fill=TAG_FG)
+        d.text((x, y + 19 * S), sub, font=F_SUB, fill=INK2)
         return out
 
     def save_gif(frames, path):
