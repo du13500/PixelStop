@@ -95,8 +95,8 @@ EXACT = {
  "Statusabfragen laufen sparsam und nur, wenn der Tracker tatsächlich angezeigt wird.": "Status requests are sparing and only run while the tracker is actually shown.",
  "z. B. AF1234": "e.g. AF1234", "API-Key eintragen": "Enter API key", "API-Key gespeichert, leer = behalten": "API key stored, empty = keep",
  # Countdowns
- "Vier dauerhaft gespeicherte Slots. Tages-Countdowns sind reine Kalendertage; Zeit-Countdowns laufen nach Null automatisch mit Plus weiter.":
-   "Four permanently stored slots. Day countdowns count calendar days; time countdowns continue with a plus sign after zero.",
+ "Vier dauerhaft gespeicherte Slots. Tages-Countdowns sind reine Kalendertage. Mit Vorzeichen zählen Countdowns nach Null mit Plus weiter, ohne Vorzeichen bleiben sie bei Null stehen.":
+   "Four permanently stored slots. Day countdowns count calendar days. With a sign they continue with a plus after zero, without a sign they stop at zero.",
  "Optionaler Titel": "Optional title", "Titelfarbe": "Title colour", "Timer-Art": "Timer type", "Tage": "Days",
  "Stunden : Minuten : Sekunden": "Hours : Minutes : Seconds", "Minuten : Sekunden": "Minutes : Seconds", "Zieltag": "Target date",
  "Stunden": "Hours", "Minuten": "Minutes", "Sekunden": "Seconds", "Countdown-Farbe": "Countdown colour", "Farbe": "Colour",
@@ -167,6 +167,9 @@ EXACT = {
    "Only lowercase letters, digits and hyphens (1–32 characters), e.g. pixelstop. Then reachable as pixelstop.local.",
  "Ungültiger Hostname: nur a–z, 0–9 und Bindestrich, 1–32 Zeichen.": "Invalid hostname: only a–z, 0–9 and hyphen, 1–32 characters.",
  "Anfrage von fremder Seite abgelehnt.": "Request from a foreign page rejected.",
+ "Startdatum (HUD-Balken)": "Start date (HUD bar)", "Startdatum leer: Beim Start wird der heutige Tag eingetragen.": "Start date empty: today is filled in when started.",
+ "Darstellung": "Style", "Klassisch": "Classic", "HUD": "HUD", "Vorzeichen": "Sign",
+ "anzeigen (− vor dem Ziel, + danach)": "show (− before the target, + after)", "ausblenden (bleibt bei 0 stehen)": "hide (stops at 0)",
  "Gespeicherten Key löschen": "Delete stored key", "API-Key löschen?": "Delete API key?", "Der gespeicherte Key für": "The stored key for",
  "wird sofort vom Würfel gelöscht. Andere ungespeicherte Änderungen bleiben erhalten.": "is deleted from the cube right away. Other unsaved changes are kept.",
  "Abbrechen": "Cancel", "Löschen": "Delete", "✓ API-Key gelöscht": "✓ API key deleted",

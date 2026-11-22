@@ -1,5 +1,21 @@
 # Änderungen
 
+## v0.5.4.5-dev
+
+**Countdown im neuen Design**
+- **Ziffern wie ein LED-Radiowecker:** kräftige Segmente mit abgeschrägten Enden und leichtem Schein; nicht leuchtende Segmente glimmen schwach mit. Schein und Glimmen ergeben sich aus der gewählten Zahlfarbe. Minus und Plus sind eigene Segmente im selben Stil. Die Ziffern werden so groß wie möglich und senkrecht zentriert; neu gezeichnet wird weiterhin nur, was sich ändert.
+- **Darstellung wählbar** je Countdown: „Klassisch“ oder „HUD“ mit Rahmen, „T-MINUS“/„T-PLUS“, Einheit und Fortschrittsbalken.
+- **Vorzeichen wählbar:** „anzeigen“ (− vor dem Ziel, + danach, wie bisher) oder „ausblenden“ – dann bleibt der Countdown bei Erreichen des Ziels bei null stehen.
+- **Startdatum** für Tage-Countdowns (für den HUD-Balken): frei wählbar, leer wird beim Start der heutige Tag eingetragen. Bereits laufende Tage-Countdowns bekommen nach dem Update den ersten Tag mit gültiger Uhrzeit als Startdatum.
+- Unter jedem Countdown steht jetzt die Einheit (Tage, Min Sek, Std Min Sek).
+
+**README und Bilder**
+- Oben ein Bild pro Programm, darunter jedes Programm **aufklappbar** mit Erklärung, Einstellungen und allen Beispielbildern; die bisherige Galerie und die getrennten Radarbilder gehen darin auf.
+- Bilder mit Bewegung sind jetzt **GIFs in Echtzeit** (eine Sekunde pro Bild): alle Radar-Szenen, der Abfahrtsmonitor mit zwei Seiten und die Countdown-Timer.
+- Neue Radar-Szenen: Steigflug (ALROSA Tu-154M ab Mirny), Sinkflug (European Air Charter MD-82 nach Varna), langer Airline-Name, Statuspunkt gelb und grau, kein Flugzeug. Militär und Notfall bleiben fiktive Daten („CIC Galactica“ statt „CIC BSG75“).
+- Wetter auf Deutsch für Dresden in °C, auf Englisch für Berlin in °F.
+- Alle Bilder gleich groß (dünner Rahmen mit runden, durchsichtigen Ecken) und in der README einheitlich breit; die Übersichtsgrafik entfällt.
+
 ## v0.5.4.4-dev
 
 **Flugradar**

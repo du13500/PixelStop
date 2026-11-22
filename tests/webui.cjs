@@ -114,6 +114,16 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
     assert.deepStrictEqual(posted,{clearAdsbLolKey:true},'Only the delete flag is sent');
     assert(!(await page.locator('#adsbLolKeyClear').isVisible()),'Button hidden after deleting');
     assert.strictEqual(await page.locator('#adsbLolKey').getAttribute('placeholder'),'API-Key eintragen');
+    // Countdown: style, sign and start date are sent with start/save (v0.5.4.5).
+    let cdBody=null;await page.route('http://smalltv.test/api/countdown',r=>{cdBody=r.request().postDataJSON();return r.fulfill({contentType:'application/json',body:'{"ok":true}'})});
+    await go(page,'countdown');await page.locator('#cdCard0 h2.fold').click();
+    assert(await page.locator('#cdStartDate0').isVisible(),'Start date shown for day countdowns');
+    assert.strictEqual(await page.locator('#cdStyle0').inputValue(),'0');assert.strictEqual(await page.locator('#cdSign0').inputValue(),'1');
+    await page.selectOption('#cdStyle0','1');await page.selectOption('#cdSign0','0');
+    await page.fill('#cdDate0','2026-12-24');await page.fill('#cdStartDate0','2026-10-01');
+    await page.locator('#cdStart0').click();await page.waitForFunction(()=>true);for(let k=0;k<50&&!cdBody;k++)await page.waitForTimeout(20);
+    assert(cdBody&&cdBody.action==='start'&&cdBody.style===1&&cdBody.showSign===false&&cdBody.startDate==='2026-10-01'&&cdBody.targetDate==='2026-12-24','Countdown payload');
+    await page.selectOption('#cdType0','2');assert(!(await page.locator('#cdStartDate0').isVisible()),'No start date for timers');
     // Sigma-delta dimming is gone (it stopped Wi-Fi, v0.5.4).
     assert.strictEqual(await page.locator('#backlightMode').count(),0);
    }

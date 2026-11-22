@@ -63,6 +63,7 @@ struct Gfx {
  void drawPixel(int x,int y,int c){fillRect(x,y,1,1,c);}
  void drawFastHLine(int x,int y,int w,int c){drawLine(x,y,x+w-1,y,c);}
  void drawFastVLine(int x,int y,int h,int c){drawLine(x,y,x,y+h-1,c);}
+ void drawRect(int x,int y,int w,int h,int c){drawFastHLine(x,y,w,c);drawFastHLine(x,y+h-1,w,c);drawFastVLine(x,y,h,c);drawFastVLine(x+w-1,y,h,c);}
 } display;
 Gfx* gfx=&display;
 const double PI=3.14159265358979323846;
@@ -74,8 +75,11 @@ String displayAscii(String s){return s;}
 String flightStatusGerman(const char*){return "STATUS";}
 using std::min;using std::max;
 template<class T>T constrain(T x,T a,T b){return max(a,min(b,x));}
-const int COUNTDOWN_DAYS=0;
-struct CountdownSlot{String title,titleColor="#ffffff",countColor="#ffffff";uint8_t type=1;};
+const int COUNTDOWN_DAYS=0,COUNTDOWN_HMS=1,COUNTDOWN_HUD=1;
+struct CountdownSlot{String title,titleColor="#ffffff",countColor="#ffffff";uint8_t type=1,style=0;bool showSign=true;};
+struct SegLayout{int h,w,t,gap,colon,total;};
+uint8_t barValue=255;uint8_t countdownProgress(const CountdownSlot&){return barValue;}
+String countdownUnit(uint8_t t){return t==0?"TAGE":(t==1?"STD MIN SEK":"MIN SEK");}
 enum Language:uint8_t{LANG_DE=0,LANG_EN=1};
 struct Settings{uint8_t lang=LANG_DE;String stopPlace;String trackedFlightNo,aviationstackKey,planePlace,planeDisplayName,stopName,stopId,weatherDisplayName,weatherCity,timeZone;bool planeShowPlace=false,planeShowAge=true,departureCompactDestinations=false,departureAbbreviate=true,departureDropTown=true,weatherForecast=true,weatherFahrenheit=false,weatherTempColor=false;uint16_t planePlaceToggleSec=10;uint8_t planeOperator=0,planeSpeed=0;bool planeTrend=false,planeMarkMilitary=true;uint8_t departureCount=5;CountdownSlot countdown[4];} cfg;
 static String tr(PGM_P de,PGM_P en){return String(cfg.lang==LANG_EN?en:de);}
@@ -293,8 +297,23 @@ int main(){
  // Timer: one seconds digit changes, same geometry -> one small cleared cell.
  cfg.countdown[0].title="МОСКВА";timerValue="00:01:09";clearDraws();drawCountdown(0);assert(fullScreens==1);
  clearDraws();drawCountdown(0,false);assert(fullScreens==0&&rects.empty()&&draws.empty());
- timerValue="00:01:08";clearDraws();drawCountdown(0,false);assert(fullScreens==0);int black=0;for(auto q:rects)if(q.color==C_BLACK){black++;assert(q.w<=42&&q.h<=80);}assert(black==1);
+ // one changed digit: only its cell is cleared (glow margin included) and redrawn
+ timerValue="00:01:08";clearDraws();drawCountdown(0,false);assert(fullScreens==0);{int clears=0;for(auto q:rects)if(q.color==C_BLACK&&q.h>=40){clears++;assert(q.w<=40&&q.h<=70);}assert(clears==1);}
+ // sign appears: a different layout, so the whole view is drawn again
  timerValue="+00:00:01";clearDraws();drawCountdown(0,false);assert(fullScreens==1);
+ // "-" -> "+" in the same place: only the sign cell is redrawn (classic style)
+ timerValue="-00:00:01";clearDraws();drawCountdown(0,false);timerValue="+00:00:00";clearDraws();drawCountdown(0,false);assert(fullScreens==0);
+ // the sign is drawn as segments, not as a character
+ {bool text=false;for(auto d:draws)if(d.text=="+"||d.text=="-")text=true;assert(!text&&!tris.empty());}
+ // HUD: frame, label T-PLUS after the target and the bar from the passed share
+ cfg.countdown[0].style=COUNTDOWN_HUD;barValue=50;timerValue="-00:00:05";clearDraws();drawCountdown(0);assert(fullScreens==1);
+ {bool minus=false;for(auto d:draws)if(d.text=="T-MINUS")minus=true;assert(minus);int bar=0;for(auto q:rects)if(q.y==182&&q.h==2&&q.color!=C_BLACK)bar=q.w;assert(bar==88);}
+ barValue=60;timerValue="-00:00:04";clearDraws();drawCountdown(0,false);assert(fullScreens==0);
+ {int bar=0;for(auto q:rects)if(q.y==182&&q.h==2&&q.color!=C_BLACK)bar=q.w;assert(bar==106);}
+ timerValue="+00:00:01";clearDraws();drawCountdown(0,false);assert(fullScreens==1);{bool plus=false;for(auto d:draws)if(d.text=="T-PLUS")plus=true;assert(plus);}
+ // no sign: the digits take the whole width and get larger
+ {SegLayout a=segLayout("-00:00:05",216,100),b=segLayout("00:00:05",216,100);assert(b.h>a.h&&a.total<=216&&b.total<=216);}
+ cfg.countdown[0].style=0;barValue=255;
  // Clock: unchanged minute/date -> no draw; one changed digit clears one cell.
  timerValue="14:22";clearDraws();drawClock();assert(fullScreens==1);clearDraws();drawClock(false);assert(fullScreens==0&&rects.empty()&&draws.empty());
  timerValue="14:23";clearDraws();drawClock(false);assert(fullScreens==0&&rects.size()==1&&draws.size()==1&&draws[0].text=="3");
@@ -302,7 +321,7 @@ int main(){
 }
 '''
 pre+='\nstatic bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;\nstatic String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;static const int PLANE_FOOTER_X=18;static const char* planeSourceLabel="ADSB.LOL";\nstatic String lastPlaneCall,lastPlaneOperator,lastPlaneRoute,lastPlaneReg;static int8_t lastPlaneTrend=0;\n'
-names=['nextCodepoint','glyphCount','drawSpecialGlyph','textW','crop','stopTown','departureText','beginView','visibleText','visibleCenter','planePlaceTitle','drawPlaneHeader','routePart','drawFlightRoute','samePlane','planeDistance','planeAltitude','compactType','planeFooterLabel','drawPlaneAge','drawPlaneDot','drawPlaneFooter','planeSecondPhase','planeOperatorText','planeSpeedText','drawPlane','drawTrackedFlight','wxLen','drawCloud','drawSun','drawMoon','drawSnowflake','drawWeatherIconAt','drawWeatherIcon','drawSunEventIcon','centerTextIn','drawForecast','drawWeather','departureMinutesNow','drawDepartures','segMask','drawSevenDigit','sevenUnit','sevenCharWidth','drawSevenString','drawCountdown','drawClock']
+names=['nextCodepoint','glyphCount','drawSpecialGlyph','textW','crop','stopTown','departureText','beginView','visibleText','visibleCenter','planePlaceTitle','drawPlaneHeader','routePart','drawFlightRoute','samePlane','planeDistance','planeAltitude','compactType','planeFooterLabel','drawPlaneAge','drawPlaneDot','drawPlaneFooter','planeSecondPhase','planeOperatorText','planeSpeedText','drawPlane','drawTrackedFlight','wxLen','drawCloud','drawSun','drawMoon','drawSnowflake','drawWeatherIconAt','drawWeatherIcon','drawSunEventIcon','centerTextIn','drawForecast','drawWeather','departureMinutesNow','drawDepartures','segMask','scale565','segH','segV','segPart','drawSegDigit','segClass','segCharW','segLayout','drawSegString','drawCountdownBar','drawCountdown','drawClock']
 import collections
 _types=re.findall(r'\{"([A-Z0-9]{2,4})","([^"]*)"\}',(root/'src/AircraftLabel.h').read_text())
 assert len(_types)>=200 and all(len(n)<=18 and n.isascii() for _,n in _types),'aircraft names must be ASCII and at most 18 characters'
