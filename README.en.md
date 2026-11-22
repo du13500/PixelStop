@@ -13,13 +13,16 @@ Bought as a small Wi-Fi cube with a rather modest stock firmware – and from da
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/en/abfahrten.png" width="240" alt="Departures"><br><sub><b>Departures</b></sub> | <img src="docs/screens/en/wetter.png" width="240" alt="Weather"><br><sub><b>Weather</b></sub> | <img src="docs/screens/en/vorhersage.png" width="240" alt="3-day forecast"><br><sub><b>3-day forecast</b></sub> |
-| <img src="docs/screens/en/flugradar.png" width="240" alt="Flight radar"><br><sub><b>Flight radar</b></sub> | <img src="docs/screens/en/flugtracker.png" width="240" alt="Flight tracker"><br><sub><b>Flight tracker</b></sub> | <img src="docs/screens/en/uhr.png" width="240" alt="Clock"><br><sub><b>Clock</b></sub> |
-| <img src="docs/screens/en/countdown-tage.png" width="240" alt="Countdown"><br><sub><b>Countdown</b></sub> |   |   |
-
-<p align="center"><sub>Sample data, real firmware output. More images and explanations under <a href="#programs">Programs</a>.</sub></p>
+<p align="center">
+<img src="docs/screens/en/kachel-abfahrten.png" width="258" alt="Departures">
+<img src="docs/screens/en/kachel-wetter.png" width="258" alt="Weather">
+<img src="docs/screens/en/kachel-vorhersage.png" width="258" alt="3-day forecast">
+<img src="docs/screens/en/kachel-flugradar.png" width="258" alt="Flight radar">
+<img src="docs/screens/en/kachel-flugtracker.png" width="258" alt="Flight tracker">
+<img src="docs/screens/en/kachel-uhr.png" width="258" alt="Clock">
+<img src="docs/screens/en/kachel-countdown-tage.png" width="258" alt="Countdown">
+</p>
+<p align="center"><sub>Real firmware output with sample data · more images and explanations under <a href="#programs">Programs</a></sub></p>
 
 ## What is PixelStop?
 
@@ -29,15 +32,17 @@ In rotation or permanently it shows seven programs: departures, weather, 3-day f
 
 ## Programs
 
-Expand a program to see what it shows, what you can set and all example images. The images are real firmware output with **sample data**; animated images run in real time, one second per frame.
+Expand a program to see what it shows, what you can set and all example images. The images are real firmware output with **sample data**; moving images run in real time, one second per frame.
 
 <details><summary><b>🚏 Departures</b></summary>
 
 Live departures of a stop of Verkehrsverbund Oberelbe (VVO, Dresden region): line, destination, minutes to departure, delay (yellow) and cancellation (✕). Three to five departures on one page, or ten on two pages switching every 5 seconds; filter by mode of transport. Destinations can be shown without the town of the stop and abbreviated. Minutes count down between requests – even while VVO cannot be reached.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/en/abfahrten.png" width="240" alt="Departures"><br><sub><b>Departures</b> · Dresden Hauptbahnhof with a delay and a cancellation</sub> | <img src="docs/screens/en/abfahrten-ziele.png" width="240" alt="Destinations"><br><sub><b>Destinations</b> · town dropped, “Meißen T.” abbreviated</sub> | <img src="docs/screens/en/abfahrten-seiten.gif" width="240" alt="Two pages"><br><sub><b>Two pages</b> · ten departures, switching every 5 s</sub> |
+<p align="center">
+<img src="docs/screens/en/abfahrten.png" width="258" alt="Departures: Dresden Hbf with a delay and a cancellation">
+<img src="docs/screens/en/abfahrten-ziele.png" width="258" alt="Short destinations">
+<img src="docs/screens/en/abfahrten-seiten.gif" width="258" alt="Ten departures on two pages">
+</p>
 
 </details>
 
@@ -45,9 +50,10 @@ Live departures of a stop of Verkehrsverbund Oberelbe (VVO, Dresden region): lin
 
 Current temperature, day/night weather icon, high and low, chance of rain, sunrise and sunset, in °C or °F. The place is chosen by search, on the map or by coordinates; a display name of your own is possible.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/en/wetter.png" width="240" alt="Day"><br><sub><b>Day</b> · Berlin, light rain</sub> | <img src="docs/screens/en/wetter-nacht.png" width="240" alt="Night"><br><sub><b>Night</b> · Berlin, clear</sub> |   |
+<p align="center">
+<img src="docs/screens/en/wetter.png" width="258" alt="Weather: Berlin by day">
+<img src="docs/screens/en/wetter-nacht.png" width="258" alt="Weather: Berlin at night">
+</p>
 
 </details>
 
@@ -55,9 +61,9 @@ Current temperature, day/night weather icon, high and low, chance of rain, sunri
 
 Weekday, weather icon, high and low and chance of rain for the next three days – as a view of its own in the rotation.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/en/vorhersage.png" width="240" alt="Forecast"><br><sub><b>Forecast</b> · Berlin, the next three days</sub> |   |   |
+<p align="center">
+<img src="docs/screens/en/vorhersage.png" width="258" alt="3-day forecast for Berlin">
+</p>
 
 </details>
 
@@ -74,14 +80,35 @@ The **Flight radar** tab adjusts the view:
 - **Hide:** helicopters, light aircraft, gliders/balloons/ultralights/drones, aircraft on the ground.
 - **Always on:** emergencies (squawk 7500/7600/7700) with a red callsign and a red route line in which route and “SQUAWK 7700” alternate every 3 s; airline names that are too long alternate every 3 s as well.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/en/flugradar.gif" width="240" alt="Normal"><br><sub><b>Normal</b> · Emirates A380 over Dresden</sub> | <img src="docs/screens/en/radar-steigflug.gif" width="240" alt="▲ Climbing"><br><sub><b>▲ Climbing</b> · ALROSA Tu-154M after take-off in Mirny</sub> | <img src="docs/screens/en/radar-sinkflug.gif" width="240" alt="▼ Descending"><br><sub><b>▼ Descending</b> · European Air Charter MD-82 approaching Varna</sub> |
-| <img src="docs/screens/en/radar-name.gif" width="240" alt="Long name"><br><sub><b>Long name</b> · airline alternating, speed instead of registration</sub> | <img src="docs/screens/en/radar-gelb.gif" width="240" alt="🟡 Last data"><br><sub><b>🟡 Last data</b> · request failed, values estimated</sub> | <img src="docs/screens/en/radar-grau.gif" width="240" alt="⚫ No data"><br><sub><b>⚫ No data</b> · too long without a request, values frozen</sub> |
-| <img src="docs/screens/en/radar-leer.png" width="240" alt="Empty"><br><sub><b>Empty</b> · no aircraft within the radius</sub> | <img src="docs/screens/en/radar-colone.gif" width="240" alt="Speed"><br><sub><b>Speed</b> · 4-character codes, “N/A” without altitude · fictional</sub> | <img src="docs/screens/en/radar-apollo.gif" width="240" alt="MIL"><br><sub><b>MIL</b> · military marking · fictional</sub> |
-| <img src="docs/screens/en/radar-karma.gif" width="240" alt="Emergency"><br><sub><b>Emergency</b> · squawk 7700, route and squawk alternating · fictional</sub> |   |   |
+<p align="center">
+<sub><b>Flight movements</b></sub><br>
+<img src="docs/screens/en/flugradar.gif" width="258" alt="Flight radar: Emirates A380 over Dresden">
+<img src="docs/screens/en/radar-steigflug.gif" width="258" alt="Climbing: ALROSA Tu-154M out of Mirny">
+<img src="docs/screens/en/radar-sinkflug.gif" width="258" alt="Descending: European Air Charter MD-82 to Varna">
+</p>
 
-The Tu-154M and the MD-82 recall real last flights: ALROSA RA-85757, Mirny – Novosibirsk on 28 Oct 2020 (the last civil Tu-154 scheduled flight in Russia), and European Air Charter LZ-LDP, Hurghada – Varna on 21 Oct 2023 (the last MD-80 flight in Europe); flight numbers and values are recreated. Military and emergency show **fictional data** so that no real flight is depicted this way; their footer reads “DRADIS” instead of “ADSB.LOL”.
+<p align="center">
+<sub><b>Display</b></sub><br>
+<img src="docs/screens/en/radar-name.gif" width="258" alt="Long airline name alternating">
+<img src="docs/screens/en/radar-boden.gif" width="258" alt="Aircraft on the ground">
+<img src="docs/screens/en/radar-leer.png" width="258" alt="No aircraft within the radius">
+</p>
+
+<p align="center">
+<sub><b>Data state</b></sub><br>
+<img src="docs/screens/en/radar-gelb.gif" width="258" alt="Last data after a failed request">
+<img src="docs/screens/en/radar-pause.gif" width="258" alt="Paused">
+<img src="docs/screens/en/radar-grau.gif" width="258" alt="No data any more">
+</p>
+
+<p align="center">
+<sub><b>Military and emergency · fictional data</b></sub><br>
+<img src="docs/screens/en/radar-colone.gif" width="258" alt="Speed (fictional)">
+<img src="docs/screens/en/radar-apollo.gif" width="258" alt="Military (fictional)">
+<img src="docs/screens/en/radar-karma.gif" width="258" alt="Emergency (fictional)">
+</p>
+
+The Tu-154M and the MD-82 recall real last flights: ALROSA RA-85757, Mirny – Novosibirsk on 28 Oct 2020 (the last civil Tu-154 scheduled flight in Russia), and European Air Charter LZ-LDP, Hurghada – Varna on 21 Oct 2023 (the last MD-82 flight of European Air Charter); flight numbers and values are recreated. Military and emergency show **fictional data** so that no real flight is depicted this way; their footer reads “DRADIS” instead of “ADSB.LOL”.
 
 | Radar footer | Meaning |
 | --- | --- |
@@ -104,9 +131,9 @@ The Tu-154M and the MD-82 recall real last flights: ALROSA RA-85757, Mirny – N
 
 One specific flight with scheduled and actual times, status, flight time and live altitude and speed. Requires your own aviationstack key.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/en/flugtracker.png" width="240" alt="Flight tracker"><br><sub><b>Flight tracker</b> · LH1178 Dresden – Frankfurt</sub> |   |   |
+<p align="center">
+<img src="docs/screens/en/flugtracker.png" width="258" alt="Flight tracker LH1178">
+</p>
 
 </details>
 
@@ -114,9 +141,9 @@ One specific flight with scheduled and actual times, status, flight time and liv
 
 Time and date with a selectable time zone; the time is also shown in the footer of the other views.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/en/uhr.png" width="240" alt="Clock"><br><sub><b>Clock</b> · with date</sub> |   |   |
+<p align="center">
+<img src="docs/screens/en/uhr.png" width="258" alt="Clock with date">
+</p>
 
 </details>
 
@@ -128,10 +155,19 @@ Four independent countdowns in days, in hours : minutes : seconds or in minutes 
 - **Sign:** “−” before the target and “+” after it – or no sign; then the countdown stops at zero.
 - **Start date** (days): sets the HUD progress bar; if left empty, today is filled in when the countdown is started.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/en/countdown-tage.png" width="240" alt="Days"><br><sub><b>Days</b> · classic, with sign</sub> | <img src="docs/screens/en/countdown-timer.gif" width="240" alt="Timer"><br><sub><b>Timer</b> · minutes : seconds</sub> | <img src="docs/screens/en/countdown-hud.gif" width="240" alt="HUD"><br><sub><b>HUD</b> · hours : minutes : seconds with bar</sub> |
-| <img src="docs/screens/en/countdown-tage-hud.png" width="240" alt="HUD in days"><br><sub><b>HUD in days</b> · without sign, bar from the start date</sub> |   |   |
+<p align="center">
+<sub><b>Classic</b></sub><br>
+<img src="docs/screens/en/countdown-tage.png" width="258" alt="Countdown in days">
+<img src="docs/screens/en/countdown-timer.gif" width="258" alt="Countdown timer">
+<img src="docs/screens/en/countdown-plus.gif" width="258" alt="Countdown after the target">
+</p>
+
+<p align="center">
+<sub><b>HUD</b></sub><br>
+<img src="docs/screens/en/countdown-tage-hud.png" width="258" alt="HUD in days">
+<img src="docs/screens/en/countdown-hud.gif" width="258" alt="HUD timer">
+<img src="docs/screens/en/countdown-hud-null.png" width="258" alt="HUD at the target without a sign">
+</p>
 
 </details>
 
@@ -191,7 +227,7 @@ The cube queries the services itself and draws the views directly. Place search 
 
 The workflow [`build.yml`](.github/workflows/build.yml) builds the firmware on every push and pull request; the result is available under **Actions** as the artifact `pixelstop-v<version>-firmware`. A tag such as `v0.5.0` (matching `FW_VERSION` in [`src/Version.h`](src/Version.h)) also creates a **GitHub release** with the BIN file, checksum and companion package. Locally, `pio run -e smalltv_ultra` is enough.
 
-The screenshots in this README are produced from the real display code by `python3 tools/render_screens.py docs/screens --frame`.
+The screenshots in this README are produced from the real display code by `python3 tools/render_screens.py docs/screens`.
 
 ## Data sources and limits
 
