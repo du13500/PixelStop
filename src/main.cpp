@@ -102,11 +102,11 @@ struct CountdownSlot {
   uint32_t targetEpoch = 0;       // absolute target for running duration timers
   bool active = false;
   uint8_t dayDigits = 3;          // keep leading zeroes stable once activated
-  uint8_t style = 0;              // COUNTDOWN_CLASSIC or COUNTDOWN_HUD
+  uint8_t style = 0;              // COUNTDOWN_CLASSIC or COUNTDOWN_MODERN
   bool showSign = true;           // "-" before the target, "+" after; off: stops at zero
-  int32_t startDay = 0;           // days since 1970-01-01 for the HUD bar of day countdowns, 0 = none
+  int32_t startDay = 0;           // days since 1970-01-01 for the progress bar of day countdowns, 0 = none
 };
-enum CountdownStyle : uint8_t { COUNTDOWN_CLASSIC = 0, COUNTDOWN_HUD = 1 };
+enum CountdownStyle : uint8_t { COUNTDOWN_CLASSIC = 0, COUNTDOWN_MODERN = 1 };
 
 struct Settings {
   String ssid;
@@ -682,7 +682,7 @@ static String countdownValue(const CountdownSlot& c) {
   return sign+padUnsigned(hours,2)+":"+padUnsigned(mins,2)+":"+padUnsigned(sec,2);
 }
 
-// Share of the countdown that has passed, 0..100, for the HUD bar; 255 = unknown
+// Share of the countdown that has passed, 0..100, for the progress bar; 255 = unknown
 // (inactive, or a day countdown without a start date before the target).
 static uint8_t countdownProgress(const CountdownSlot& c) {
   if(!c.active)return 255;
@@ -1215,7 +1215,7 @@ static void drawTrackedFlight(bool force=true) {
   drawFooter(f.error ? TR("LETZTER STAND","LAST DATA") : "AVIATIONSTACK + ADSB.LOL");
 }
 
-// HUD bar: outline from x 30 to 210, fill = passed share (empty when unknown).
+// Modern style progress bar: outline from x 30 to 210, fill = passed share (empty when unknown).
 static void drawCountdownBar(uint8_t pct,uint16_t on) {
   const int w=pct>100?0:177*pct/100;
   if(w)gfx->fillRect(32,182,w,2,on);
@@ -1227,14 +1227,14 @@ static void drawCountdown(uint8_t slot,bool force=true) {
   const CountdownSlot& c=cfg.countdown[slot];
   String title=crop(displayAscii(c.title),24),value=countdownValue(c),old=lastCountdownRendered[slot];
   static int lastSlot=-1;static String oldTitle,oldTitleColor,oldColor;static uint8_t oldType=255,oldStyle=255,oldBar=254;
-  const bool hud=c.style==COUNTDOWN_HUD;
+  const bool modern=c.style==COUNTDOWN_MODERN;
   bool layout=force||lastSlot!=slot||oldTitle!=title||oldTitleColor!=c.titleColor||oldColor!=c.countColor||oldType!=c.type||oldStyle!=c.style||old.length()!=value.length();
   if(!layout)for(size_t i=0;i<value.length();i++)if(segClass(value[i])!=segClass(old[i]))layout=true;
-  if(!layout&&hud&&value.length()&&(value[0]=='+')!=(old[0]=='+'))layout=true;   // T-MINUS -> T-PLUS
+  if(!layout&&modern&&value.length()&&(value[0]=='+')!=(old[0]=='+'))layout=true;   // T-MINUS -> T-PLUS
   beginView(layout);
   const bool hasTitle=glyphCount(title)>0;const uint16_t on=color565(c.countColor),dim=scale565(on,35);
   SegLayout L;int y;
-  if(hud){
+  if(modern){
     L=segLayout(value,190,72);y=68+(92-L.h-L.t)/2+L.t/2;
     if(layout){
       // Frame with bevelled corners (x,y pairs, closed).
@@ -1452,7 +1452,7 @@ static void updateCountdownSettings(JsonObjectConst in,CountdownSlot& c) {
   uint32_t dur=in["durationSec"]|c.durationSec;if(dur>31536000UL)dur=31536000UL;c.durationSec=dur;
   c.style=constrain((int)(in[F("style")]|c.style),0,1);
   if(in[F("showSign")].is<bool>())c.showSign=in[F("showSign")].as<bool>();
-  // Start date for the HUD bar of day countdowns: "" = none (set when started).
+  // Start date for the progress bar of day countdowns: "" = none (set when started).
   if(in[F("startDate")].is<const char*>()){int y,m,d;const String x=in[F("startDate")].as<String>();
     c.startDay=parseDateOnly(x,y,m,d)?(int32_t)daysFromCivilDate(y,(unsigned)m,(unsigned)d):0;}
 }
@@ -1834,7 +1834,7 @@ void loop() {
         else if(cfg.mode==MODE_DEPARTURES||cfg.mode==MODE_WEATHER||cfg.mode==MODE_FORECAST||cfg.mode==MODE_PLANE||cfg.mode==MODE_TRACKED_FLIGHT) drawFooterClockOnly();
       }
     }
-    // Day countdowns started before v0.5.4.5 get today as start date for the HUD bar.
+    // Day countdowns started before v0.5.4.5 get today as start date for the progress bar.
     {static bool startDaysSet=false;int32_t today;
      if(!startDaysSet&&countdownToday(today)){startDaysSet=true;bool changed=false;
        for(auto& c:cfg.countdown)if(c.active&&c.type==COUNTDOWN_DAYS&&c.startDay<=0){c.startDay=today;changed=true;}

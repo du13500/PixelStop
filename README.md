@@ -14,13 +14,13 @@ Gekauft als kleiner WLAN-Würfel mit eher bescheidener Werksfirmware – und von
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
 
 <p align="center">
-<img src="docs/screens/de/kachel-abfahrten.png" width="258" alt="Abfahrten">
-<img src="docs/screens/de/kachel-wetter.png" width="258" alt="Wetter">
-<img src="docs/screens/de/kachel-vorhersage.png" width="258" alt="3-Tage-Vorhersage">
-<img src="docs/screens/de/kachel-flugradar.png" width="258" alt="Flugradar">
-<img src="docs/screens/de/kachel-flugtracker.png" width="258" alt="Flug-Tracker">
-<img src="docs/screens/de/kachel-uhr.png" width="258" alt="Uhr">
-<img src="docs/screens/de/kachel-countdown-tage.png" width="258" alt="Countdown">
+<img src="docs/screens/de/kachel-abfahrten.png" width="260" alt="Abfahrten">
+<img src="docs/screens/de/kachel-wetter.png" width="260" alt="Wetter">
+<img src="docs/screens/de/kachel-vorhersage.png" width="260" alt="3-Tage-Vorhersage">
+<img src="docs/screens/de/kachel-flugradar.png" width="260" alt="Flugradar">
+<img src="docs/screens/de/kachel-flugtracker.png" width="260" alt="Flug-Tracker">
+<img src="docs/screens/de/kachel-uhr.png" width="260" alt="Uhr">
+<img src="docs/screens/de/kachel-countdown-tage.png" width="260" alt="Countdown">
 </p>
 <p align="center"><sub>Echte Ausgabe der Firmware mit Beispieldaten · mehr Bilder und Erklärungen unter <a href="#programme">Programme</a></sub></p>
 
@@ -39,9 +39,14 @@ Zum Aufklappen: was jedes Programm zeigt, was sich einstellen lässt und alle Be
 Live-Abfahrten einer Haltestelle des Verkehrsverbunds Oberelbe (VVO): Linie, Ziel, Minuten bis zur Abfahrt, Verspätung (gelb) und Ausfall (✕). Drei bis fünf Abfahrten auf einer Seite oder zehn auf zwei Seiten im Wechsel alle 5 Sekunden, Filter nach Verkehrsmittel. Fahrtziele lassen sich ohne den eigenen Ort und abgekürzt anzeigen. Die Minuten zählen zwischen den Abrufen herunter – auch dann, wenn der VVO gerade nicht erreichbar ist.
 
 <p align="center">
-<img src="docs/screens/de/abfahrten.png" width="258" alt="Abfahrten: Dresden Hbf mit Verspätung und Ausfall">
-<img src="docs/screens/de/abfahrten-ziele.png" width="258" alt="Kurze Fahrtziele">
-<img src="docs/screens/de/abfahrten-seiten.gif" width="258" alt="Zehn Abfahrten auf zwei Seiten">
+<img src="docs/screens/de/abfahrten.png" width="260" alt="Abfahrten: Dresden Hbf mit Verspätung und Ausfall">
+<img src="docs/screens/de/abfahrten-ziele.png" width="260" alt="Kurze Fahrtziele">
+<img src="docs/screens/de/abfahrten-seiten.gif" width="260" alt="Zehn Abfahrten auf zwei Seiten">
+</p>
+
+<p align="center">
+<img src="docs/screens/de/abfahrten-nicht-bedient.png" width="260" alt="Haltestelle wird nicht bedient">
+<img src="docs/screens/de/abfahrten-fehler.png" width="260" alt="VVO nicht erreichbar">
 </p>
 
 </details>
@@ -51,8 +56,8 @@ Live-Abfahrten einer Haltestelle des Verkehrsverbunds Oberelbe (VVO): Linie, Zie
 Aktuelle Temperatur, Wetterbild für Tag und Nacht, Höchst- und Tiefstwert, Regenwahrscheinlichkeit sowie Sonnenauf- und -untergang, in °C oder °F. Der Ort wird über eine Suche, die Karte oder Koordinaten gewählt; ein eigener Anzeigename ist möglich.
 
 <p align="center">
-<img src="docs/screens/de/wetter.png" width="258" alt="Wetter: Dresden am Tag">
-<img src="docs/screens/de/wetter-nacht.png" width="258" alt="Wetter: Dresden nachts">
+<img src="docs/screens/de/wetter.png" width="260" alt="Wetter: Dresden am Tag">
+<img src="docs/screens/de/wetter-nacht.png" width="260" alt="Wetter: Dresden nachts">
 </p>
 
 </details>
@@ -62,7 +67,7 @@ Aktuelle Temperatur, Wetterbild für Tag und Nacht, Höchst- und Tiefstwert, Reg
 Wochentag, Wetterbild, Höchst- und Tiefstwert und Regenwahrscheinlichkeit für die nächsten drei Tage – als eigene Ansicht in der Rotation.
 
 <p align="center">
-<img src="docs/screens/de/vorhersage.png" width="258" alt="3-Tage-Vorhersage für Dresden">
+<img src="docs/screens/de/vorhersage.png" width="260" alt="3-Tage-Vorhersage für Dresden">
 </p>
 
 </details>
@@ -82,33 +87,35 @@ Im Reiter **Flugradar** lässt sich die Anzeige anpassen:
 
 <p align="center">
 <sub><b>Flugbewegungen</b></sub><br>
-<img src="docs/screens/de/flugradar.gif" width="258" alt="Flugradar: Emirates A380 über Dresden">
-<img src="docs/screens/de/radar-steigflug.gif" width="258" alt="Steigflug: ALROSA Tu-154M ab Mirny">
-<img src="docs/screens/de/radar-sinkflug.gif" width="258" alt="Sinkflug: European Air Charter MD-82 nach Varna">
+<img src="docs/screens/de/flugradar.gif" width="260" alt="Flugradar: Emirates A380 über Dresden">
+<img src="docs/screens/de/radar-steigflug.gif" width="260" alt="Steigflug: ALROSA Tu-154M ab Mirny">
+<img src="docs/screens/de/radar-sinkflug.gif" width="260" alt="Sinkflug: European Air Charter MD-82 nach Varna">
+</p>
+<p align="center">
+<img src="docs/screens/de/radar-colone.gif" width="260" alt="4-stellige Codes (fiktiv)">
+<img src="docs/screens/de/radar-apollo.gif" width="260" alt="Militär (fiktiv)">
+<img src="docs/screens/de/radar-karma.gif" width="260" alt="Notfall (fiktiv)">
 </p>
 
 <p align="center">
 <sub><b>Anzeige</b></sub><br>
-<img src="docs/screens/de/radar-name.gif" width="258" alt="Langer Airline-Name im Wechsel">
-<img src="docs/screens/de/radar-boden.gif" width="258" alt="Flugzeug am Boden">
-<img src="docs/screens/de/radar-leer.png" width="258" alt="Kein Flugzeug im Radius">
+<img src="docs/screens/de/radar-name.gif" width="260" alt="Langer Airline-Name im Wechsel">
+<img src="docs/screens/de/radar-boden.gif" width="260" alt="Flugzeug am Boden">
+<img src="docs/screens/de/radar-leer.png" width="260" alt="Kein Flugzeug im Radius">
 </p>
 
 <p align="center">
 <sub><b>Datenstand</b></sub><br>
-<img src="docs/screens/de/radar-gelb.gif" width="258" alt="Letzter Stand nach fehlgeschlagenem Abruf">
-<img src="docs/screens/de/radar-pause.gif" width="258" alt="Abrufpause">
-<img src="docs/screens/de/radar-grau.gif" width="258" alt="Keine Daten mehr">
+<img src="docs/screens/de/radar-gelb.gif" width="260" alt="Letzter Stand nach fehlgeschlagenem Abruf">
+<img src="docs/screens/de/radar-pause.gif" width="260" alt="Abrufpause">
+<img src="docs/screens/de/radar-grau.gif" width="260" alt="Keine Daten mehr">
 </p>
 
 <p align="center">
-<sub><b>Militär und Notfall · fiktive Daten</b></sub><br>
-<img src="docs/screens/de/radar-colone.gif" width="258" alt="Geschwindigkeit (fiktiv)">
-<img src="docs/screens/de/radar-apollo.gif" width="258" alt="Militär (fiktiv)">
-<img src="docs/screens/de/radar-karma.gif" width="258" alt="Notfall (fiktiv)">
+<sub><b>Fehler</b></sub><br>
+<img src="docs/screens/de/radar-fehler.png" width="260" alt="Abruf fehlgeschlagen">
+<img src="docs/screens/de/radar-abgelehnt.png" width="260" alt="adsb.lol: Zugriff abgelehnt">
 </p>
-
-Die Tu-154M und die MD-82 erinnern an echte letzte Flüge: ALROSA RA-85757, Mirny – Nowosibirsk am 28.10.2020 (letzter ziviler Tu-154-Linienflug in Russland), und European Air Charter LZ-LDP, Hurghada – Varna am 21.10.2023 (letzter Flug der MD-82 bei European Air Charter); Flugnummern und Werte sind nachgestellt. Militär und Notfall zeigen **fiktive Daten**, damit kein echter Flug so dargestellt wird; dort steht in der Fußzeile „DRADIS“ statt „ADSB.LOL“.
 
 | Radar-Fußzeile | Bedeutung |
 | --- | --- |
@@ -132,7 +139,8 @@ Die Tu-154M und die MD-82 erinnern an echte letzte Flüge: ALROSA RA-85757, Mirn
 Ein bestimmter Flug mit Plan- und Ist-Zeiten, Status, Flugzeit sowie Live-Höhe und -Geschwindigkeit. Dafür ist ein eigener aviationstack-Schlüssel nötig.
 
 <p align="center">
-<img src="docs/screens/de/flugtracker.png" width="258" alt="Flug-Tracker LH1178">
+<img src="docs/screens/de/flugtracker.png" width="260" alt="Flug-Tracker LH1178">
+<img src="docs/screens/de/flugtracker-ohne-key.png" width="260" alt="Flug-Tracker ohne API-Key">
 </p>
 
 </details>
@@ -142,7 +150,7 @@ Ein bestimmter Flug mit Plan- und Ist-Zeiten, Status, Flugzeit sowie Live-Höhe 
 Uhrzeit und Datum mit wählbarer Zeitzone; die Uhrzeit steht außerdem in der Fußzeile der anderen Ansichten.
 
 <p align="center">
-<img src="docs/screens/de/uhr.png" width="258" alt="Uhr mit Datum">
+<img src="docs/screens/de/uhr.png" width="260" alt="Uhr mit Datum">
 </p>
 
 </details>
@@ -151,22 +159,22 @@ Uhrzeit und Datum mit wählbarer Zeitzone; die Uhrzeit steht außerdem in der Fu
 
 Vier unabhängige Countdowns in Tagen, in Stunden : Minuten : Sekunden oder in Minuten : Sekunden, jeweils mit eigenem Titel und eigenen Farben. Die Ziffern sehen aus wie bei einem LED-Radiowecker, nicht leuchtende Segmente glimmen schwach mit.
 
-- **Darstellung:** „Klassisch“ oder „HUD“ mit Rahmen, „T-MINUS“/„T-PLUS“ und Fortschrittsbalken.
+- **Darstellung:** „Klassisch“ oder „Modern“ mit Rahmen, „T-MINUS“/„T-PLUS“ und Fortschrittsbalken.
 - **Vorzeichen:** „−“ vor dem Ziel und „+“ danach – oder ohne Vorzeichen; dann bleibt der Countdown bei null stehen.
-- **Startdatum** (Tage): bestimmt den Fortschrittsbalken im HUD; bleibt es leer, wird beim Start der heutige Tag eingetragen.
+- **Startdatum** (Tage): bestimmt den Fortschrittsbalken der Darstellung „Modern“; bleibt es leer, wird beim Start der heutige Tag eingetragen.
 
 <p align="center">
 <sub><b>Klassisch</b></sub><br>
-<img src="docs/screens/de/countdown-tage.png" width="258" alt="Countdown in Tagen">
-<img src="docs/screens/de/countdown-timer.gif" width="258" alt="Countdown-Timer">
-<img src="docs/screens/de/countdown-plus.gif" width="258" alt="Countdown nach dem Ziel">
+<img src="docs/screens/de/countdown-tage.png" width="260" alt="Countdown in Tagen">
+<img src="docs/screens/de/countdown-timer.gif" width="260" alt="Countdown-Timer">
+<img src="docs/screens/de/countdown-plus.gif" width="260" alt="Countdown nach dem Ziel">
 </p>
 
 <p align="center">
-<sub><b>HUD</b></sub><br>
-<img src="docs/screens/de/countdown-tage-hud.png" width="258" alt="HUD in Tagen">
-<img src="docs/screens/de/countdown-hud.gif" width="258" alt="HUD-Timer">
-<img src="docs/screens/de/countdown-hud-null.png" width="258" alt="HUD am Ziel ohne Vorzeichen">
+<sub><b>Modern</b></sub><br>
+<img src="docs/screens/de/countdown-tage-modern.png" width="260" alt="Modern in Tagen">
+<img src="docs/screens/de/countdown-modern.gif" width="260" alt="Modern als Timer">
+<img src="docs/screens/de/countdown-modern-null.png" width="260" alt="Modern am Ziel ohne Vorzeichen">
 </p>
 
 </details>
@@ -186,7 +194,7 @@ Vier unabhängige Countdowns in Tagen, in Stunden : Minuten : Sekunden oder in M
 | Radar-Optionen und Filter, Flugzeugtypen, Vorhersage als Ansicht | ✅ läuft auf Hardware (v0.5.3) |
 | Schutz gegen fremde Webseiten, Rettungsmodus, Wiederverbinden nach Stromausfall, Netzwerk-Wächter, komprimiertes Webinterface | ⏳ Hardwaretest offen (v0.5.4) |
 | Flug-Tracker mit eigenem aviationstack-Schlüssel | ⏳ nicht vollständig auf Hardware getestet |
-| Countdown im Radiowecker-Stil, Darstellung „HUD“, Vorzeichen wählbar | ⏳ Hardwaretest offen (v0.5.4.5) |
+| Countdown im Radiowecker-Stil, Darstellung „Modern“, Vorzeichen wählbar | ⏳ Hardwaretest offen (v0.5.4.5) |
 
 Alle Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md), offene Prüfungen in [`ROADMAP.md`](ROADMAP.md).
 

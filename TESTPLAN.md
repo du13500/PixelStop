@@ -5,8 +5,8 @@ Stand: v0.5.4.5-dev (22.11.2026). Dieser Plan wird mit jeder Version aktualisier
 ## Hardwaretest v0.5.4.5-dev
 
 1. **Countdown klassisch:** Ein Tage-Countdown und ein Minuten-Timer zeigen die neuen Segment-Ziffern; beim Timer flackert pro Sekunde nur die geänderte Ziffer, nicht die ganze Anzeige.
-2. **HUD:** Darstellung auf „HUD“ stellen. Rahmen, „T-MINUS“ und Balken erscheinen; beim Timer wächst der Balken mit, beim Tage-Countdown entspricht er dem Anteil seit dem Startdatum.
-3. **Vorzeichen ausblenden:** einen kurzen Timer (z. B. 0:20) ohne Vorzeichen starten – er bleibt bei 00:00 stehen. Mit Vorzeichen läuft er wie bisher mit „+“ weiter (im HUD „T-PLUS“).
+2. **Modern:** Darstellung auf „Modern“ stellen. Rahmen, „T-MINUS“ und Balken erscheinen; beim Timer wächst der Balken mit, beim Tage-Countdown entspricht er dem Anteil seit dem Startdatum.
+3. **Vorzeichen ausblenden:** einen kurzen Timer (z. B. 0:20) ohne Vorzeichen starten – er bleibt bei 00:00 stehen. Mit Vorzeichen läuft er wie bisher mit „+“ weiter (bei „Modern“ „T-PLUS“).
 4. **Startdatum:** Feld leer lassen und starten – danach steht der heutige Tag im Feld. Ein bereits laufender Tage-Countdown hat nach dem Update ein Startdatum.
 5. **Farben:** eine dunkle und eine helle Zahlfarbe wählen; das Glimmen der unbenutzten Segmente bleibt dezent.
 6. Aus v0.5.4.4 weiter offen: siehe unten.
@@ -40,7 +40,7 @@ v0.5.4.5-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnt
 | | belegt | von | Anteil |
 | --- | --- | --- | --- |
 | Statischer RAM | 51.440 Byte | 81.920 Byte | 62,8 % |
-| Flash | 738.219 Byte | 1.044.464 Byte | 70,7 % |
+| Flash | 738.235 Byte | 1.044.464 Byte | 70,7 % |
 
 Bis zur Grenze bleiben 160 Byte. Das komprimierte Webinterface spart gegenüber v0.5.3.1 rund 42 KB Flash. `tools/check_ram.py` lässt den Build ab 51.600 Byte statischem RAM scheitern, damit für TLS-Abrufe genug Speicher frei bleibt.
 

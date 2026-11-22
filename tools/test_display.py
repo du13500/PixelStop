@@ -75,7 +75,7 @@ String displayAscii(String s){return s;}
 String flightStatusGerman(const char*){return "STATUS";}
 using std::min;using std::max;
 template<class T>T constrain(T x,T a,T b){return max(a,min(b,x));}
-const int COUNTDOWN_DAYS=0,COUNTDOWN_HMS=1,COUNTDOWN_HUD=1;
+const int COUNTDOWN_DAYS=0,COUNTDOWN_HMS=1,COUNTDOWN_MODERN=1;
 struct CountdownSlot{String title,titleColor="#ffffff",countColor="#ffffff";uint8_t type=1,style=0;bool showSign=true;};
 struct SegLayout{int h,w,t,gap,colon,total;};
 uint8_t barValue=255;uint8_t countdownProgress(const CountdownSlot&){return barValue;}
@@ -305,8 +305,8 @@ int main(){
  timerValue="-00:00:01";clearDraws();drawCountdown(0,false);timerValue="+00:00:00";clearDraws();drawCountdown(0,false);assert(fullScreens==0);
  // the sign is drawn as segments, not as a character
  {bool text=false;for(auto d:draws)if(d.text=="+"||d.text=="-")text=true;assert(!text&&!tris.empty());}
- // HUD: frame, label T-PLUS after the target and the bar from the passed share
- cfg.countdown[0].style=COUNTDOWN_HUD;barValue=50;timerValue="-00:00:05";clearDraws();drawCountdown(0);assert(fullScreens==1);
+ // Modern: frame, label T-PLUS after the target and the bar from the passed share
+ cfg.countdown[0].style=COUNTDOWN_MODERN;barValue=50;timerValue="-00:00:05";clearDraws();drawCountdown(0);assert(fullScreens==1);
  {bool minus=false;for(auto d:draws)if(d.text=="T-MINUS")minus=true;assert(minus);int bar=0;for(auto q:rects)if(q.y==182&&q.h==2&&q.color!=C_BLACK)bar=q.w;assert(bar==88);}
  barValue=60;timerValue="-00:00:04";clearDraws();drawCountdown(0,false);assert(fullScreens==0);
  {int bar=0;for(auto q:rects)if(q.y==182&&q.h==2&&q.color!=C_BLACK)bar=q.w;assert(bar==106);}

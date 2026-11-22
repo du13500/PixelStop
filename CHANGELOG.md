@@ -4,17 +4,18 @@
 
 **Countdown im neuen Design**
 - **Ziffern wie ein LED-Radiowecker:** kräftige Segmente mit abgeschrägten Enden und leichtem Schein; nicht leuchtende Segmente glimmen schwach mit. Schein und Glimmen ergeben sich aus der gewählten Zahlfarbe. Minus und Plus sind eigene Segmente im selben Stil. Die Ziffern werden so groß wie möglich und senkrecht zentriert; neu gezeichnet wird weiterhin nur, was sich ändert.
-- **Darstellung wählbar** je Countdown: „Klassisch“ oder „HUD“ mit Rahmen, „T-MINUS“/„T-PLUS“, Einheit und Fortschrittsbalken.
+- **Darstellung wählbar** je Countdown: „Klassisch“ oder „Modern“ mit Rahmen, „T-MINUS“/„T-PLUS“, Einheit und Fortschrittsbalken.
 - **Vorzeichen wählbar:** „anzeigen“ (− vor dem Ziel, + danach, wie bisher) oder „ausblenden“ – dann bleibt der Countdown bei Erreichen des Ziels bei null stehen.
-- **Startdatum** für Tage-Countdowns (für den HUD-Balken): frei wählbar, leer wird beim Start der heutige Tag eingetragen. Bereits laufende Tage-Countdowns bekommen nach dem Update den ersten Tag mit gültiger Uhrzeit als Startdatum.
+- **Startdatum** für Tage-Countdowns (für den Fortschrittsbalken): frei wählbar, leer wird beim Start der heutige Tag eingetragen. Bereits laufende Tage-Countdowns bekommen nach dem Update den ersten Tag mit gültiger Uhrzeit als Startdatum.
 - Unter jedem Countdown steht jetzt die Einheit (Tage, Min Sek, Std Min Sek).
 
 **README und Bilder**
 - Oben ein Bild pro Programm, darunter jedes Programm **aufklappbar** mit Erklärung, Einstellungen und allen Beispielbildern; die bisherige Galerie und die getrennten Radarbilder gehen darin auf.
 - Bilder mit Bewegung sind jetzt **GIFs in Echtzeit** (eine Sekunde pro Bild): alle Radar-Szenen, der Abfahrtsmonitor mit zwei Seiten und die Countdown-Timer.
-- Neue Radar-Szenen: Steigflug (ALROSA Tu-154M ab Mirny), Sinkflug (European Air Charter MD-82 nach Varna), langer Airline-Name, am Boden, Statuspunkt gelb und grau, Abrufpause, kein Flugzeug. Neue Countdown-Szenen: nach dem Ziel mit „+“ und HUD ohne Vorzeichen bei null. Militär und Notfall bleiben fiktive Daten („CIC Galactica“ statt „CIC BSG75“).
+- Neue Radar-Szenen: Steigflug (ALROSA Tu-154M DRU529 ab Mirny), Sinkflug (European Air Charter MD-82 BUC606 nach Varna), langer Airline-Name, am Boden, Statuspunkt gelb und grau, Abrufpause, kein Flugzeug, Abruf fehlgeschlagen, Zugriff abgelehnt. Die fiktiven Galactica-Szenen („CIC Galactica“ statt „CIC BSG75“) stehen bei den Flugbewegungen.
+- Weitere neue Szenen: Haltestelle nicht bedient (Synagoge), VVO nicht erreichbar, Flug-Tracker ohne API-Key, Countdown nach dem Ziel mit „+“ und „Modern“ ohne Vorzeichen bei null.
 - Wetter auf Deutsch für Dresden in °C, auf Englisch für Berlin in °F.
-- Alle Bilder sind **Karten** gleicher Größe: Bildschirm mit Titel und Untertitel darunter, bei fiktiven Daten mit Plakette „fiktiv“, dünner Rahmen mit runden, durchsichtigen Ecken. In der README stehen sie ohne Tabellen in zentrierten Reihen zu höchstens drei, beim Radar und beim Countdown nach Themen gruppiert; die Übersichtsgrafik entfällt.
+- Alle Bilder sind **Karten** gleicher Größe im hellorangen Gehäuse wie der echte Würfel: Bildschirm, darunter Titel und Untertitel, bei fiktiven Daten mit Plakette „fiktive Daten“; runde, durchsichtige Ecken. In der README stehen sie ohne Tabellen in zentrierten Reihen zu höchstens drei, beim Radar und beim Countdown nach Themen gruppiert; die Übersichtsgrafik entfällt.
 - Bilder liegen getrennt nach Sprache unter `docs/screens/de` und `docs/screens/en`.
 
 ## v0.5.4.4-dev
