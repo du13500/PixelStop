@@ -123,6 +123,9 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
     await page.fill('#cdDate0','2026-12-24');await page.fill('#cdStartDate0','2026-10-01');
     await page.locator('#cdStart0').click();await page.waitForFunction(()=>true);for(let k=0;k<50&&!cdBody;k++)await page.waitForTimeout(20);
     assert(cdBody&&cdBody.action==='start'&&cdBody.style===1&&cdBody.showSign===false&&cdBody.startDate==='2026-10-01'&&cdBody.targetDate==='2026-12-24','Countdown payload');
+    // after the start the page reloads the settings and may fold the card again
+    await page.waitForFunction(()=>document.querySelector('.toast')?.textContent.includes('Countdown'));
+    if(await page.locator('#cdCard0').evaluate(e=>e.classList.contains('collapsed')))await page.locator('#cdCard0 h2.fold').click();
     await page.selectOption('#cdType0','2');assert(!(await page.locator('#cdStartDate0').isVisible()),'No start date for timers');
     // Sigma-delta dimming is gone (it stopped Wi-Fi, v0.5.4).
     assert.strictEqual(await page.locator('#backlightMode').count(),0);
