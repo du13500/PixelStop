@@ -1,8 +1,17 @@
 # Testplan
 
-Stand: v0.5.4.4-dev (16.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: v0.5.4.5-dev (22.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
 
-## Hardwaretest v0.5.4.4-dev
+## Hardwaretest v0.5.4.5-dev
+
+1. **Countdown klassisch:** Ein Tage-Countdown und ein Minuten-Timer zeigen die neuen Segment-Ziffern; beim Timer flackert pro Sekunde nur die geänderte Ziffer, nicht die ganze Anzeige.
+2. **HUD:** Darstellung auf „HUD“ stellen. Rahmen, „T-MINUS“ und Balken erscheinen; beim Timer wächst der Balken mit, beim Tage-Countdown entspricht er dem Anteil seit dem Startdatum.
+3. **Vorzeichen ausblenden:** einen kurzen Timer (z. B. 0:20) ohne Vorzeichen starten – er bleibt bei 00:00 stehen. Mit Vorzeichen läuft er wie bisher mit „+“ weiter (im HUD „T-PLUS“).
+4. **Startdatum:** Feld leer lassen und starten – danach steht der heutige Tag im Feld. Ein bereits laufender Tage-Countdown hat nach dem Update ein Startdatum.
+5. **Farben:** eine dunkle und eine helle Zahlfarbe wählen; das Glimmen der unbenutzten Segmente bleibt dezent.
+6. Aus v0.5.4.4 weiter offen: siehe unten.
+
+## Aus v0.5.4.4-dev (weiter offen)
 
 1. **Radar über mehrere Stunden:** Im Log kommen regelmäßig „Radar.Position | OK“-Zeilen. Das „Radar-Intervall“ im Status liegt bei 10–27 s (nicht mehr bei Minuten). Scheitert ein Abruf, kommt der nächste Versuch nach 45 s.
 2. **Gescheiterte Abrufe** zeigen im Log eine Zeile „Adresse“ mit der Server-IP und danach „TLS-Fehler“. Erwartung, solange adsb.lol den Fehler hat: Fehler mit 159.195.60.218, Erfolge mit 159.195.81.163. Beide Adressen sind die von adsb.lol, nicht deine.
@@ -26,14 +35,14 @@ Stand: v0.5.4.4-dev (16.11.2026). Dieser Plan wird mit jeder Version aktualisier
 
 ## Stand des letzten Builds
 
-v0.5.4.4-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
+v0.5.4.5-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
 
 | | belegt | von | Anteil |
 | --- | --- | --- | --- |
-| Statischer RAM | 51.408 Byte | 81.920 Byte | 62,8 % |
-| Flash | 733.079 Byte | 1.044.464 Byte | 70,2 % |
+| Statischer RAM | 51.440 Byte | 81.920 Byte | 62,8 % |
+| Flash | 738.219 Byte | 1.044.464 Byte | 70,7 % |
 
-Bis zur Grenze bleiben 192 Byte. Das komprimierte Webinterface spart gegenüber v0.5.3.1 rund 42 KB Flash. `tools/check_ram.py` lässt den Build ab 51.600 Byte statischem RAM scheitern, damit für TLS-Abrufe genug Speicher frei bleibt.
+Bis zur Grenze bleiben 160 Byte. Das komprimierte Webinterface spart gegenüber v0.5.3.1 rund 42 KB Flash. `tools/check_ram.py` lässt den Build ab 51.600 Byte statischem RAM scheitern, damit für TLS-Abrufe genug Speicher frei bleibt.
 
 ## Lokale Prüfungen
 
@@ -70,4 +79,4 @@ pio run -e smalltv_ultra
 
 Nach Änderungen an `src/webui.html` oder `tools/webui_en.py`: `python3 tools/webui_build.py` (erzeugt `src/webui_html.h`; `check.py` vergleicht).
 
-Die Bilder im README erzeugt `python3 tools/render_screens.py docs/screens --frame --sheet` aus dem echten Displaycode.
+Die Bilder im README erzeugt `python3 tools/render_screens.py docs/screens --frame` aus dem echten Displaycode.

@@ -1,6 +1,6 @@
 # Roadmap
 
-Stand: 16.11.2026. Erledigtes steht in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: 22.11.2026. Erledigtes steht in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Nächste Prüfungen auf dem Gerät
 
@@ -14,7 +14,7 @@ Aktueller Hardwaretest und dauerhafte Prüfungen stehen in [`TESTPLAN.md`](TESTP
 | **v0.5.1** | Webinterface aufgeräumt, „Jetzt anzeigen“, 3-Tage-Vorhersage, Ort der Haltestelle aus der VVO-Suche, Texte im Flash – auf Hardware bestätigt |
 | **v0.5.2** | Radar-Werte zwischen den Abrufen weitergerechnet, Statuspunkt, Hilfen zum adsb.lol-Schlüssel – auf Hardware bestätigt |
 | **v0.5.3** | Radar-Optionen und Filter, Notfälle, Typenliste, kompakter Log, Sigma-Delta-Test (gescheitert, siehe unten) – auf Hardware bestätigt |
-| **v0.5.4** | Kontingent-Wächter für adsb.lol, Schutz gegen fremde Webseiten, Rettungsmodus, Wiederverbinden nach Stromausfall, Netzwerk-Wächter, Reiter statt Menü, komprimiertes Webinterface, Airline-Namen, Routenprüfung im Sinkflug; v0.5.4.1–.4 Korrekturen (WLAN, Radarplanung, hängender adsb.lol-Server, Audit) – in Arbeit; nach dem Hardwaretest **erstes Release-Tag** |
+| **v0.5.4** | Kontingent-Wächter für adsb.lol, Schutz gegen fremde Webseiten, Rettungsmodus, Wiederverbinden nach Stromausfall, Netzwerk-Wächter, Reiter statt Menü, komprimiertes Webinterface, Airline-Namen, Routenprüfung im Sinkflug; v0.5.4.1–.4 Korrekturen (WLAN, Radarplanung, hängender adsb.lol-Server, Audit), v0.5.4.5 Countdown-Design (Klassisch/HUD, Vorzeichen wählbar) und README mit aufklappbaren Programmen und GIFs – in Arbeit; nach dem Hardwaretest **erstes Release-Tag** |
 | **v0.5.5** | **Radar ehrlich:** Das gewählte Intervall gilt; ist eine adsb.lol-Grenze erreicht, zeigt das Radar einen Pause-Bildschirm („PAUSE BIS 20:00“, Stunden-/Tages-/Monatslimit). Das Webinterface zeigt unter dem Intervall, wie lange das Kontingent pro Stunde, Tag und Monat reicht (Rotation eingerechnet), mit klarem Hinweis, dass Dauerbetrieb mit adsb.lol allein nicht möglich ist. Datenquelle wählbar: adsb.lol oder eine eigene Quelle im Heimnetz (readsb/tar1090, einfaches HTTP ohne TLS). Vorher Grenzen ohne Schlüssel und für Feeder-Schlüssel klären |
 | **v0.5.6** | **Ausweichquellen fürs Radar**, gründlich simuliert und auf dem Würfel gemessen (Antwortgrößen, Speicher, Kontingent). Stand 16.11.2026: adsb.fi ist raus (Cloudflare, auf dem ESP8266 seit 08/2026 nicht nutzbar); airplanes.live liegt ebenfalls hinter Cloudflare, sagt keine kleinen TLS-Pakete zu, hat aber nur 2,5-KB-Handshake-Pakete und antwortete einem Testrechner mit 403 – am Würfel testen; FlyItalyADSB und hexdb.io prüfen |
 | **v0.5.7** | Warnungen: Bevölkerungsschutz (NINA) und DWD-Wetterwarnungen, einzeln aktivierbar, regional gefiltert, mehrere nacheinander; optional Unterbrechung der Rotation |

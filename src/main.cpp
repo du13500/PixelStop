@@ -102,7 +102,11 @@ struct CountdownSlot {
   uint32_t targetEpoch = 0;       // absolute target for running duration timers
   bool active = false;
   uint8_t dayDigits = 3;          // keep leading zeroes stable once activated
+  uint8_t style = 0;              // COUNTDOWN_CLASSIC or COUNTDOWN_HUD
+  bool showSign = true;           // "-" before the target, "+" after; off: stops at zero
+  int32_t startDay = 0;           // days since 1970-01-01 for the HUD bar of day countdowns, 0 = none
 };
+enum CountdownStyle : uint8_t { COUNTDOWN_CLASSIC = 0, COUNTDOWN_HUD = 1 };
 
 struct Settings {
   String ssid;
@@ -394,6 +398,7 @@ static bool saveConfig() {
     c["title"] = cfg.countdown[i].title; c["titleColor"] = cfg.countdown[i].titleColor; c["countColor"] = cfg.countdown[i].countColor;
     c["type"] = cfg.countdown[i].type; c["targetDate"] = cfg.countdown[i].targetDate; c["durationSec"] = cfg.countdown[i].durationSec;
     c["targetEpoch"] = cfg.countdown[i].targetEpoch; c["active"] = cfg.countdown[i].active; c["dayDigits"] = cfg.countdown[i].dayDigits;
+    c[F("style")] = cfg.countdown[i].style; c[F("showSign")] = cfg.countdown[i].showSign; c[F("startDay")] = cfg.countdown[i].startDay;
   }
   if(d.overflowed()) return false;
   static const char* TMP_PATH = "/config.json.tmp";
@@ -442,6 +447,7 @@ static void loadConfig() {
     JsonObjectConst c=cds[i].as<JsonObjectConst>(); CountdownSlot& x=cfg.countdown[i];
     x.title = c["title"] | x.title; String tc=c["titleColor"] | x.titleColor; if(validHexColor(tc))x.titleColor=tc; String cc=c["countColor"] | x.countColor; if(validHexColor(cc))x.countColor=cc;
     x.type=constrain((int)(c["type"]|x.type),0,2); x.targetDate=c["targetDate"]|x.targetDate; x.durationSec=c["durationSec"]|x.durationSec; x.targetEpoch=c["targetEpoch"]|x.targetEpoch; x.active=c["active"]|x.active; x.dayDigits=constrain((int)(c["dayDigits"]|x.dayDigits),3,6);
+    x.style=constrain((int)(c[F("style")]|x.style),0,1); x.showSign=c[F("showSign")]|x.showSign; x.startDay=c[F("startDay")]|x.startDay; if(x.startDay<0)x.startDay=0;
   }
   if(!modeEnabled(cfg.mode)) cfg.mode=firstEnabledMode();
 }
@@ -523,6 +529,21 @@ static bool countdownDayDifference(const String& target, int32_t& outDays) {
   outDays=(int32_t)diff; return true;
 }
 
+// Today's local date as days since 1970-01-01; false while the clock is unset.
+static bool countdownToday(int32_t& out) {
+  time_t now=time(nullptr); if(now<1609459200) return false;
+  struct tm t; localtime_r(&now,&t);
+  out=(int32_t)daysFromCivilDate(t.tm_year+1900,(unsigned)(t.tm_mon+1),(unsigned)t.tm_mday); return true;
+}
+
+// YYYY-MM-DD for days since 1970-01-01 (inverse of daysFromCivilDate).
+static String isoFromDays(int32_t z) {
+  z+=719468; const int32_t era=(z>=0?z:z-146096)/146097; const uint32_t doe=(uint32_t)(z-era*146097);
+  const uint32_t yoe=(doe-doe/1460+doe/36524-doe/146096)/365; const uint32_t doy=doe-(365*yoe+yoe/4-yoe/100);
+  const uint32_t mp=(5*doy+2)/153, d=doy-(153*mp+2)/5+1, m=mp<10?mp+3:mp-9; const int32_t y=(int32_t)yoe+era*400+(m<=2);
+  char b[12]; snprintf(b,sizeof b,"%04ld-%02u-%02u",(long)y,(unsigned)m,(unsigned)d); return String(b);
+}
+
 static uint8_t decimalDigits(uint32_t v) {
   uint8_t n=1; while(v>=10){v/=10;n++;} return n;
 }
@@ -547,46 +568,90 @@ static uint8_t segMask(uint8_t d) {
   return d<10?masks[d]:0;
 }
 
-static void drawSevenDigit(int x,int y,int w,int h,int t,uint8_t d,uint16_t color) {
-  uint8_t m=segMask(d); int half=h/2;
-  if(m&0x01)gfx->fillRect(x+t,y,w-2*t,t,color);
-  if(m&0x02)gfx->fillRect(x+w-t,y+t,t,half-t,color);
-  if(m&0x04)gfx->fillRect(x+w-t,y+half,t,half-t,color);
-  if(m&0x08)gfx->fillRect(x+t,y+h-t,w-2*t,t,color);
-  if(m&0x10)gfx->fillRect(x,y+half,t,half-t,color);
-  if(m&0x20)gfx->fillRect(x,y+t,t,half-t,color);
-  if(m&0x40)gfx->fillRect(x+t,y+half-t/2,w-2*t,t,color);
+// ---- countdown digits: LED segments like a clock radio ---------------------
+// Every segment is a hexagon (rectangle + two triangles). Unlit segments glow
+// faintly and lit ones get a 2 px halo; all shades come from the chosen colour.
+static uint16_t scale565(uint16_t c, uint8_t pct) {
+  const uint16_t r=((c>>11)&31)*pct/100, g=((c>>5)&63)*pct/100, b=(c&31)*pct/100;
+  return (uint16_t)((r<<11)|(g<<5)|b);
 }
 
-static int sevenUnit(char c) {
-  if(c>='0'&&c<='9')return 100;
-  if(c==':')return 34;
-  if(c=='+'||c=='-'||c==' ')return 62;
-  return 45;
+static void segH(int x0,int x1,int y,int t,uint16_t col) {   // centre line y, x0..x1
+  const int h=t/2;
+  if(x1-x0<=2*h){gfx->fillRect(x0,y-h,x1-x0+1,2*h+1,col);return;}
+  gfx->fillRect(x0+h,y-h,x1-x0-2*h+1,2*h+1,col);
+  gfx->fillTriangle(x0,y,x0+h,y-h,x0+h,y+h,col);
+  gfx->fillTriangle(x1,y,x1-h,y-h,x1-h,y+h,col);
 }
 
-static int sevenCharWidth(char c,int digitW) {
-  return max(4,(digitW*sevenUnit(c))/100);
+static void segV(int x,int y0,int y1,int t,uint16_t col) {   // centre line x, y0..y1
+  const int h=t/2;
+  if(y1-y0<=2*h){gfx->fillRect(x-h,y0,2*h+1,y1-y0+1,col);return;}
+  gfx->fillRect(x-h,y0+h,2*h+1,y1-y0-2*h+1,col);
+  gfx->fillTriangle(x,y0,x-h,y0+h,x+h,y0+h,col);
+  gfx->fillTriangle(x,y1,x-h,y1-h,x+h,y1-h,col);
 }
 
-static void drawSevenString(const String& value,int centerY,uint16_t color,bool partial=false,const String& old="") {
-  const int gap=3;
-  int units=0; for(size_t i=0;i<value.length();i++)units+=sevenUnit(value[i]);
-  int gaps=value.length()>0?(int)(value.length()-1)*gap:0;
-  int digitW=(224-gaps)*100/max(100,units);
-  digitW=constrain(digitW,18,42);
-  int h=(digitW*19)/10;
-  int total=gaps; for(size_t i=0;i<value.length();i++)total+=sevenCharWidth(value[i],digitW);
-  int x=(TFT_W-total)/2, y=centerY-h/2, t=max(3,digitW/6);
-  for(size_t i=0;i<value.length();i++){
-    char c=value[i]; int w=sevenCharWidth(c,digitW);
-    if(partial&&i<old.length()&&old[i]==c){x+=w+gap;continue;}
-    if(partial)gfx->fillRect(x,y,w,h,C_BLACK);
-    if(c>='0'&&c<='9') drawSevenDigit(x,y,digitW,h,t,(uint8_t)(c-'0'),color);
-    else if(c==':') { int s=max(3,t-1); gfx->fillRect(x+(w-s)/2,y+h/3-s/2,s,s,color); gfx->fillRect(x+(w-s)/2,y+(2*h)/3-s/2,s,s,color); }
-    else if(c=='-'||c=='+') { int cy=y+h/2; gfx->fillRect(x,cy-t/2,w,t,color); if(c=='+')gfx->fillRect(x+w/2-t/2,cy-w/2,t,w,color); }
-    // Space deliberately draws nothing but keeps the sign column width stable.
-    x+=w+gap;
+// Segment s (0 = a ... 6 = g) of a digit whose centre lines span x..x+w, y..y+h.
+static void segPart(uint8_t s,int x,int y,int w,int h,int t,uint16_t col) {
+  const int m=y+h/2;
+  switch(s){
+    case 0: segH(x+1,x+w-1,y,t,col); break;
+    case 1: segV(x+w,y+1,m-1,t,col); break;
+    case 2: segV(x+w,m+1,y+h-1,t,col); break;
+    case 3: segH(x+1,x+w-1,y+h,t,col); break;
+    case 4: segV(x,m+1,y+h-1,t,col); break;
+    case 5: segV(x,y+1,m-1,t,col); break;
+    default: segH(x+1,x+w-1,m,t,col); break;
+  }
+}
+
+static void drawSegDigit(int x,int y,int w,int h,int t,uint8_t mask,uint16_t on,uint16_t glow,uint16_t ghost) {
+  for(uint8_t s=0;s<7;s++)if(!(mask&(1<<s)))segPart(s,x,y,w,h,t,ghost);
+  for(uint8_t s=0;s<7;s++)if(mask&(1<<s))segPart(s,x,y,w,h,t+4,glow);
+  for(uint8_t s=0;s<7;s++)if(mask&(1<<s))segPart(s,x,y,w,h,t,on);
+}
+
+struct SegLayout { int h,w,t,gap,colon,total; };
+static uint8_t segClass(char c) { return c>='0'&&c<='9'?0:(c==':'?1:2); }
+static int segCharW(char c,const SegLayout& L) { return c==':'?L.colon:L.w+L.t; }
+
+// Largest digits (height <= maxH) for which the whole value fits into maxW.
+static SegLayout segLayout(const String& v,int maxW,int maxH) {
+  SegLayout L={};
+  for(int h=maxH;;h-=2){
+    L.h=h;L.w=h*48/100;L.t=max(5,2*(h*11/200)+1);L.gap=h*16/100;L.colon=h*22/100;
+    int total=v.length()?L.gap*(int)(v.length()-1):0;
+    for(size_t i=0;i<v.length();i++)total+=segCharW(v[i],L);
+    L.total=total;
+    if(total<=maxW||h<=20)return L;
+  }
+}
+
+// Draws the value centred; y is the top centre line of the digits. With
+// `partial`, only characters that differ from `old` are cleared and redrawn.
+static void drawSegString(const String& v,int y,const SegLayout& L,uint16_t on,bool partial,const String& old) {
+  const uint16_t glow=scale565(on,30),ghost=scale565(on,10);
+  int x=(TFT_W-L.total)/2;
+  for(size_t i=0;i<v.length();i++){
+    const char c=v[i]; const int cw=segCharW(c,L);
+    if(partial&&i<old.length()&&old[i]==c){x+=cw+L.gap;continue;}
+    if(partial)gfx->fillRect(x-2,y-L.t/2-2,cw+4,L.h+L.t+4,C_BLACK);
+    const int dx=x+L.t/2,m=y+L.h/2;
+    if(c>='0'&&c<='9')drawSegDigit(dx,y,L.w,L.h,L.t,segMask((uint8_t)(c-'0')),on,glow,ghost);
+    else if(c==':'){
+      const int s=max(4,L.t-1),cx=x+cw/2;
+      for(uint8_t k=0;k<2;k++){const int cy=y+L.h*(k?7:3)/10;
+        gfx->fillRect(cx-s/2-2,cy-s/2-2,s+4,s+4,glow);gfx->fillRect(cx-s/2,cy-s/2,s,s,on);}
+    } else if(c=='-'||c=='+'){
+      // The sign is a segment of its own in the same style (no ghost segments).
+      segH(dx,dx+L.w,m,L.t+4,glow);
+      if(c=='+')segV(dx+L.w/2,m-L.w/2,m+L.w/2,L.t+4,glow);
+      segH(dx,dx+L.w,m,L.t,on);
+      if(c=='+')segV(dx+L.w/2,m-L.w/2,m+L.w/2,L.t,on);
+    }
+    // A space keeps the sign column empty while the width stays the same.
+    x+=cw+L.gap;
   }
 }
 
@@ -600,19 +665,43 @@ static String countdownValue(const CountdownSlot& c) {
   if(c.type==COUNTDOWN_DAYS){
     int32_t days=0;if(!countdownDayDifference(c.targetDate,days))return "---";
     uint32_t a=days<0?(uint32_t)(-(int64_t)days):(uint32_t)days;
-    String sign=days>0?"-":(days<0?"+":" ");
+    if(!c.showSign&&days<0)a=0;   // without a sign the countdown stops at zero
+    String sign=!c.showSign?"":(days>0?"-":(days<0?"+":" "));
     return sign+padUnsigned(a,c.dayDigits);
   }
   time_t now=time(nullptr);if(now<1609459200||!c.targetEpoch)return "---";
   int64_t diff=(int64_t)c.targetEpoch-(int64_t)now;
   uint64_t a=diff<0?(uint64_t)(-diff):(uint64_t)diff;
-  String sign=diff>0?"-":(diff<0?"+":" ");
+  if(!c.showSign&&diff<0)a=0;
+  String sign=!c.showSign?"":(diff>0?"-":(diff<0?"+":" "));
   if(c.type==COUNTDOWN_MS){
     uint32_t mins=(uint32_t)(a/60ULL), sec=(uint32_t)(a%60ULL);
     return sign+padUnsigned(mins,2)+":"+padUnsigned(sec,2);
   }
   uint32_t hours=(uint32_t)(a/3600ULL), mins=(uint32_t)((a%3600ULL)/60ULL), sec=(uint32_t)(a%60ULL);
   return sign+padUnsigned(hours,2)+":"+padUnsigned(mins,2)+":"+padUnsigned(sec,2);
+}
+
+// Share of the countdown that has passed, 0..100, for the HUD bar; 255 = unknown
+// (inactive, or a day countdown without a start date before the target).
+static uint8_t countdownProgress(const CountdownSlot& c) {
+  if(!c.active)return 255;
+  int64_t done,total;
+  if(c.type==COUNTDOWN_DAYS){
+    int32_t today,left; if(c.startDay<=0||!countdownToday(today)||!countdownDayDifference(c.targetDate,left))return 255;
+    total=(int64_t)today+left-c.startDay; done=(int64_t)today-c.startDay;
+  } else {
+    time_t now=time(nullptr); if(now<1609459200||!c.targetEpoch||!c.durationSec)return 255;
+    total=c.durationSec; done=(int64_t)c.durationSec-((int64_t)c.targetEpoch-(int64_t)now);
+  }
+  if(total<=0)return 255;
+  if(done<=0)return 0;
+  return done>=total?100:(uint8_t)(done*100/total);
+}
+
+static String countdownUnit(uint8_t type) {
+  if(type==COUNTDOWN_DAYS)return TR("TAGE","DAYS");
+  return type==COUNTDOWN_HMS?TR("STD MIN SEK","HRS MIN SEC"):TR("MIN SEK","MIN SEC");
 }
 
 static String flightStatusGerman(const char* s) {
@@ -1126,19 +1215,49 @@ static void drawTrackedFlight(bool force=true) {
   drawFooter(f.error ? TR("LETZTER STAND","LAST DATA") : "AVIATIONSTACK + ADSB.LOL");
 }
 
+// HUD bar: outline from x 30 to 210, fill = passed share (empty when unknown).
+static void drawCountdownBar(uint8_t pct,uint16_t on) {
+  const int w=pct>100?0:177*pct/100;
+  if(w)gfx->fillRect(32,182,w,2,on);
+  if(w<177)gfx->fillRect(32+w,182,177-w,2,C_BLACK);
+}
+
 static void drawCountdown(uint8_t slot,bool force=true) {
   if(slot>3)return;
   const CountdownSlot& c=cfg.countdown[slot];
   String title=crop(displayAscii(c.title),24),value=countdownValue(c),old=lastCountdownRendered[slot];
-  static int lastSlot=-1;static String oldTitle,oldTitleColor,oldColor;static uint8_t oldType=255;
-  bool layout=force||lastSlot!=slot||oldTitle!=title||oldTitleColor!=c.titleColor||oldColor!=c.countColor||oldType!=c.type||old.length()!=value.length();
-  if(!layout)for(size_t i=0;i<value.length();i++)if(sevenUnit(value[i])!=sevenUnit(old[i]))layout=true;
-  beginView(layout);bool hasTitle=glyphCount(title)>0;uint16_t color=color565(c.countColor);
-  if(layout&&hasTitle)centerText(title,28,glyphCount(title)<=12?3:2,color565(c.titleColor));
-  int cy=c.type==COUNTDOWN_DAYS?(hasTitle?127:111):(hasTitle?135:120);
-  if(layout||value!=old)drawSevenString(value,cy,color,!layout,old);
-  if(layout&&c.type==COUNTDOWN_DAYS)centerText(TR("TAGE","DAYS"),hasTitle?183:168,2,color);
-  lastCountdownRendered[slot]=value;lastSlot=slot;oldTitle=title;oldTitleColor=c.titleColor;oldColor=c.countColor;oldType=c.type;
+  static int lastSlot=-1;static String oldTitle,oldTitleColor,oldColor;static uint8_t oldType=255,oldStyle=255,oldBar=254;
+  const bool hud=c.style==COUNTDOWN_HUD;
+  bool layout=force||lastSlot!=slot||oldTitle!=title||oldTitleColor!=c.titleColor||oldColor!=c.countColor||oldType!=c.type||oldStyle!=c.style||old.length()!=value.length();
+  if(!layout)for(size_t i=0;i<value.length();i++)if(segClass(value[i])!=segClass(old[i]))layout=true;
+  if(!layout&&hud&&value.length()&&(value[0]=='+')!=(old[0]=='+'))layout=true;   // T-MINUS -> T-PLUS
+  beginView(layout);
+  const bool hasTitle=glyphCount(title)>0;const uint16_t on=color565(c.countColor),dim=scale565(on,35);
+  SegLayout L;int y;
+  if(hud){
+    L=segLayout(value,190,72);y=68+(92-L.h-L.t)/2+L.t/2;
+    if(layout){
+      // Frame with bevelled corners (x,y pairs, closed).
+      static const uint8_t frame[] PROGMEM={10,40, 40,40, 52,28, 188,28, 200,40, 230,40, 230,196, 210,216, 30,216, 10,196, 10,40};
+      for(uint8_t i=0;i+3<(int)sizeof frame;i+=2)gfx->drawLine(pgm_read_byte(frame+i),pgm_read_byte(frame+i+1),pgm_read_byte(frame+i+2),pgm_read_byte(frame+i+3),dim);
+      gfx->fillRect(40,12,161,4,on);
+      if(hasTitle)centerText(title,46,2,color565(c.titleColor));
+      printDisplayTextAt(24,166,value.length()&&value[0]=='+'?String(F("T-PLUS")):String(F("T-MINUS")),1,dim);
+      const String unit=countdownUnit(c.type);printDisplayTextAt(216-textW(unit,1),166,unit,1,dim);
+      gfx->drawRect(30,180,181,6,dim);
+      for(uint8_t i=0;i<10;i++)gfx->drawFastVLine(30+i*20,188,4,dim);
+      oldBar=254;
+    }
+    const uint8_t bar=countdownProgress(c);if(bar!=oldBar){drawCountdownBar(bar,on);oldBar=bar;}
+  } else {
+    if(layout&&hasTitle)centerText(title,22,glyphCount(title)<=12?3:2,color565(c.titleColor));
+    const int top=hasTitle?52:8,area=232-top;
+    L=segLayout(value,216,hasTitle?100:116);
+    y=top+(area-(L.h+L.t+34))/2+L.t/2;
+    if(layout){const String unit=countdownUnit(c.type);centerText(unit,y+L.h+L.t/2+18,2,scale565(on,80));}
+  }
+  if(layout||value!=old)drawSegString(value,y,L,on,!layout,old);
+  lastCountdownRendered[slot]=value;lastSlot=slot;oldTitle=title;oldTitleColor=c.titleColor;oldColor=c.countColor;oldType=c.type;oldStyle=c.style;
 }
 
 static void drawClock(bool fullRedraw=true) {
@@ -1319,6 +1438,7 @@ static void sendJson(JsonDocument& d) {
 static void countdownToJson(JsonObject out,const CountdownSlot& c) {
   out["title"]=c.title;out["titleColor"]=c.titleColor;out["countColor"]=c.countColor;out["type"]=c.type;out["targetDate"]=c.targetDate;
   out["durationSec"]=c.durationSec;out["targetEpoch"]=c.targetEpoch;out["active"]=c.active;out["dayDigits"]=c.dayDigits;
+  out[F("style")]=c.style;out[F("showSign")]=c.showSign;out[F("startDate")]=c.startDay>0?isoFromDays(c.startDay):String();
 }
 
 static void updateCountdownSettings(JsonObjectConst in,CountdownSlot& c) {
@@ -1330,6 +1450,11 @@ static void updateCountdownSettings(JsonObjectConst in,CountdownSlot& c) {
   if(oldType!=c.type){c.active=false;c.targetEpoch=0;c.dayDigits=3;}
   if(in["targetDate"].is<const char*>())c.targetDate=in["targetDate"].as<String>();
   uint32_t dur=in["durationSec"]|c.durationSec;if(dur>31536000UL)dur=31536000UL;c.durationSec=dur;
+  c.style=constrain((int)(in[F("style")]|c.style),0,1);
+  if(in[F("showSign")].is<bool>())c.showSign=in[F("showSign")].as<bool>();
+  // Start date for the HUD bar of day countdowns: "" = none (set when started).
+  if(in[F("startDate")].is<const char*>()){int y,m,d;const String x=in[F("startDate")].as<String>();
+    c.startDay=parseDateOnly(x,y,m,d)?(int32_t)daysFromCivilDate(y,(unsigned)m,(unsigned)d):0;}
 }
 
 static void apiGetConfig() {
@@ -1459,6 +1584,7 @@ static void apiCountdown() {
     if(c.type==COUNTDOWN_DAYS){
       int32_t diff=0;if(!countdownDayDifference(c.targetDate,diff)){server.send_P(409,"application/json",PSTR("{\"ok\":false,\"error\":\"Zieltag fehlt oder Uhrzeit ist noch nicht synchronisiert\"}"));return;}
       uint32_t a=diff<0?(uint32_t)(-(int64_t)diff):(uint32_t)diff;c.dayDigits=max((uint8_t)3,decimalDigits(a));c.active=true;c.targetEpoch=0;
+      int32_t today;if(c.startDay<=0&&countdownToday(today))c.startDay=today;
     } else {
       time_t now=time(nullptr);if(now<1609459200){server.send_P(409,"application/json",PSTR("{\"ok\":false,\"error\":\"Uhrzeit ist noch nicht synchronisiert\"}"));return;}
       if(c.durationSec==0){server.send_P(400,"application/json",PSTR("{\"ok\":false,\"error\":\"Dauer muss größer als 0 sein.\"}"));return;}
@@ -1708,6 +1834,11 @@ void loop() {
         else if(cfg.mode==MODE_DEPARTURES||cfg.mode==MODE_WEATHER||cfg.mode==MODE_FORECAST||cfg.mode==MODE_PLANE||cfg.mode==MODE_TRACKED_FLIGHT) drawFooterClockOnly();
       }
     }
+    // Day countdowns started before v0.5.4.5 get today as start date for the HUD bar.
+    {static bool startDaysSet=false;int32_t today;
+     if(!startDaysSet&&countdownToday(today)){startDaysSet=true;bool changed=false;
+       for(auto& c:cfg.countdown)if(c.active&&c.type==COUNTDOWN_DAYS&&c.startDay<=0){c.startDay=today;changed=true;}
+       if(changed)saveConfig();}}
     int8_t slot=countdownSlotFromMode(cfg.mode);
     if(slot>=0){
       String visible=countdownValue(cfg.countdown[(uint8_t)slot]);

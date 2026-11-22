@@ -23,7 +23,6 @@ ap.add_argument('out', nargs='?', default=str(root / 'docs/screens'))
 ap.add_argument('--font', default=None)
 ap.add_argument('--scale', type=int, default=2)
 ap.add_argument('--frame', action='store_true', help='add a dark bezel around each screen')
-ap.add_argument('--sheet', action='store_true', help='also write uebersicht.png with all views')
 args = ap.parse_args()
 
 font = Path(args.font) if args.font else next(
@@ -253,7 +252,12 @@ int main(int argc, char** argv) {
   cfg.timeZone = "Europe/Berlin";
   cfg.rotationMask = 0x1FF;
 
-  // Abfahrten
+  const bool en = cfg.lang == LANG_EN;
+  char name[96];
+  // One frame per second: gif-<name>-<n>.ppm becomes <name>.gif.
+  auto frame = [&](const char* gif, int i) { snprintf(name, sizeof name, "/gif-%s-%d.ppm", gif, i); dump((out + name).c_str()); };
+
+  // ---- Abfahrten (Beispieldaten) ----
   cfg.mode = MODE_DEPARTURES; cfg.stopName = "Hauptbahnhof"; cfg.stopId = "33000028"; cfg.departureCount = 5;
   dep("S1", "Meißen Triebischtal", 1); dep("3", "Wilder Mann", 3); dep("RE50", "Leipzig Hbf", 6, true);
   dep("8", "Hellerau", 9); dep("10", "Messe Dresden", 12, false, true);
@@ -263,64 +267,109 @@ int main(int argc, char** argv) {
   dep("S2", "Dresden Flughafen", 2); dep("S1", "Schöna", 5); dep("S2", "Pirna", 9); dep("S1", "Meißen Triebischtal", 14, true); dep("S2", "Dresden Flughafen", 22);
   drawDepartures(); dump((out + "/abfahrten-ziele.ppm").c_str());
   cfg.departureDropTown = false; cfg.departureAbbreviate = false; cfg.stopPlace = "";
+  // Ten departures on two pages; the page changes every 5 s like on the cube.
+  depN = 0; cfg.stopName = "Postplatz"; cfg.departureCount = 10;
+  dep("1", "Prohlis", 0); dep("2", "Kleinzschachwitz", 1); dep("4", "Laubegast", 2); dep("12", "Striesen", 3, true); dep("1", "Leutewitz", 4);
+  dep("11", "Bühlau", 5); dep("2", "Gorbitz", 7); dep("4", "Radebeul West", 8); dep("12", "Leutewitz", 10); dep("62", "Johannstadt", 11, false, true);
+  for (int i = 0; i < 10; i++) { departurePage = i < 5 ? 0 : 1; drawDepartures(i == 0); frame("abfahrten-seiten", i); }
+  departurePage = 0; cfg.departureCount = 5; depN = 0;
 
-  // Wetter
-  cfg.mode = MODE_WEATHER; cfg.weatherCity = "Brooklyn"; cfg.weatherDisplayName = ""; cfg.weatherFahrenheit = true;
+  // ---- Wetter: deutsch Dresden in °C, englisch Berlin in °F ----
+  cfg.mode = MODE_WEATHER; cfg.weatherCity = en ? "Berlin" : "Dresden"; cfg.weatherDisplayName = ""; cfg.weatherFahrenheit = en;
   wx.valid = true; wx.currentC = 8.9f; wx.highC = 11.7f; wx.lowC = 5.6f; wx.rainPct = 70; wx.code = 61; wx.isDay = true;
-  strlcpy(wx.sunrise, "06:31", sizeof wx.sunrise); strlcpy(wx.sunset, "16:42", sizeof wx.sunset);
+  strlcpy(wx.sunrise, "07:21", sizeof wx.sunrise); strlcpy(wx.sunset, "16:08", sizeof wx.sunset);
   drawWeather(); dump((out + "/wetter.ppm").c_str());
-  // Nacht in Dresden, °C
-  cfg.weatherCity = "Dresden"; cfg.weatherFahrenheit = false;
-  wx.currentC = 11.6f; wx.highC = 14.2f; wx.lowC = 9.4f; wx.rainPct = 10; wx.code = 1; wx.isDay = false;
+  wx.currentC = 3.6f; wx.highC = 7.2f; wx.lowC = 1.4f; wx.rainPct = 10; wx.code = 1; wx.isDay = false;
   drawWeather(); dump((out + "/wetter-nacht.ppm").c_str());
-  cfg.weatherCity = "Brooklyn"; cfg.weatherFahrenheit = true;
   wx.currentC = 8.9f; wx.highC = 11.7f; wx.lowC = 5.6f; wx.rainPct = 70; wx.code = 61; wx.isDay = true;
   wx.days = 3;
-  wx.day[0] = {13.4f, 6.1f, 3, 10}; wx.day[1] = {9.8f, 3.2f, 63, 80}; wx.day[2] = {6.2f, -1.4f, 71, 60};
+  wx.day[0] = {11.7f, 5.6f, 61, 70}; wx.day[1] = {9.8f, 3.2f, 3, 20}; wx.day[2] = {4.2f, -1.4f, 71, 60};
   weatherPage = 1; drawWeather(true); dump((out + "/vorhersage.ppm").c_str()); weatherPage = 0;
 
-  // Flugradar
-  cfg.mode = MODE_PLANE; cfg.planePlace = "Dresden-Klotzsche"; cfg.planeShowAge = true; cfg.planeShowPlace = false;
-  fl.valid = true; strlcpy(fl.hex, "896180", 8); strlcpy(fl.callsign, "UAE45", 12); strlcpy(fl.airline, "Emirates", 64);
-  strlcpy(fl.registration, "A6-EVK", 16); strlcpy(fl.typeCode, "A388", 8); strlcpy(fl.typeName, "Airbus A380-800", 80);
-  strlcpy(fl.origin, "DXB", 4); strlcpy(fl.destination, "FRA", 4); parseFlightRoute("DXB-FRA", fl.route);
-  fl.distanceKm = 11.4f; fl.altitudeFt = 37000; fl.altitudeKnown = true;
-  drawPlane(); dump((out + "/flugradar.ppm").c_str());
+  // ---- Flugradar ----
+  // Every scene is an animation: one frame per second, starting at a full 6 s
+  // cycle, so the 3 s changes (route/squawk, registration/speed, long airline
+  // names) and the age counter are visible. Distance and altitude change per frame.
+  cfg.mode = MODE_PLANE; cfg.planeShowAge = true; cfg.planeShowPlace = true; cfg.planePlaceToggleSec = 0; planePlacePhase = true;
+  auto plane = [&](const char* hex, const char* call, const char* airline, const char* reg, const char* code, const char* type, const char* route) {
+    fl = FlightSnapshot{}; fl.valid = true; strlcpy(fl.hex, hex, 8); strlcpy(fl.callsign, call, 12); strlcpy(fl.airline, airline, 64);
+    strlcpy(fl.registration, reg, 16); strlcpy(fl.typeCode, code, 8); strlcpy(fl.typeName, type, 80);
+    if (route) { strlcpy(fl.origin, route, 4); strlcpy(fl.destination, route + 4, 4); parseFlightRoute(route, fl.route); }
+  };
+  // km0/km1, ft0/ft1: values in the first and last frame; age0: seconds since the last answer.
+  auto radarGif = [&](const char* gif, int frames, float km0, float km1, int32_t ft0, int32_t ft1, int age0) {
+    for (int i = 0; i < frames; i++) {
+      const float k = frames > 1 ? (float)i / (frames - 1) : 0;
+      clockMs = 1200000 + i * 1000; okAgeMs = (age0 + i) * 1000;
+      fl.distanceKm = km0 + (km1 - km0) * k; fl.altitudeFt = (int32_t)lroundf(ft0 + (ft1 - ft0) * k); fl.altitudeKnown = ft0 >= 0;
+      drawPlane(i == 0); frame(gif, i);
+      if (i == 0 && !strcmp(gif, "flugradar")) dump((out + "/flugradar.ppm").c_str());   // still for the overview
+    }
+  };
+  // Normalfall: Emirates A380 über Dresden-Klotzsche
+  cfg.planePlace = "Dresden-Klotzsche";
+  plane("896180", "UAE45", "Emirates", "A6-EVK", "A388", "Airbus A380-800", "DXB-FRA");
+  radarGif("flugradar", 6, 11.4f, 9.8f, 37000, 37000, 4);
+  // Steigflug: Alrosa Tu-154M RA-85757 nach dem Start in Mirny (letzter ziviler
+  // Tu-154-Linienflug in Russland, 28.10.2020, Mirny - Nowosibirsk)
+  cfg.planePlace = "Mirny"; cfg.planeTrend = true;
+  plane("15a5f1", "DRU154", "ALROSA", "RA-85757", "T154", "Tupolev Tu-154", "MJZ-OVB");
+  fl.motion.hasRate = true; fl.motion.rateFpm = 2600;
+  radarGif("radar-steigflug", 6, 6.2f, 7.9f, 6400, 6660, 3);
+  // Sinkflug: European Air Charter MD-82 LZ-LDP im Anflug auf Varna (letzter
+  // Flug einer MD-80 in Europa, 21.10.2023, Hurghada - Varna)
+  cfg.planePlace = "Varna";
+  plane("450a8e", "BUC7302", "European Air Charter", "LZ-LDP", "MD82", "MD-82", "HRG-VAR");
+  fl.motion.hasRate = true; fl.motion.rateFpm = -1100;
+  radarGif("radar-sinkflug", 6, 14.8f, 13.5f, 5200, 5090, 2);
+  cfg.planeTrend = false;
+  // Langer Airline-Name im Wechsel, dazu Geschwindigkeit statt Kennzeichen
+  cfg.planePlace = "Leipzig/Halle"; cfg.planeSpeed = 1;
+  plane("06a2b5", "QTR8152", "Qatar Airways Cargo", "A7-BFG", "B77L", "Boeing 777-200LR/F", "DOH-LEJ");
+  fl.speedKnown = true; fl.speedKt = 248;
+  radarGif("radar-name", 6, 18.6f, 17.4f, 7800, 7300, 5);
+  cfg.planeSpeed = 0;
+  // Statuspunkt gelb: letzter Abruf fehlgeschlagen, Werte geschätzt
+  cfg.planePlace = "Frankfurt";
+  plane("3c4b26", "DLH9AT", "Lufthansa", "D-AIEF", "A21N", "Airbus A321neo", "FRA-BER");
+  fl.error = true;
+  radarGif("radar-gelb", 6, 22.3f, 23.9f, 14000, 14000, 41);
+  // Statuspunkt grau: zu lange keine Daten, Werte stehen still
+  cfg.planePlace = "Hamburg";
+  plane("3c66a7", "EWG7KA", "Eurowings", "D-AEWK", "A320", "Airbus A320", "HAM-PMI");
+  fl.error = true;
+  radarGif("radar-grau", 6, 31.5f, 31.5f, 23000, 23000, 64);
+  // Kein Flugzeug im Radius
+  cfg.planePlace = "Helgoland"; fl = FlightSnapshot{}; okAgeMs = 4000;
+  drawPlane(); dump((out + "/radar-leer.ppm").c_str());
 
-  // Fiktive Beispieldaten in Anlehnung an Battlestar Galactica: Blick vom CIC
-  // der Galactica, Quelle "DRADIS" statt adsb.lol, 4-stellige Codes (BS75, BS62).
-  planeSourceLabel = "DRADIS"; okAgeMs = 33000; cfg.planeMarkMilitary = true;
-  auto bsg = [&](const char* call, const char* op, const char* to, const char* type, const char* reg, float km, int32_t m, bool mil) {
+  // Fiktive Daten (Battlestar Galactica) für Militär und Notfall, damit keine
+  // echten Flüge so aussehen: Quelle "DRADIS" statt adsb.lol, 4-stellige Codes.
+  planeSourceLabel = "DRADIS"; cfg.planeMarkMilitary = true; cfg.planeDisplayName = "CIC Galactica";
+  auto bsg = [&](const char* call, const char* op, const char* to, const char* type, const char* reg, bool mil) {
     fl = FlightSnapshot{}; fl.valid = true; strlcpy(fl.hex, "bs7500", 8); strlcpy(fl.callsign, call, 12); strlcpy(fl.airline, op, 64);
     strlcpy(fl.registration, reg, 16); strlcpy(fl.typeName, type, 80); strlcpy(fl.typeCode, "BSG", 8);
     strlcpy(fl.origin, "BS75", 5); strlcpy(fl.destination, to, 5);
     if (strcmp(to, "N/A")) { char r[12]; snprintf(r, sizeof r, "BS75-%s", to); parseFlightRoute(r, fl.route); }
-    fl.distanceKm = km; fl.altitudeKnown = m >= 0; fl.altitudeFt = m >= 0 ? (int32_t)lroundf(m / 0.3048f) : 0; fl.military = mil; // m < 0: no altitude in space
+    fl.military = mil;
   };
-  bsg("COLONE", "Colonial Fleet", "BS62", "Colonial Heavy 798", "COL-ONE", 12.4f, -1, false);
-  fl.speedKnown = true; fl.speedKt = 860 / 1.852f; cfg.planeSpeed = 1; clockMs = 999000; // speed phase
-  drawPlane(); dump((out + "/radar-colone.ppm").c_str());
+  bsg("COLONE", "Colonial Fleet", "BS62", "Colonial Heavy 798", "COL-ONE", false);
+  fl.speedKnown = true; fl.speedKt = 860 / 1.852f; cfg.planeSpeed = 1;
+  radarGif("radar-colone", 6, 12.4f, 12.9f, -1, -1, 33);
   cfg.planeSpeed = 0;
-  bsg("APOLLO", "Col. Fleet / Viper", "N/A", "Viper MK II", "N7242C", 0.4f, -1, true);
-  clockMs = 1002000; drawPlane(); dump((out + "/radar-apollo.ppm").c_str());
-  cfg.planeShowPlace = true; cfg.planeDisplayName = "CIC BSG75"; cfg.planePlaceToggleSec = 0; planePlacePhase = true;
-  bsg("KARMA", "Colonial Fleet", "N/A", "Raptor", "BS75-R1", 98.7f, 98700, true);
+  bsg("APOLLO", "Col. Fleet / Viper", "N/A", "Viper MK II", "N7242C", true);
+  radarGif("radar-apollo", 6, 0.4f, 0.9f, -1, -1, 2);
+  // Notfall: Der Raptor fällt mit 1,4 km/s auf den Planeten zu und entfernt sich
+  // vom CIC, knapp innerhalb des 100-km-Radius.
+  bsg("KARMA", "Colonial Fleet", "N/A", "Raptor", "BS75-R1", true);
   fl.motion.hasRate = true; fl.motion.rateFpm = -3000; cfg.planeTrend = true; strlcpy(fl.squawk, "7700", 5);
-  // Six frames, one per second: 3 s route, 3 s squawk, the age counts on and the
-  // Raptor falls towards the planet at 1.4 km/s and drifts away from the CIC,
-  // staying just inside the 100 km radius.
-  for (int i = 0; i < 6; i++) {
-    clockMs = 1002000 + i * 1000; okAgeMs = 33000 + i * 1000;
-    const int32_t m = 98700 - 1400 * i;
-    fl.altitudeFt = (int32_t)lroundf(m / 0.3048f); fl.distanceKm = 92.7f + 1.4f * i;
-    drawPlane(); char name[64]; snprintf(name, sizeof name, "/gif-radar-karma-%d.ppm", i); dump((out + name).c_str());
-  }
-  planeSourceLabel = "ADSB.LOL"; okAgeMs = 4000; clockMs = 1000000; cfg.planeTrend = false; cfg.planeShowPlace = false; cfg.planeDisplayName = "";
+  radarGif("radar-karma", 6, 92.7f, 99.7f, (int32_t)lroundf(98700 / 0.3048f), (int32_t)lroundf(91700 / 0.3048f), 33);
+  planeSourceLabel = "ADSB.LOL"; okAgeMs = 4000; clockMs = 1000000; cfg.planeTrend = false; cfg.planeDisplayName = ""; cfg.planeShowPlace = false;
 
-  // Uhr
+  // ---- Uhr ----
   cfg.mode = MODE_CLOCK; drawClock(); dump((out + "/uhr.ppm").c_str());
 
-  // Flug-Tracker
+  // ---- Flug-Tracker ----
   cfg.mode = MODE_TRACKED_FLIGHT; cfg.trackedFlightNo = "LH1178"; cfg.aviationstackKey = "sample";
   tf.valid = true; strlcpy(tf.flightIata, "LH1178", 12); strlcpy(tf.flightIcao, "DLH1178", 12); strlcpy(tf.airline, "Lufthansa", 28);
   strlcpy(tf.origin, "DRS", 4); strlcpy(tf.destination, "FRA", 4); parseFlightRoute("DRS-FRA", tf.route);
@@ -330,12 +379,22 @@ int main(int argc, char** argv) {
   tf.depScheduledEpoch = fakeNow - 1800; tf.depActualEpoch = fakeNow - 1080; tf.arrScheduledEpoch = fakeNow + 2400; tf.arrEstimatedEpoch = fakeNow + 2880;
   drawTrackedFlight(); dump((out + "/flugtracker.ppm").c_str());
 
-  // Countdowns
-  CountdownSlot& c1 = cfg.countdown[0]; c1.title = cfg.lang == LANG_EN ? "Vacation" : "Urlaub"; c1.type = COUNTDOWN_DAYS; c1.targetDate = "2026-12-23"; c1.active = true; c1.dayDigits = 3;
+  // ---- Countdowns ----
+  const time_t base = fakeNow;
+  CountdownSlot& c1 = cfg.countdown[0]; c1.title = en ? "Vacation" : "Urlaub"; c1.type = COUNTDOWN_DAYS; c1.targetDate = "2026-12-23"; c1.active = true; c1.dayDigits = 3;
   cfg.mode = MODE_COUNTDOWN1; drawCountdown(0); dump((out + "/countdown-tage.ppm").c_str());
+  // HUD, ohne Vorzeichen, Startdatum 1.10. -> Balken
+  c1.style = COUNTDOWN_HUD; c1.showSign = false; c1.startDay = (int32_t)daysFromCivilDate(2026, 10, 1); c1.countColor = "#FF4F6E"; c1.titleColor = "#FF4F6E";
+  drawCountdown(0); dump((out + "/countdown-tage-hud.ppm").c_str());
   CountdownSlot& c2 = cfg.countdown[1]; c2.title = "Pizza"; c2.type = COUNTDOWN_MS; c2.titleColor = "#F3CE00"; c2.countColor = "#5DD78B";
-  c2.durationSec = 720; c2.targetEpoch = (uint32_t)fakeNow + 534; c2.active = true;
-  cfg.mode = MODE_COUNTDOWN2; drawCountdown(1); dump((out + "/countdown-timer.ppm").c_str());
+  c2.durationSec = 720; c2.targetEpoch = (uint32_t)base + 534; c2.active = true;
+  cfg.mode = MODE_COUNTDOWN2;
+  for (int i = 0; i < 6; i++) { fakeNow = base + i; drawCountdown(1, i == 0); frame("countdown-timer", i); }
+  CountdownSlot& c3 = cfg.countdown[2]; c3.title = en ? "Departure" : "Abflug"; c3.type = COUNTDOWN_HMS; c3.style = COUNTDOWN_HUD;
+  c3.titleColor = "#FF4F6E"; c3.countColor = "#FF4F6E"; c3.durationSec = 3 * 3600; c3.targetEpoch = (uint32_t)base + 4983; c3.active = true;
+  cfg.mode = MODE_COUNTDOWN3;
+  for (int i = 0; i < 6; i++) { fakeNow = base + i; drawCountdown(2, i == 0); frame("countdown-hud", i); }
+  fakeNow = base;
   return 0;
 }
 '''
@@ -356,8 +415,26 @@ with tempfile.TemporaryDirectory() as tmp:
     (t / 'de').mkdir(); (t / 'en').mkdir()
     subprocess.run([str(exe), str(t / 'de'), 'de'], check=True)
     subprocess.run([str(exe), str(t / 'en'), 'en'], check=True)
-    from PIL import Image
-    # Animated example: frames named gif-<name>-<n>.ppm become <name>.gif (1 s per frame).
+    from PIL import Image, ImageDraw
+    KEY = (255, 0, 255)   # transparent corners of the GIF frames
+
+    def finish(img):
+        """Scale up and, with --frame, add a thin dark-grey border with rounded,
+        transparent corners: readable on light and dark GitHub pages alike."""
+        if args.scale > 1:
+            img = img.resize((240 * args.scale, 240 * args.scale), Image.NEAREST)
+        if not args.frame:
+            return img.convert('RGBA')
+        b, r = args.scale, 7 * args.scale
+        w, h = img.width + 2 * b, img.height + 2 * b
+        out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        ImageDraw.Draw(out).rounded_rectangle((0, 0, w - 1, h - 1), r, fill=(72, 77, 84, 255))
+        mask = Image.new('L', (img.width, img.height), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, img.width - 1, img.height - 1), r - b, fill=255)
+        out.paste(img, (b, b), mask)
+        return out
+
+    # Animated examples: frames gif-<name>-<n>.ppm become <name>.gif (1 s per frame).
     for lang_dir in [t / 'de', t / 'en']:
         dest = out if lang_dir.name == 'de' else out / 'en'
         dest.mkdir(parents=True, exist_ok=True)
@@ -367,37 +444,21 @@ with tempfile.TemporaryDirectory() as tmp:
         for name, frames in groups.items():
             imgs = []
             for ppm in sorted(frames, key=lambda f: int(f.stem.rsplit('-', 1)[1])):
-                img = Image.open(ppm).convert('RGB')
-                if args.scale > 1:
-                    img = img.resize((240 * args.scale, 240 * args.scale), Image.NEAREST)
-                if args.frame:
-                    pad = 12 * args.scale
-                    framed = Image.new('RGB', (img.width + 2 * pad, img.height + 2 * pad), (24, 26, 29))
-                    framed.paste(img, (pad, pad)); img = framed
-                imgs.append(img); ppm.unlink()
-            palette = imgs[0].quantize(colors=64)
-            frames_q = [im.quantize(palette=palette) for im in imgs]
-            frames_q[0].save(dest / (name + '.gif'), save_all=True, append_images=frames_q[1:], duration=1000, loop=0, optimize=False)
+                rgba = finish(Image.open(ppm).convert('RGB'))
+                flat = Image.new('RGB', rgba.size, KEY); flat.paste(rgba, (0, 0), rgba)
+                imgs.append(flat); ppm.unlink()
+            # One palette for all frames (taken from all of them), corners transparent.
+            strip = Image.new('RGB', (imgs[0].width, imgs[0].height * len(imgs)))
+            for i, im in enumerate(imgs): strip.paste(im, (0, i * im.height))
+            palette = strip.quantize(colors=128, method=Image.Quantize.MEDIANCUT)
+            frames_q = [im.quantize(palette=palette, dither=Image.Dither.NONE) for im in imgs]
+            pal = palette.getpalette()[:3 * 128]
+            key = min(range(len(pal) // 3), key=lambda i: sum((pal[3 * i + k] - KEY[k]) ** 2 for k in range(3)))
+            frames_q[0].save(dest / (name + '.gif'), save_all=True, append_images=frames_q[1:], duration=1000, loop=0,
+                             optimize=False, transparency=key, disposal=1)
             print(dest / (name + '.gif'))
     for ppm in sorted(t.glob('*/*.ppm')):
         dest = out if ppm.parent.name == 'de' else out / 'en'
         dest.mkdir(parents=True, exist_ok=True)
-        img = Image.open(ppm).convert('RGB')
-        if args.scale > 1:
-            img = img.resize((240 * args.scale, 240 * args.scale), Image.NEAREST)
-        if args.frame:
-            pad = 12 * args.scale
-            framed = Image.new('RGB', (img.width + 2 * pad, img.height + 2 * pad), (24, 26, 29))
-            framed.paste(img, (pad, pad)); img = framed
-        img.save(dest / (ppm.stem + '.png'))
+        finish(Image.open(ppm).convert('RGB')).save(dest / (ppm.stem + '.png'))
         print(dest / (ppm.stem + '.png'))
-    for sheet_dir in ([out, out / 'en'] if args.sheet else []):
-        order = ['abfahrten', 'wetter', 'vorhersage', 'flugradar', 'uhr', 'flugtracker', 'countdown-tage', 'countdown-timer']
-        tiles = [Image.open(sheet_dir / (n + '.png')) for n in order]
-        w, h, gap = tiles[0].width, tiles[0].height, 8 * args.scale
-        cols = 4
-        sheet = Image.new('RGB', (cols * w + (cols + 1) * gap, 2 * h + 3 * gap), (24, 26, 29))
-        for i, tile in enumerate(tiles):
-            sheet.paste(tile, (gap + (i % cols) * (w + gap), gap + (i // cols) * (h + gap)))
-        sheet = sheet.crop((0, 0, sheet.width, sheet.height))
-        sheet.save(sheet_dir / 'uebersicht.png'); print(sheet_dir / 'uebersicht.png')
