@@ -12,9 +12,10 @@
 **README und Bilder**
 - Oben ein Bild pro Programm, darunter jedes Programm **aufklappbar** mit Erklärung, Einstellungen und allen Beispielbildern; die bisherige Galerie und die getrennten Radarbilder gehen darin auf.
 - Bilder mit Bewegung sind jetzt **GIFs in Echtzeit** (eine Sekunde pro Bild): alle Radar-Szenen, der Abfahrtsmonitor mit zwei Seiten und die Countdown-Timer.
-- Neue Radar-Szenen: Steigflug (ALROSA Tu-154M ab Mirny), Sinkflug (European Air Charter MD-82 nach Varna), langer Airline-Name, Statuspunkt gelb und grau, kein Flugzeug. Militär und Notfall bleiben fiktive Daten („CIC Galactica“ statt „CIC BSG75“).
+- Neue Radar-Szenen: Steigflug (ALROSA Tu-154M ab Mirny), Sinkflug (European Air Charter MD-82 nach Varna), langer Airline-Name, am Boden, Statuspunkt gelb und grau, Abrufpause, kein Flugzeug. Neue Countdown-Szenen: nach dem Ziel mit „+“ und HUD ohne Vorzeichen bei null. Militär und Notfall bleiben fiktive Daten („CIC Galactica“ statt „CIC BSG75“).
 - Wetter auf Deutsch für Dresden in °C, auf Englisch für Berlin in °F.
-- Alle Bilder gleich groß (dünner Rahmen mit runden, durchsichtigen Ecken) und in der README einheitlich breit; die Übersichtsgrafik entfällt.
+- Alle Bilder sind **Karten** gleicher Größe: Bildschirm mit Titel und Untertitel darunter, bei fiktiven Daten mit Plakette „fiktiv“, dünner Rahmen mit runden, durchsichtigen Ecken. In der README stehen sie ohne Tabellen in zentrierten Reihen zu höchstens drei, beim Radar und beim Countdown nach Themen gruppiert; die Übersichtsgrafik entfällt.
+- Bilder liegen getrennt nach Sprache unter `docs/screens/de` und `docs/screens/en`.
 
 ## v0.5.4.4-dev
 

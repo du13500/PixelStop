@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Render the real display views from src/main.cpp into PNG screenshots.
+"""Render the real display views from src/main.cpp into the README pictures.
 
 The drawing code (helpers and all views) is taken verbatim from main.cpp and
 compiled for the host against a 240x240 RGB565 framebuffer. Text uses the
 same two fonts as the device: Arduino_GFX's classic 5x7 font for ASCII and
 PixelFont.h for everything else. Data comes from the sample fixtures below.
+
+Every picture is a card: the screen (scaled without smoothing) with a caption
+panel below, a thin border and rounded transparent corners, so all pictures
+have the same size. Views with movement become GIFs, one frame per second.
+Output: OUTPUT_DIR/de and OUTPUT_DIR/en, plus kachel-*.png for the overview.
+Captions use the Inter font (falls back to DejaVu Sans).
 
 Usage:
   python3 tools/render_screens.py [OUTPUT_DIR] [--font PATH/TO/glcdfont.h] [--scale N]
@@ -22,7 +28,6 @@ ap = argparse.ArgumentParser()
 ap.add_argument('out', nargs='?', default=str(root / 'docs/screens'))
 ap.add_argument('--font', default=None)
 ap.add_argument('--scale', type=int, default=2)
-ap.add_argument('--frame', action='store_true', help='add a dark bezel around each screen')
 args = ap.parse_args()
 
 font = Path(args.font) if args.font else next(
@@ -205,7 +210,8 @@ static FlightSnapshot fl = {};
 const FlightSnapshot& flightData() { return fl; }
 static uint32_t okAgeMs = 4000;
 uint32_t flightLastOkMs() { return clockMs - okAgeMs; }
-bool flightProviderPaused() { return false; }
+static bool providerPaused = false;
+bool flightProviderPaused() { return providerPaused; }
 int flightLastHttp() { return 200; }
 uint32_t flightWaitSec() { return 0; }
 float flightLiveDistanceKm(const FlightSnapshot& f) { return f.distanceKm; }
@@ -339,6 +345,17 @@ int main(int argc, char** argv) {
   plane("3c66a7", "EWG7KA", "Eurowings", "D-AEWK", "A320", "Airbus A320", "HAM-PMI");
   fl.error = true;
   radarGif("radar-grau", 6, 31.5f, 31.5f, 23000, 23000, 64);
+  // Abrufpause: adsb.lol bittet um eine Pause, Werte werden geschätzt
+  cfg.planePlace = "München";
+  plane("3c6d4a", "CFG1KN", "Condor", "D-ANRA", "A339", "Airbus A330-900neo", "MUC-PMI");
+  providerPaused = true;
+  radarGif("radar-pause", 6, 27.1f, 28.4f, 21000, 21900, 46);
+  providerPaused = false;
+  // Am Boden: Flugzeug vor dem Start, Höhe "GND"
+  cfg.planePlace = "Dresden-Klotzsche";
+  plane("3c66b1", "EWG9MA", "Eurowings", "D-AEWM", "A320", "Airbus A320", "DRS-DUS");
+  fl.onGround = true;
+  radarGif("radar-boden", 6, 1.3f, 1.3f, 0, 0, 3);
   // Kein Flugzeug im Radius
   cfg.planePlace = "Helgoland"; fl = FlightSnapshot{}; okAgeMs = 4000;
   drawPlane(); dump((out + "/radar-leer.ppm").c_str());
@@ -394,6 +411,14 @@ int main(int argc, char** argv) {
   c3.titleColor = "#FF4F6E"; c3.countColor = "#FF4F6E"; c3.durationSec = 3 * 3600; c3.targetEpoch = (uint32_t)base + 4983; c3.active = true;
   cfg.mode = MODE_COUNTDOWN3;
   for (int i = 0; i < 6; i++) { fakeNow = base + i; drawCountdown(2, i == 0); frame("countdown-hud", i); }
+  // Klassisch nach dem Ziel: zählt mit "+" weiter
+  CountdownSlot& c4 = cfg.countdown[3]; c4.title = en ? "Tea" : "Tee"; c4.type = COUNTDOWN_MS; c4.titleColor = "#FFFFFF"; c4.countColor = "#F3CE00";
+  c4.durationSec = 240; c4.targetEpoch = (uint32_t)base - 75; c4.active = true;
+  cfg.mode = MODE_COUNTDOWN4;
+  for (int i = 0; i < 6; i++) { fakeNow = base + i; drawCountdown(3, i == 0); frame("countdown-plus", i); }
+  // HUD ohne Vorzeichen: bleibt am Ziel bei null stehen, Balken voll
+  c4.style = COUNTDOWN_HUD; c4.showSign = false; c4.countColor = "#5DD78B"; c4.titleColor = "#5DD78B";
+  fakeNow = base; drawCountdown(3); dump((out + "/countdown-hud-null.ppm").c_str());
   fakeNow = base;
   return 0;
 }
@@ -415,50 +440,151 @@ with tempfile.TemporaryDirectory() as tmp:
     (t / 'de').mkdir(); (t / 'en').mkdir()
     subprocess.run([str(exe), str(t / 'de'), 'de'], check=True)
     subprocess.run([str(exe), str(t / 'en'), 'en'], check=True)
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageFont
     KEY = (255, 0, 255)   # transparent corners of the GIF frames
 
-    def finish(img):
-        """Scale up and, with --frame, add a thin dark-grey border with rounded,
-        transparent corners: readable on light and dark GitHub pages alike."""
-        if args.scale > 1:
-            img = img.resize((240 * args.scale, 240 * args.scale), Image.NEAREST)
-        if not args.frame:
-            return img.convert('RGBA')
-        b, r = args.scale, 7 * args.scale
-        w, h = img.width + 2 * b, img.height + 2 * b
+    # ---- cards: screen + caption, the same size for every picture -------------
+    # Title, subtitle and an optional "fictional" tag per picture and language.
+    CAPTIONS = {
+        'de': {
+            'abfahrten': ('Abfahrten', 'Dresden Hbf · Verspätung und Ausfall'),
+            'abfahrten-ziele': ('Kurze Fahrtziele', 'ohne eigenen Ort, „Meißen T.“ gekürzt'),
+            'abfahrten-seiten': ('Zwei Seiten', 'zehn Abfahrten, Wechsel alle 5 s'),
+            'wetter': ('Wetter', 'Dresden am Tag, leichter Regen'),
+            'wetter-nacht': ('Nachts', 'Dresden, heiter'),
+            'vorhersage': ('3-Tage-Vorhersage', 'Dresden, die nächsten drei Tage'),
+            'flugradar': ('Normalfall', 'Emirates A380 über Dresden'),
+            'radar-steigflug': ('Steigflug', 'ALROSA Tu-154M ab Mirny'),
+            'radar-sinkflug': ('Sinkflug', 'European Air Charter MD-82 nach Varna'),
+            'radar-name': ('Langer Name', 'Airline im Wechsel, km/h statt Kennzeichen'),
+            'radar-boden': ('Am Boden', 'vor dem Start in Dresden, Höhe GND'),
+            'radar-leer': ('Kein Flugzeug', 'nichts im gewählten Radius'),
+            'radar-gelb': ('Letzter Stand', 'Abruf fehlgeschlagen, Werte geschätzt'),
+            'radar-pause': ('Abrufpause', 'adsb.lol bittet um eine Pause'),
+            'radar-grau': ('Keine Daten', 'zu lange ohne Abruf, Werte stehen'),
+            'radar-colone': ('Geschwindigkeit', '4-stellige Codes, N/A ohne Höhe', True),
+            'radar-apollo': ('Militär', 'MIL-Markierung neben dem Rufzeichen', True),
+            'radar-karma': ('Notfall', 'Squawk 7700 im Wechsel mit der Route', True),
+            'flugtracker': ('Flug-Tracker', 'LH1178 Dresden – Frankfurt'),
+            'uhr': ('Uhr', 'mit Datum und Zeitzone'),
+            'countdown-tage': ('Tage', 'klassisch, mit Vorzeichen'),
+            'countdown-timer': ('Timer', 'Minuten : Sekunden'),
+            'countdown-plus': ('Nach dem Ziel', 'zählt mit Plus weiter'),
+            'countdown-tage-hud': ('HUD in Tagen', 'ohne Vorzeichen, Balken ab Start'),
+            'countdown-hud': ('HUD-Timer', 'Std : Min : Sek mit Fortschritt'),
+            'countdown-hud-null': ('Am Ziel', 'ohne Vorzeichen bleibt er bei null'),
+        },
+        'en': {
+            'abfahrten': ('Departures', 'Dresden Hbf · delay and cancellation'),
+            'abfahrten-ziele': ('Short destinations', 'town dropped, “Meißen T.” abbreviated'),
+            'abfahrten-seiten': ('Two pages', 'ten departures, switching every 5 s'),
+            'wetter': ('Weather', 'Berlin by day, light rain'),
+            'wetter-nacht': ('At night', 'Berlin, clear'),
+            'vorhersage': ('3-day forecast', 'Berlin, the next three days'),
+            'flugradar': ('Normal', 'Emirates A380 over Dresden'),
+            'radar-steigflug': ('Climbing', 'ALROSA Tu-154M out of Mirny'),
+            'radar-sinkflug': ('Descending', 'European Air Charter MD-82 to Varna'),
+            'radar-name': ('Long name', 'airline alternating, km/h for registration'),
+            'radar-boden': ('On the ground', 'before take-off in Dresden, GND'),
+            'radar-leer': ('No aircraft', 'nothing within the chosen radius'),
+            'radar-gelb': ('Last data', 'request failed, values estimated'),
+            'radar-pause': ('Paused', 'adsb.lol asks for a pause'),
+            'radar-grau': ('No data', 'too long without a request, frozen'),
+            'radar-colone': ('Speed', '4-character codes, N/A without altitude', True),
+            'radar-apollo': ('Military', 'MIL marking next to the callsign', True),
+            'radar-karma': ('Emergency', 'squawk 7700 alternating with the route', True),
+            'flugtracker': ('Flight tracker', 'LH1178 Dresden – Frankfurt'),
+            'uhr': ('Clock', 'with date and time zone'),
+            'countdown-tage': ('Days', 'classic, with sign'),
+            'countdown-timer': ('Timer', 'minutes : seconds'),
+            'countdown-plus': ('After the target', 'counts on with a plus'),
+            'countdown-tage-hud': ('HUD in days', 'no sign, bar from the start date'),
+            'countdown-hud': ('HUD timer', 'hrs : min : sec with progress'),
+            'countdown-hud-null': ('At the target', 'without a sign it stops at zero'),
+        },
+    }
+    # Overview: one card per programme (picture, title, subtitle).
+    OVERVIEW = {
+        'de': [('abfahrten', 'Abfahrten', 'VVO live'), ('wetter', 'Wetter', 'Open-Meteo'), ('vorhersage', '3-Tage-Vorhersage', 'Open-Meteo'),
+               ('flugradar', 'Flugradar', 'adsb.lol'), ('flugtracker', 'Flug-Tracker', 'aviationstack'), ('uhr', 'Uhr', 'Zeitzone wählbar'),
+               ('countdown-tage', 'Countdown', 'vier Timer, Tage oder Zeit')],
+        'en': [('abfahrten', 'Departures', 'VVO live'), ('wetter', 'Weather', 'Open-Meteo'), ('vorhersage', '3-day forecast', 'Open-Meteo'),
+               ('flugradar', 'Flight radar', 'adsb.lol'), ('flugtracker', 'Flight tracker', 'aviationstack'), ('uhr', 'Clock', 'time zone of your choice'),
+               ('countdown-tage', 'Countdown', 'four timers, days or time')],
+    }
+    FONTS = Path('/usr/share/fonts/opentype/inter')
+    def font(name, size):
+        for f in (FONTS / name, Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf')):
+            if f.is_file(): return ImageFont.truetype(str(f), size)
+        return ImageFont.load_default()
+    S = args.scale
+    F_TITLE, F_SUB, F_TAG = font('Inter-SemiBold.otf', 14 * S), font('Inter-Regular.otf', 11 * S), font('Inter-SemiBold.otf', 8 * S)
+    BORDER, PANEL, RULE = (72, 77, 84), (22, 25, 29), (44, 49, 56)
+    CAP = 48 * S   # caption height
+    PAD = 8 * S    # transparent margin: the gap between cards in the README
+
+    def card(img, title, sub, fictional, lang):
+        """Screen (scaled, no smoothing) with a caption panel below, a thin border
+        and rounded transparent corners: one fixed size for every picture."""
+        img = img.resize((240 * S, 240 * S), Image.NEAREST)
+        b, r = S, 7 * S
+        w, h = img.width + 2 * b + 2 * PAD, img.height + CAP + 2 * b + 2 * PAD
         out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-        ImageDraw.Draw(out).rounded_rectangle((0, 0, w - 1, h - 1), r, fill=(72, 77, 84, 255))
-        mask = Image.new('L', (img.width, img.height), 0)
-        ImageDraw.Draw(mask).rounded_rectangle((0, 0, img.width - 1, img.height - 1), r - b, fill=255)
-        out.paste(img, (b, b), mask)
+        d = ImageDraw.Draw(out)
+        d.rounded_rectangle((PAD, PAD, w - 1 - PAD, h - 1 - PAD), r, fill=BORDER + (255,))
+        inner = Image.new('RGB', (img.width, img.height + CAP), PANEL)
+        inner.paste(img, (0, 0))
+        di = ImageDraw.Draw(inner)
+        di.line((0, img.height, img.width, img.height), fill=RULE, width=1)
+        x, y = 12 * S, img.height + 9 * S
+        di.text((x, y), title, font=F_TITLE, fill=(242, 244, 247))
+        if fictional:
+            tag = 'fiktiv' if lang == 'de' else 'fictional'
+            tw = di.textlength(tag, font=F_TAG); tx = img.width - 12 * S - tw - 10 * S; ty = y + 2 * S
+            di.rounded_rectangle((tx, ty, tx + tw + 10 * S, ty + 13 * S), 6 * S, fill=(58, 47, 0))
+            di.text((tx + 5 * S, ty + 2 * S), tag, font=F_TAG, fill=(243, 206, 0))
+        di.text((x, y + 19 * S), sub, font=F_SUB, fill=(163, 173, 184))
+        mask = Image.new('L', inner.size, 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, inner.width - 1, inner.height - 1), r - b, fill=255)
+        out.paste(inner, (PAD + b, PAD + b), mask)
         return out
 
-    # Animated examples: frames gif-<name>-<n>.ppm become <name>.gif (1 s per frame).
+    def save_gif(frames, path):
+        flat = []
+        for rgba in frames:
+            f = Image.new('RGB', rgba.size, KEY); f.paste(rgba, (0, 0), rgba); flat.append(f)
+        # One palette for all frames (taken from all of them), corners transparent.
+        strip = Image.new('RGB', (flat[0].width, flat[0].height * len(flat)))
+        for i, im in enumerate(flat): strip.paste(im, (0, i * im.height))
+        palette = strip.quantize(colors=255, method=Image.Quantize.MEDIANCUT)
+        q = [im.quantize(palette=palette, dither=Image.Dither.NONE) for im in flat]
+        pal = palette.getpalette()[:3 * 255]
+        key = min(range(len(pal) // 3), key=lambda i: sum((pal[3 * i + k] - KEY[k]) ** 2 for k in range(3)))
+        q[0].save(path, save_all=True, append_images=q[1:], duration=1000, loop=0, optimize=False, transparency=key, disposal=1)
+
     for lang_dir in [t / 'de', t / 'en']:
-        dest = out if lang_dir.name == 'de' else out / 'en'
-        dest.mkdir(parents=True, exist_ok=True)
+        lang = lang_dir.name
+        dest = out / lang; dest.mkdir(parents=True, exist_ok=True)
+        caps = CAPTIONS[lang]
+        def cap(name):
+            c = caps.get(name)
+            if not c: sys.exit('no caption for ' + name)
+            return c[0], c[1], len(c) > 2 and c[2]
+        # Animated examples: frames gif-<name>-<n>.ppm become <name>.gif (1 s per frame).
         groups = {}
         for ppm in sorted(lang_dir.glob('gif-*.ppm')):
             groups.setdefault(ppm.stem.rsplit('-', 1)[0][4:], []).append(ppm)
         for name, frames in groups.items():
-            imgs = []
-            for ppm in sorted(frames, key=lambda f: int(f.stem.rsplit('-', 1)[1])):
-                rgba = finish(Image.open(ppm).convert('RGB'))
-                flat = Image.new('RGB', rgba.size, KEY); flat.paste(rgba, (0, 0), rgba)
-                imgs.append(flat); ppm.unlink()
-            # One palette for all frames (taken from all of them), corners transparent.
-            strip = Image.new('RGB', (imgs[0].width, imgs[0].height * len(imgs)))
-            for i, im in enumerate(imgs): strip.paste(im, (0, i * im.height))
-            palette = strip.quantize(colors=128, method=Image.Quantize.MEDIANCUT)
-            frames_q = [im.quantize(palette=palette, dither=Image.Dither.NONE) for im in imgs]
-            pal = palette.getpalette()[:3 * 128]
-            key = min(range(len(pal) // 3), key=lambda i: sum((pal[3 * i + k] - KEY[k]) ** 2 for k in range(3)))
-            frames_q[0].save(dest / (name + '.gif'), save_all=True, append_images=frames_q[1:], duration=1000, loop=0,
-                             optimize=False, transparency=key, disposal=1)
-            print(dest / (name + '.gif'))
-    for ppm in sorted(t.glob('*/*.ppm')):
-        dest = out if ppm.parent.name == 'de' else out / 'en'
-        dest.mkdir(parents=True, exist_ok=True)
-        finish(Image.open(ppm).convert('RGB')).save(dest / (ppm.stem + '.png'))
-        print(dest / (ppm.stem + '.png'))
+            title, sub, fic = cap(name)
+            imgs = [card(Image.open(p).convert('RGB'), title, sub, fic, lang)
+                    for p in sorted(frames, key=lambda f: int(f.stem.rsplit('-', 1)[1]))]
+            save_gif(imgs, dest / (name + '.gif')); print(dest / (name + '.gif'))
+        stills = {p.stem: p for p in lang_dir.glob('*.ppm') if not p.stem.startswith('gif-')}
+        for name, ppm in sorted(stills.items()):
+            if name in caps and name not in groups:   # flugradar.ppm only feeds the overview tile
+                title, sub, fic = cap(name)
+                card(Image.open(ppm).convert('RGB'), title, sub, fic, lang).save(dest / (name + '.png'))
+                print(dest / (name + '.png'))
+        for name, title, sub in OVERVIEW[lang]:
+            card(Image.open(stills[name]).convert('RGB'), title, sub, False, lang).save(dest / ('kachel-' + name + '.png'))
+            print(dest / ('kachel-' + name + '.png'))

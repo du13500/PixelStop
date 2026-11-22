@@ -79,4 +79,4 @@ pio run -e smalltv_ultra
 
 Nach Änderungen an `src/webui.html` oder `tools/webui_en.py`: `python3 tools/webui_build.py` (erzeugt `src/webui_html.h`; `check.py` vergleicht).
 
-Die Bilder im README erzeugt `python3 tools/render_screens.py docs/screens --frame` aus dem echten Displaycode.
+Die Bilder im README erzeugt `python3 tools/render_screens.py docs/screens` aus dem echten Displaycode (Karten nach `docs/screens/de` und `docs/screens/en`).

@@ -13,13 +13,16 @@ Gekauft als kleiner WLAN-Würfel mit eher bescheidener Werksfirmware – und von
 ![Lizenz](https://img.shields.io/badge/lizenz-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/abfahrten.png" width="240" alt="Abfahrten"><br><sub><b>Abfahrten</b></sub> | <img src="docs/screens/wetter.png" width="240" alt="Wetter"><br><sub><b>Wetter</b></sub> | <img src="docs/screens/vorhersage.png" width="240" alt="3-Tage-Vorhersage"><br><sub><b>3-Tage-Vorhersage</b></sub> |
-| <img src="docs/screens/flugradar.png" width="240" alt="Flugradar"><br><sub><b>Flugradar</b></sub> | <img src="docs/screens/flugtracker.png" width="240" alt="Flug-Tracker"><br><sub><b>Flug-Tracker</b></sub> | <img src="docs/screens/uhr.png" width="240" alt="Uhr"><br><sub><b>Uhr</b></sub> |
-| <img src="docs/screens/countdown-tage.png" width="240" alt="Countdown"><br><sub><b>Countdown</b></sub> |   |   |
-
-<p align="center"><sub>Beispieldaten, echte Ausgabe der Firmware. Mehr Bilder und Erklärungen unter <a href="#programme">Programme</a>.</sub></p>
+<p align="center">
+<img src="docs/screens/de/kachel-abfahrten.png" width="258" alt="Abfahrten">
+<img src="docs/screens/de/kachel-wetter.png" width="258" alt="Wetter">
+<img src="docs/screens/de/kachel-vorhersage.png" width="258" alt="3-Tage-Vorhersage">
+<img src="docs/screens/de/kachel-flugradar.png" width="258" alt="Flugradar">
+<img src="docs/screens/de/kachel-flugtracker.png" width="258" alt="Flug-Tracker">
+<img src="docs/screens/de/kachel-uhr.png" width="258" alt="Uhr">
+<img src="docs/screens/de/kachel-countdown-tage.png" width="258" alt="Countdown">
+</p>
+<p align="center"><sub>Echte Ausgabe der Firmware mit Beispieldaten · mehr Bilder und Erklärungen unter <a href="#programme">Programme</a></sub></p>
 
 ## Was ist PixelStop?
 
@@ -29,15 +32,17 @@ Er zeigt im Wechsel oder dauerhaft sieben Programme: Abfahrten, Wetter, 3-Tage-V
 
 ## Programme
 
-Zum Aufklappen: was jedes Programm zeigt, was sich einstellen lässt und alle Beispielbilder. Die Bilder sind echte Ausgaben der Firmware mit **Beispieldaten**; animierte Bilder laufen in Echtzeit, eine Sekunde pro Bild.
+Zum Aufklappen: was jedes Programm zeigt, was sich einstellen lässt und alle Beispielbilder. Die Bilder sind echte Ausgaben der Firmware mit **Beispieldaten**; bewegte Bilder laufen in Echtzeit, eine Sekunde pro Bild.
 
 <details><summary><b>🚏 Abfahrten</b></summary>
 
 Live-Abfahrten einer Haltestelle des Verkehrsverbunds Oberelbe (VVO): Linie, Ziel, Minuten bis zur Abfahrt, Verspätung (gelb) und Ausfall (✕). Drei bis fünf Abfahrten auf einer Seite oder zehn auf zwei Seiten im Wechsel alle 5 Sekunden, Filter nach Verkehrsmittel. Fahrtziele lassen sich ohne den eigenen Ort und abgekürzt anzeigen. Die Minuten zählen zwischen den Abrufen herunter – auch dann, wenn der VVO gerade nicht erreichbar ist.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/abfahrten.png" width="240" alt="Abfahrten"><br><sub><b>Abfahrten</b> · Dresden Hauptbahnhof mit Verspätung und Ausfall</sub> | <img src="docs/screens/abfahrten-ziele.png" width="240" alt="Fahrtziele"><br><sub><b>Fahrtziele</b> · ohne eigenen Ort, „Meißen T.“ abgekürzt</sub> | <img src="docs/screens/abfahrten-seiten.gif" width="240" alt="Zwei Seiten"><br><sub><b>Zwei Seiten</b> · zehn Abfahrten, Wechsel alle 5 s</sub> |
+<p align="center">
+<img src="docs/screens/de/abfahrten.png" width="258" alt="Abfahrten: Dresden Hbf mit Verspätung und Ausfall">
+<img src="docs/screens/de/abfahrten-ziele.png" width="258" alt="Kurze Fahrtziele">
+<img src="docs/screens/de/abfahrten-seiten.gif" width="258" alt="Zehn Abfahrten auf zwei Seiten">
+</p>
 
 </details>
 
@@ -45,9 +50,10 @@ Live-Abfahrten einer Haltestelle des Verkehrsverbunds Oberelbe (VVO): Linie, Zie
 
 Aktuelle Temperatur, Wetterbild für Tag und Nacht, Höchst- und Tiefstwert, Regenwahrscheinlichkeit sowie Sonnenauf- und -untergang, in °C oder °F. Der Ort wird über eine Suche, die Karte oder Koordinaten gewählt; ein eigener Anzeigename ist möglich.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/wetter.png" width="240" alt="Tag"><br><sub><b>Tag</b> · Dresden, leichter Regen</sub> | <img src="docs/screens/wetter-nacht.png" width="240" alt="Nacht"><br><sub><b>Nacht</b> · Dresden, heiter</sub> |   |
+<p align="center">
+<img src="docs/screens/de/wetter.png" width="258" alt="Wetter: Dresden am Tag">
+<img src="docs/screens/de/wetter-nacht.png" width="258" alt="Wetter: Dresden nachts">
+</p>
 
 </details>
 
@@ -55,9 +61,9 @@ Aktuelle Temperatur, Wetterbild für Tag und Nacht, Höchst- und Tiefstwert, Reg
 
 Wochentag, Wetterbild, Höchst- und Tiefstwert und Regenwahrscheinlichkeit für die nächsten drei Tage – als eigene Ansicht in der Rotation.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/vorhersage.png" width="240" alt="Vorhersage"><br><sub><b>Vorhersage</b> · Dresden, die nächsten drei Tage</sub> |   |   |
+<p align="center">
+<img src="docs/screens/de/vorhersage.png" width="258" alt="3-Tage-Vorhersage für Dresden">
+</p>
 
 </details>
 
@@ -74,14 +80,35 @@ Im Reiter **Flugradar** lässt sich die Anzeige anpassen:
 - **Ausblenden:** Hubschrauber, Kleinflugzeuge, Segler/Ballone/Ultraleicht/Drohnen, Flugzeuge am Boden.
 - **Immer aktiv:** Notfälle (Squawk 7500/7600/7700) mit rotem Rufzeichen und roter Routenzeile, in der Route und „SQUAWK 7700“ alle 3 s wechseln; zu lange Airline-Namen wechseln ebenfalls alle 3 s.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/flugradar.gif" width="240" alt="Normalfall"><br><sub><b>Normalfall</b> · Emirates A380 über Dresden</sub> | <img src="docs/screens/radar-steigflug.gif" width="240" alt="▲ Steigflug"><br><sub><b>▲ Steigflug</b> · ALROSA Tu-154M nach dem Start in Mirny</sub> | <img src="docs/screens/radar-sinkflug.gif" width="240" alt="▼ Sinkflug"><br><sub><b>▼ Sinkflug</b> · European Air Charter MD-82 im Anflug auf Varna</sub> |
-| <img src="docs/screens/radar-name.gif" width="240" alt="Langer Name"><br><sub><b>Langer Name</b> · Airline im Wechsel, Geschwindigkeit statt Kennzeichen</sub> | <img src="docs/screens/radar-gelb.gif" width="240" alt="🟡 Letzter Stand"><br><sub><b>🟡 Letzter Stand</b> · Abruf fehlgeschlagen, Werte geschätzt</sub> | <img src="docs/screens/radar-grau.gif" width="240" alt="⚫ Keine Daten"><br><sub><b>⚫ Keine Daten</b> · zu lange ohne Abruf, Werte stehen still</sub> |
-| <img src="docs/screens/radar-leer.png" width="240" alt="Leer"><br><sub><b>Leer</b> · kein Flugzeug im Radius</sub> | <img src="docs/screens/radar-colone.gif" width="240" alt="Geschwindigkeit"><br><sub><b>Geschwindigkeit</b> · 4-stellige Codes, „N/A“ ohne Höhe · fiktiv</sub> | <img src="docs/screens/radar-apollo.gif" width="240" alt="MIL"><br><sub><b>MIL</b> · Militär-Markierung · fiktiv</sub> |
-| <img src="docs/screens/radar-karma.gif" width="240" alt="Notfall"><br><sub><b>Notfall</b> · Squawk 7700, Route und Squawk im Wechsel · fiktiv</sub> |   |   |
+<p align="center">
+<sub><b>Flugbewegungen</b></sub><br>
+<img src="docs/screens/de/flugradar.gif" width="258" alt="Flugradar: Emirates A380 über Dresden">
+<img src="docs/screens/de/radar-steigflug.gif" width="258" alt="Steigflug: ALROSA Tu-154M ab Mirny">
+<img src="docs/screens/de/radar-sinkflug.gif" width="258" alt="Sinkflug: European Air Charter MD-82 nach Varna">
+</p>
 
-Die Tu-154M und die MD-82 erinnern an echte letzte Flüge: ALROSA RA-85757, Mirny – Nowosibirsk am 28.10.2020 (letzter ziviler Tu-154-Linienflug in Russland), und European Air Charter LZ-LDP, Hurghada – Varna am 21.10.2023 (letzter MD-80-Flug in Europa); Flugnummern und Werte sind nachgestellt. Militär und Notfall zeigen **fiktive Daten**, damit kein echter Flug so dargestellt wird; dort steht in der Fußzeile „DRADIS“ statt „ADSB.LOL“.
+<p align="center">
+<sub><b>Anzeige</b></sub><br>
+<img src="docs/screens/de/radar-name.gif" width="258" alt="Langer Airline-Name im Wechsel">
+<img src="docs/screens/de/radar-boden.gif" width="258" alt="Flugzeug am Boden">
+<img src="docs/screens/de/radar-leer.png" width="258" alt="Kein Flugzeug im Radius">
+</p>
+
+<p align="center">
+<sub><b>Datenstand</b></sub><br>
+<img src="docs/screens/de/radar-gelb.gif" width="258" alt="Letzter Stand nach fehlgeschlagenem Abruf">
+<img src="docs/screens/de/radar-pause.gif" width="258" alt="Abrufpause">
+<img src="docs/screens/de/radar-grau.gif" width="258" alt="Keine Daten mehr">
+</p>
+
+<p align="center">
+<sub><b>Militär und Notfall · fiktive Daten</b></sub><br>
+<img src="docs/screens/de/radar-colone.gif" width="258" alt="Geschwindigkeit (fiktiv)">
+<img src="docs/screens/de/radar-apollo.gif" width="258" alt="Militär (fiktiv)">
+<img src="docs/screens/de/radar-karma.gif" width="258" alt="Notfall (fiktiv)">
+</p>
+
+Die Tu-154M und die MD-82 erinnern an echte letzte Flüge: ALROSA RA-85757, Mirny – Nowosibirsk am 28.10.2020 (letzter ziviler Tu-154-Linienflug in Russland), und European Air Charter LZ-LDP, Hurghada – Varna am 21.10.2023 (letzter Flug der MD-82 bei European Air Charter); Flugnummern und Werte sind nachgestellt. Militär und Notfall zeigen **fiktive Daten**, damit kein echter Flug so dargestellt wird; dort steht in der Fußzeile „DRADIS“ statt „ADSB.LOL“.
 
 | Radar-Fußzeile | Bedeutung |
 | --- | --- |
@@ -104,9 +131,9 @@ Die Tu-154M und die MD-82 erinnern an echte letzte Flüge: ALROSA RA-85757, Mirn
 
 Ein bestimmter Flug mit Plan- und Ist-Zeiten, Status, Flugzeit sowie Live-Höhe und -Geschwindigkeit. Dafür ist ein eigener aviationstack-Schlüssel nötig.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/flugtracker.png" width="240" alt="Flug-Tracker"><br><sub><b>Flug-Tracker</b> · LH1178 Dresden – Frankfurt</sub> |   |   |
+<p align="center">
+<img src="docs/screens/de/flugtracker.png" width="258" alt="Flug-Tracker LH1178">
+</p>
 
 </details>
 
@@ -114,9 +141,9 @@ Ein bestimmter Flug mit Plan- und Ist-Zeiten, Status, Flugzeit sowie Live-Höhe 
 
 Uhrzeit und Datum mit wählbarer Zeitzone; die Uhrzeit steht außerdem in der Fußzeile der anderen Ansichten.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/uhr.png" width="240" alt="Uhr"><br><sub><b>Uhr</b> · mit Datum</sub> |   |   |
+<p align="center">
+<img src="docs/screens/de/uhr.png" width="258" alt="Uhr mit Datum">
+</p>
 
 </details>
 
@@ -126,12 +153,21 @@ Vier unabhängige Countdowns in Tagen, in Stunden : Minuten : Sekunden oder in M
 
 - **Darstellung:** „Klassisch“ oder „HUD“ mit Rahmen, „T-MINUS“/„T-PLUS“ und Fortschrittsbalken.
 - **Vorzeichen:** „−“ vor dem Ziel und „+“ danach – oder ohne Vorzeichen; dann bleibt der Countdown bei null stehen.
-- **Startdatum** (Tage): bestimmt den Fortschrittsbalken im HUD; leer bleibt, wird beim Start der heutige Tag eingetragen.
+- **Startdatum** (Tage): bestimmt den Fortschrittsbalken im HUD; bleibt es leer, wird beim Start der heutige Tag eingetragen.
 
-| | | |
-| :---: | :---: | :---: |
-| <img src="docs/screens/countdown-tage.png" width="240" alt="Tage"><br><sub><b>Tage</b> · klassisch, mit Vorzeichen</sub> | <img src="docs/screens/countdown-timer.gif" width="240" alt="Timer"><br><sub><b>Timer</b> · Minuten : Sekunden</sub> | <img src="docs/screens/countdown-hud.gif" width="240" alt="HUD"><br><sub><b>HUD</b> · Stunden : Minuten : Sekunden mit Balken</sub> |
-| <img src="docs/screens/countdown-tage-hud.png" width="240" alt="HUD in Tagen"><br><sub><b>HUD in Tagen</b> · ohne Vorzeichen, Balken ab Startdatum</sub> |   |   |
+<p align="center">
+<sub><b>Klassisch</b></sub><br>
+<img src="docs/screens/de/countdown-tage.png" width="258" alt="Countdown in Tagen">
+<img src="docs/screens/de/countdown-timer.gif" width="258" alt="Countdown-Timer">
+<img src="docs/screens/de/countdown-plus.gif" width="258" alt="Countdown nach dem Ziel">
+</p>
+
+<p align="center">
+<sub><b>HUD</b></sub><br>
+<img src="docs/screens/de/countdown-tage-hud.png" width="258" alt="HUD in Tagen">
+<img src="docs/screens/de/countdown-hud.gif" width="258" alt="HUD-Timer">
+<img src="docs/screens/de/countdown-hud-null.png" width="258" alt="HUD am Ziel ohne Vorzeichen">
+</p>
 
 </details>
 
@@ -191,7 +227,7 @@ Der Würfel fragt die Dienste selbst ab und zeichnet die Ansichten direkt. Die O
 
 Der Workflow [`build.yml`](.github/workflows/build.yml) baut die Firmware bei jedem Push und Pull Request; das Ergebnis liegt unter **Actions** als Artefakt `pixelstop-v<Version>-firmware`. Ein Tag wie `v0.5.0` (passend zu `FW_VERSION` in [`src/Version.h`](src/Version.h)) erzeugt zusätzlich ein **GitHub Release** mit BIN-Datei, Prüfsumme und Begleitpaket. Lokal genügt `pio run -e smalltv_ultra`.
 
-Die Screenshots dieser README erzeugt `python3 tools/render_screens.py docs/screens --frame` aus dem echten Displaycode.
+Die Screenshots dieser README erzeugt `python3 tools/render_screens.py docs/screens` aus dem echten Displaycode.
 
 ## Datenquellen und Grenzen
 
