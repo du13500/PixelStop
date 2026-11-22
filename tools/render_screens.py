@@ -92,7 +92,6 @@ uint32_t millis();
 inline void analogWrite(int,int){}
 #define HIGH 1
 inline void digitalWrite(int,int){}
-inline void sigmaDeltaEnable(){} inline void sigmaDeltaSetPrescaler(uint8_t){} inline void sigmaDeltaAttachPin(int,int){} inline void sigmaDeltaDetachPin(int){} inline void sigmaDeltaWrite(int,uint8_t){}
 inline long lround_(double v){return lround(v);}
 inline size_t strlcpy(char*d,const char*s,size_t n){size_t l=strlen(s);if(n){size_t c=l<n-1?l:n-1;memcpy(d,s,c);d[c]=0;}return l;}
 struct String : std::string {
@@ -198,7 +197,7 @@ static time_t fakeTime(time_t* t) { if (t) *t = fakeNow; return fakeNow; }
 static VvoDeparture deps[10]; static uint8_t depN = 0;
 uint8_t vvoCount() { return depN; }
 const VvoDeparture& vvoAt(uint8_t i) { return deps[i]; }
-bool vvoError() { return false; }
+bool vvoError() { return false; } uint32_t vvoLastOkMs() { return 0; }
 bool vvoNotServed() { return false; }
 static WeatherSnapshot wx = {};
 const WeatherSnapshot& weatherData() { return wx; }

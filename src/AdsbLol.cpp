@@ -2,6 +2,7 @@
 #include "AdsbQuota.h"
 #include "RequestPolicy.h"
 #include <LittleFS.h>
+#include <ESP8266WiFi.h>
 #include <time.h>
 
 // Optional key from adsb.lol.
@@ -12,6 +13,7 @@ static QuotaState g_quota = {};
 static bool g_dirty = false;
 static uint32_t g_savedMs = 0;
 static const char QUOTA_PATH[] = "/adsblol-quota.bin";
+static const char QUOTA_TMP[] = "/adsblol-quota.tmp";
 static const uint32_t QUOTA_MAGIC = 0x51544131UL;  // "QTA1"
 static const uint32_t QUOTA_RTC_WORD = 64;          // Diagnostics uses words 32..42
 static const uint32_t QUOTA_SAVE_MS = 600000UL;     // file at most every 10 min
@@ -47,9 +49,25 @@ void adsbLolQuotaBegin() {
 void adsbLolQuotaSave(bool force) {
   if (!g_dirty || (!force && (uint32_t)(millis() - g_savedMs) < QUOTA_SAVE_MS)) return;
   QuotaRecord r = {QUOTA_MAGIC, g_quota, 0}; r.checksum = recordChecksum(r);
-  File f = LittleFS.open(QUOTA_PATH, "w");
-  if (f) { f.write((const uint8_t*)&r, sizeof(r)); f.close(); g_dirty = false; }
+  // Written to a second file and renamed, so a power cut while writing never
+  // leaves a broken file behind. On failure the counters stay marked as unsaved.
+  File f = LittleFS.open(QUOTA_TMP, "w");
+  bool ok = false;
+  if (f) { ok = f.write((const uint8_t*)&r, sizeof(r)) == sizeof(r); f.close(); }
+  if (ok) ok = LittleFS.rename(QUOTA_TMP, QUOTA_PATH);
+  if (ok) g_dirty = false; else LittleFS.remove(QUOTA_TMP);
   g_savedMs = millis();
+}
+
+bool adsbLolResolve(DiagRequest& trace) {
+  IPAddress ip;
+  if (!WiFi.hostByName("api.adsb.lol", ip, 5000) || !ip.isSet()) { trace.detail(DS_NO_ADDRESS, 0); return false; }
+  trace.detail(DS_ADDRESS, 0, (uint32_t)ip);
+  return true;
+}
+
+void adsbLolTlsError(DiagRequest& trace, BearSSL::WiFiClientSecure& client) {
+  trace.detail(DS_TLS_ERROR, client.getLastSSLError());
 }
 
 void adsbLolSetKey(const String& key) {

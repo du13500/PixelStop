@@ -33,6 +33,11 @@ int main(){
   assert(netWatchStep(q,30*M,0,0,true,19*M,1,sil)==NET_RECONNECT);                  // Wi-Fi down for 11 min
   NetWatch f={1000,0,0};assert(netWatchStep(f,12*M+1,2*M,11*M,false,0,2,sil)==NET_OK);      // after a hang restart: 20 min
   assert(netWatchStep(f,22*M+1,2*M,21*M,false,0,2,sil)==NET_RECONNECT);
+  // Right after the start without any answer: reconnect after 2 min (16.11.2026: Wi-Fi up, no internet)
+  NetWatch b={1000,0,0};assert(netWatchStep(b,2*M,0,90000,false,0,1,sil)==NET_OK);
+  assert(netWatchStep(b,2*M+1000,0,100000,false,0,1,sil)==NET_RECONNECT);
+  // once an answer came, the normal 10 minutes apply again
+  NetWatch c={1000,0,0};assert(netWatchStep(c,5*M,2000,4*M,false,0,1,sil)==NET_OK&&netWatchStep(c,9*M,2000,8*M,false,0,1,sil)==NET_OK);
  }
  // WebGuard: DNS rebinding (Host) and foreign pages (Origin)
  assert(webGuardHostAllowed("192.168.178.137","192.168.178.137","pixelstop"));
@@ -94,6 +99,10 @@ int main(){
   assert(!radarExpired(30999,1000,true)&&radarExpired(31000,1000,true));
   assert(!radarExpired(50000,1000,false));
   assert(radarExpired(29990,0xFFFFFFF6U,true)); // millis wraparound
+  // Retry after a request without answer (16.11.2026: one of two adsb.lol servers hung)
+  assert(radarRetryIntervalMs(278000,true,1)==45000&&radarRetryIntervalMs(278000,true,2)==45000);
+  assert(radarRetryIntervalMs(278000,true,3)==278000);   // a lasting outage keeps the normal pace
+  assert(radarRetryIntervalMs(278000,false,1)==278000&&radarRetryIntervalMs(10000,true,1)==10000);
   for(int code:{0,1,2,3,45,48,51,53,55,56,57,61,63,65,66,67,71,73,75,77,80,81,82,85,86,95,96,99}){
     auto w=weatherVisual(code);assert(w.label&&w.intensity<=3);
     for(uint32_t cp:decode(w.label))assert(cp<128||specialGlyph(cp));

@@ -6,7 +6,9 @@ Transfers are stubs that only take time and count requests; the main loop's task
 order and pause after each request are modelled like main.cpp.
 
 Regression for v0.5.4: route re-checks pushed every position request back, so the
-radar never asked for positions again (one position in two hours)."""
+radar never asked for positions again (one position in two hours).
+Regression for v0.5.4.3: week and month were spread over their remaining time, which
+stretched a 10 s interval to minutes; since v0.5.4.4 only the hour is spread (27 s)."""
 from pathlib import Path
 import re, subprocess, tempfile
 root = Path(__file__).resolve().parents[1]
@@ -21,7 +23,9 @@ def fn(name):
 
 route = fn('lookupRouteAdsbLol')
 head = route[route.index('  uint8_t skip='):route.index('\n', route.index('g_lastPollMs=millis();'))]
-head = head.replace('!tlsHeapReady(adsbLolRx())?4:0', '0')
+head = head.replace('!tlsHeapReady(ADSB_LOL_TLS_RX)?4:0', '0')
+policy = (root / 'src/RadarPolicy.h').read_text()
+retry = policy[policy.index('static constexpr uint32_t RADAR_RETRY_MS'):policy.index('static inline bool radarExpired')]
 HARNESS = r'''
 #include <cstdio>
 #include <cstdint>
@@ -49,6 +53,8 @@ static Enrichment g_cache[3]={};static uint8_t g_cacheNext=0;static uint32_t g_l
 static bool g_routeSincePoll=false;static uint32_t g_lastPollMs=0,g_lastOkMs=0,g_intervalMs=0;static bool g_hasPolled=false,g_providerPaused=false;
 static const char* g_stage="";
 static const uint16_t RADAR_MIN_POLL_SEC=10;
+static uint8_t g_consecutiveFailures=0;static bool g_connectionFailed=false;
+RETRY
 enum {SERVICE_ADSB_LOL,SERVICE_ADSB_DB};
 static uint32_t providerUntil=0,minIntervalUntil=0,minInterval=0;
 uint32_t serviceWaitMs(int s){return s==SERVICE_ADSB_LOL&&(int32_t)(providerUntil-now)>0?providerUntil-now:0;}
@@ -78,7 +84,6 @@ static void lookupMetadata(const FlightSnapshot&,RoutePoint,Enrichment&){metaCal
 static void lookupAirline(const FlightSnapshot&,Enrichment&){airlineCalls++;now+=300;}
 static void enrichFlight(FlightSnapshot&,RoutePoint){}
 static bool tlsHeapReady(uint16_t){return true;}
-static uint16_t adsbLolRx(){return 4096;}
 static void diagLookup(const char*,const char*){}
 static void diagEvent(int,int,int,int){}
 enum {D_RADAR_ROUTE,DS_SKIPPED};
@@ -114,18 +119,20 @@ int main(int argc,char**argv){
   // metrics
   uint32_t maxGap=0;for(size_t i=1;i<positionAt.size();i++)maxGap=std::max(maxGap,positionAt[i]-positionAt[i-1]);
   if(!positionAt.empty())maxGap=std::max(maxGap,end-positionAt.back());
-  int max30=0,maxHour=0;for(size_t i=0;i<lolAt.size();i++){int a=0,b=0;for(size_t j=i;j<lolAt.size()&&lolAt[j]-lolAt[i]<30000;j++)a++;for(size_t j=i;j<lolAt.size()&&lolAt[j]-lolAt[i]<3600000;j++)b++;max30=std::max(max30,a);maxHour=std::max(maxHour,b);}
+  // requests per fixed UTC window, as adsb.lol counts them (T0 starts a full hour)
+  int max30=0,maxHour=0;for(size_t i=0;i<lolAt.size();i++){int a=0,b=0;uint32_t w30=(T0+lolAt[i]/1000)/30,wh=(T0+lolAt[i]/1000)/3600;
+    for(size_t j=0;j<lolAt.size();j++){uint32_t e=T0+lolAt[j]/1000;a+=e/30==w30;b+=e/3600==wh;}max30=std::max(max30,a);maxHour=std::max(maxHour,b);}
   // at most one route lookup between two position requests
   int routesBetween=0,maxRoutesBetween=0;size_t p=0;std::vector<uint32_t> routes=routeAt;
   for(uint32_t r:routes){while(p<positionAt.size()&&positionAt[p]<r){p++;routesBetween=0;}routesBetween++;maxRoutesBetween=std::max(maxRoutesBetween,routesBetween);}
   printf("%zu %u %zu %d %d %d %d %d\n",positionAt.size(),maxGap/1000,lolAt.size(),routeCalls,metaCalls+airlineCalls,max30,maxHour,maxRoutesBetween);
 }
 '''
-code = HARNESS.replace('ROUTE_HEAD', head).replace('FUNCTIONS', '\n'.join(fn(n) for n in ['currentEnrichment', 'routeSlotFree', 'flightEnrichmentDue', 'flightEnrich', 'flightPollDue']))
+code = HARNESS.replace('RETRY', retry).replace('ROUTE_HEAD', head).replace('FUNCTIONS', '\n'.join(fn(n) for n in ['currentEnrichment', 'routeSlotFree', 'flightEnrichmentDue', 'flightEnrich', 'flightPollDue']))
 with tempfile.TemporaryDirectory() as tmp:
     p = Path(tmp); (p / 'sim.cpp').write_text(code)
     subprocess.run(['g++', '-std=c++14', '-O1', '-w', '-I' + str(root / 'src'), str(p / 'sim.cpp'), '-o', str(p / 'sim')], check=True)
-    for rotation, minPositions, maxGap in [(0, 15, 450), (15, 35, 200)]:
+    for rotation, minPositions, maxGap in [(0, 200, 60), (15, 200, 150)]:
         for scenario in (1, 2, 3):   # same aircraft for hours, new one every 3 min, every 15 min
             out = subprocess.run([str(p / 'sim'), str(scenario), str(rotation), '10', '2', '560', '1'], capture_output=True, text=True, check=True).stdout.split()
             positions, gap, lol, routes, adsbdb, max30, maxHour, between = map(int, out)

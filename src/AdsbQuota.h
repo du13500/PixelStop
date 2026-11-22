@@ -65,11 +65,16 @@ inline uint32_t quotaWindowEnd(uint8_t w, uint32_t now) {
 }
 
 // Starts new windows. Without a valid clock (now == 0) the stored windows stay.
+// From the hour on, only a later window resets a counter: if the clock jumps
+// back (a wrong time corrected later), the requests already made in the newer
+// window still count, so a jump cannot open a full new hour, day or month.
+// 30 s and minute follow the clock both ways; holding them would block
+// requests for as long as the jump.
 inline void quotaRoll(QuotaState& s, uint32_t now) {
   if (!now) return;
   for (uint8_t w = 0; w < Q_COUNT; w++) {
     uint32_t id = quotaWindowId(w, now);
-    if (s.id[w] != id) { s.id[w] = id; s.used[w] = 0; }
+    if (w < Q_HOUR ? id != s.id[w] : id > s.id[w]) { s.id[w] = id; s.used[w] = 0; }
   }
 }
 inline void quotaCount(QuotaState& s, uint32_t now) {
@@ -87,15 +92,20 @@ inline uint32_t quotaWaitMs(QuotaState& s, uint32_t now, const uint16_t* use) {
   }
   return wait;
 }
-// Smallest poll interval that spreads the rest of every window over its
-// remaining time. `visibleShare` (0..1] is the share of time the radar is on
-// screen, because polls only run then. 0 = no limit beyond the windows.
+// Smallest poll interval that spreads the rest of the hour over its remaining
+// time. `visibleShare` (0..1] is the share of time the radar is on screen,
+// because polls only run then. 0 = no limit beyond the windows.
+// Day, week and month are NOT spread: that assumed round-the-clock use and
+// stretched the interval to minutes (278 s on 16.11.2026 with 2 of 1,900
+// weekly requests used). They only stop requests when they are used up
+// (quotaWaitMs). The hour keeps the pace even: at most 135 per hour = 27 s.
+static const uint8_t QUOTA_SPREAD_LAST = Q_HOUR;
 inline uint32_t quotaIntervalMs(QuotaState& s, uint32_t now, const uint16_t* use, float visibleShare) {
   if (!now) return 0;
   if (visibleShare <= 0.0f || visibleShare > 1.0f) visibleShare = 1.0f;
   quotaRoll(s, now);
   uint32_t interval = 0;
-  for (uint8_t w = Q_HOUR; w < Q_COUNT; w++) {
+  for (uint8_t w = Q_HOUR; w <= QUOTA_SPREAD_LAST; w++) {
     uint32_t left = quotaWindowEnd(w, now) - now;
     if (s.used[w] >= use[w]) { if (left * 1000UL > interval) interval = left * 1000UL; continue; }
     uint32_t remaining = use[w] - s.used[w];

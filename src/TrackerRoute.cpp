@@ -10,16 +10,6 @@
 #include "AdsbLol.h"
 #include <math.h>
 
-static uint16_t g_adsbLolRx = 0;
-
-static uint16_t adsbLolRx() {
-  if (g_adsbLolRx) return g_adsbLolRx;
-  if (BearSSL::WiFiClientSecure::probeMaxFragmentLength("api.adsb.lol", 443, 512)) g_adsbLolRx = 512;
-  else if (BearSSL::WiFiClientSecure::probeMaxFragmentLength("api.adsb.lol", 443, 1024)) g_adsbLolRx = 1024;
-  else g_adsbLolRx = 4096;
-  return g_adsbLolRx;
-}
-
 static bool tlsHeapReady(uint16_t rx) {
   return radarTlsFits(ESP.getFreeHeap(), ESP.getMaxFreeBlockSize(), rx, sizeof(br_ssl_client_context));
 }
@@ -41,10 +31,11 @@ static bool routeComplete(const char origin[ROUTE_CODE_SIZE], const char destina
 }
 
 static bool lookupRouteAdsbLol(const char* callsign, float lat, float lon, char origin[ROUTE_CODE_SIZE], char destination[ROUTE_CODE_SIZE], FlightRoute& chain) {
-  DiagRequest trace(D_TRACK_ROUTE);trace.stage(DS_TLS);
-  if (adsbLolWaitMs()||!tlsHeapReady(g_adsbLolRx ? g_adsbLolRx : 512)) return false;
-  const uint16_t rx=adsbLolRx();
-  if (!tlsHeapReady(rx)) return false;
+  if (adsbLolWaitMs()||!tlsHeapReady(ADSB_LOL_TLS_RX)) return false;
+  DiagRequest trace(D_TRACK_ROUTE);
+  if (!adsbLolResolve(trace)) return false;
+  trace.stage(DS_TLS);
+  const uint16_t rx=ADSB_LOL_TLS_RX;
   BearSSL::Session routeSession;
   BearSSL::WiFiClientSecure client;
   makeSecure(client, &routeSession, rx);
@@ -68,6 +59,7 @@ static bool lookupRouteAdsbLol(const char* callsign, float lat, float lon, char 
   if(serviceWaitMs(SERVICE_ADSB_LOL)){http.end();return false;}
   int code = http.POST(body);
   req.clear(); body = String();trace.http(code);
+  if (code < 0) adsbLolTlsError(trace, client);
   serviceResponse(SERVICE_ADSB_LOL,code,http.header("Retry-After").c_str());
   if (code != HTTP_CODE_OK) { http.end(); return false; }
 

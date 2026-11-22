@@ -274,6 +274,7 @@ bool trackedFlightFetchLive() {
   http.addHeader("Accept", "application/json");
   adsbLolPrepare(http, FW_USER_AGENT);
   int code = http.GET();trace.http(code);
+  if (code < 0) adsbLolTlsError(trace, client);
   serviceResponse(SERVICE_ADSB_LOL,code,http.header("Retry-After").c_str());
   if (code != HTTP_CODE_OK) { http.end(); return false; }
 

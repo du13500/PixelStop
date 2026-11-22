@@ -1,11 +1,26 @@
 #pragma once
 #include <Arduino.h>
 #include <ESP8266HTTPClient.h>
+#include <WiFiClientSecureBearSSL.h>
 #include "ChunkDecoder.h"
+#include "Diagnostics.h"
 
 // adsb.lol rejects HTTP/1.0 with 426 "Upgrade Required" since late 2026.
 // All adsb.lol requests therefore use HTTP/1.1 and read the body through
 // AdsbLolBody, which removes chunked transfer framing on the fly.
+
+// TLS receive buffer for api.adsb.lol. Since its new ingress (about 9.11.2026)
+// adsb.lol no longer agrees to small TLS records (Max Fragment Length), so the
+// former probe always ended at 4096 and cost two connections and ~10 s per
+// start. The largest handshake record is 3,453 bytes (measured 16.11.2026), so
+// 4096 fits. One of its two servers hung in the handshake at that time.
+static const uint16_t ADSB_LOL_TLS_RX = 4096;
+
+// Resolves api.adsb.lol before connecting and logs which server was chosen
+// (step "Adresse"); false (step "Name unbekannt") if the name is not found.
+bool adsbLolResolve(DiagRequest& trace);
+// After a failed connection (HTTP < 0): logs the BearSSL error code (step "TLS-Fehler").
+void adsbLolTlsError(DiagRequest& trace, BearSSL::WiFiClientSecure& client);
 
 void adsbLolSetKey(const String& key);
 bool adsbLolHasKey();

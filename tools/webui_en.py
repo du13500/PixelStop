@@ -76,9 +76,6 @@ EXACT = {
  "Segler, Ballone, Ultraleicht, Drohnen": "Gliders, balloons, ultralights, drones", "am Boden": "on the ground",
  "Mit Filter fragt PixelStop alle Flugzeuge im Radius ab und zeigt das nächste passende. Die Antwort ist größer, bei großem Radius dauert der Abruf etwas länger. Flugzeuge ohne Kategorie werden nie ausgeblendet. Notfälle (Squawk 7500/7600/7700) erscheinen immer rot.":
    "With a filter, PixelStop requests all aircraft in the radius and shows the nearest matching one. The answer is larger; with a large radius the request takes a little longer. Aircraft without a category are never hidden. Emergencies (squawk 7500/7600/7700) always appear in red.",
- "Standard (PWM)": "Standard (PWM)", "Sigma-Delta (Test gegen Aufblitzen)": "Sigma-delta (test against flashes)",
- "Sigma-Delta dimmt über einen eigenen Baustein des Chips und wird nicht von WLAN-Aufgaben unterbrochen. Bitte nachts bei geringer Helligkeit vergleichen.":
-   "Sigma-delta dims with a dedicated block of the chip and is not interrupted by Wi-Fi tasks. Please compare at night at low brightness.",
  "Steig- und Sinkflug als ▲▼ anzeigen": "Show climb and descent as ▲▼",
  "Die 3-Tage-Vorhersage ist eine eigene Ansicht in der Rotation unter „Anzeige“ und nutzt Ort und Einstellungen dieser Seite.":
    "The 3-day forecast is a view of its own in the rotation under “Display” and uses the location and settings of this page.",
@@ -170,6 +167,11 @@ EXACT = {
    "Only lowercase letters, digits and hyphens (1–32 characters), e.g. pixelstop. Then reachable as pixelstop.local.",
  "Ungültiger Hostname: nur a–z, 0–9 und Bindestrich, 1–32 Zeichen.": "Invalid hostname: only a–z, 0–9 and hyphen, 1–32 characters.",
  "Anfrage von fremder Seite abgelehnt.": "Request from a foreign page rejected.",
+ "Gespeicherten Key löschen": "Delete stored key", "API-Key löschen?": "Delete API key?", "Der gespeicherte Key für": "The stored key for",
+ "wird sofort vom Würfel gelöscht. Andere ungespeicherte Änderungen bleiben erhalten.": "is deleted from the cube right away. Other unsaved changes are kept.",
+ "Abbrechen": "Cancel", "Löschen": "Delete", "✓ API-Key gelöscht": "✓ API key deleted",
+ "Ungültige Werte: Text zu lang oder Koordinate außerhalb der Erde.": "Invalid values: text too long or coordinate outside the globe.",
+ "Name nicht gefunden": "name not found",
  # Status values sent by the firmware
  "keine": "none", "nicht verfügbar": "not available", "nicht geprüft": "not checked", "positionsgeprüft": "position checked",
  "verworfen: Position/Alter": "rejected: position/age", "Daten veraltet": "data outdated", "Abrufpause: Anbieter": "provider pause",

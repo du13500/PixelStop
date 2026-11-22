@@ -53,12 +53,22 @@ int main(){
   // 10.11. test: 151 requests in the hour -> blocked until the full hour
   QuotaState h={};for(int i=0;i<135;i++)quotaCount(h,t-1200+i*8);
   assert(quotaWaitMs(h,t,ADSB_QUOTA_KEY)==35*60*1000UL);
-  // Spreading: fresh month, radar always visible -> month window decides
+  // Spreading: only the hour, radar always visible -> 35 min left / 135 requests
   QuotaState m={};quotaRoll(m,t);
-  uint32_t monthLeft=quotaWindowEnd(Q_MONTH,t)-t;
-  assert(quotaIntervalMs(m,t,ADSB_QUOTA_KEY,1.0f)==(uint32_t)((float)monthLeft*1000.0f/4750.0f));
+  assert(quotaIntervalMs(m,t,ADSB_QUOTA_KEY,1.0f)==(uint32_t)((float)(35*60)*1000.0f/135.0f));
   assert(quotaIntervalMs(m,t,ADSB_QUOTA_KEY,0.2f)<quotaIntervalMs(m,t,ADSB_QUOTA_KEY,1.0f));
   assert(!quotaIntervalMs(m,0,ADSB_QUOTA_KEY,1.0f));
+  // 16.11.2026 21:00 UTC (Monday): 2 of 1,900 weekly requests used gave 278 s.
+  // Week and month no longer stretch the interval: at most the hour's 27 s.
+  {const uint32_t mon=(uint32_t)quotaDaysFromCivil(2026,11,16)*86400UL+21*3600UL;
+   QuotaState w={};quotaRoll(w,mon);w.used[Q_WEEK]=2;w.used[Q_MONTH]=24;
+   assert(quotaIntervalMs(w,mon,ADSB_QUOTA_KEY,1.0f)<=27000);
+   // a used-up week still stops requests until Monday
+   w.used[Q_WEEK]=1900;assert(quotaWaitMs(w,mon,ADSB_QUOTA_KEY)==(quotaWindowEnd(Q_WEEK,mon)-mon)*1000UL);}
+  // Clock jumps back an hour: the counts of the newer window are kept (audit F-003)
+  {QuotaState j={};quotaCount(j,t);quotaCount(j,t);quotaRoll(j,t-3600);
+   assert(j.used[Q_HOUR]==2&&j.id[Q_HOUR]==quotaWindowId(Q_HOUR,t)&&j.used[Q_DAY]==2&&!j.used[Q_30S]);
+   quotaRoll(j,t+3600);assert(j.used[Q_HOUR]==0);}
   // Without a clock the stored windows stay (restart before NTP)
   QuotaState k=q;quotaRoll(k,0);assert(k.used[Q_DAY]==4);quotaCount(k,0);assert(k.used[Q_DAY]==5);
   // RTC and file: newer window wins, same window keeps the higher count
@@ -85,7 +95,7 @@ int main(){
  assert(!routeOriginContradicted(near,ord,mke,false,true,4000,false,0));     // no vertical rate
  assert(!routeOriginContradicted(near,ord,ord,false,true,4000,true,-1200));  // round trip
  assert(!routeOriginContradicted(mke,ord,mke,false,true,4000,true,-1200));   // far from the origin
- puts("Retry-After, progressive/shared cooldowns, clock wrap, denied-request pauses, quota windows, descent rule and DRS route regressions: OK");
+ puts("Retry-After, progressive/shared cooldowns, clock wrap, denied-request pauses, quota windows (hour spread, clock jumps), descent rule and DRS route regressions: OK");
 }
 '''
 with tempfile.TemporaryDirectory() as t:

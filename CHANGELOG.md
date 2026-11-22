@@ -1,5 +1,34 @@
 # Änderungen
 
+## v0.5.4.4-dev
+
+**Flugradar**
+- **adsb.lol hat einen hängenden Server:** Seit dem Umbau bei adsb.lol (um den 9.11.2026) steht `api.adsb.lol` auf zwei Servern. Am 16.11.2026 nahm 159.195.60.218 Verbindungen an, beendete den TLS-Handshake aber nie, 159.195.81.163 antwortete normal (gemessen mit OpenSSL über GitHub Actions). Landete der Würfel beim hängenden Server, kam nach 15 s „HTTP -1“, sonst ging es – daher das scheinbar zufällige Wechseln zwischen Erfolg und Fehler.
+- **Zweiter Versuch nach 45 s:** Nach einem Abruf ohne Antwort (keine Verbindung, Name nicht gefunden, TLS) kommt der nächste Versuch spätestens nach 45 s statt erst nach dem vollen Intervall – für die ersten zwei Fehler in Folge, das Kontingent gilt weiter.
+- **Fester 4-KB-TLS-Puffer für adsb.lol, kein Puffertest mehr:** adsb.lol sagt seit dem Umbau keine kleinen TLS-Pakete (Max Fragment Length) mehr zu; der Test danach endete immer bei 4.096 Byte, kostete nach jedem Start zwei Verbindungen und rund 10 s und schrieb ein Zufallsergebnis fest, wenn er beim hängenden Server landete. Das größte Handshake-Paket von adsb.lol ist 3.453 Byte groß und passt.
+- **Log zeigt den Server und den TLS-Fehler:** Vor jedem adsb.lol-Abruf steht bei Fehlern die Zeile „Adresse“ mit der IP-Adresse des Servers (bzw. „Name unbekannt“), nach einem gescheiterten Verbindungsaufbau „TLS-Fehler“ mit dem BearSSL-Fehlercode (0 = Zeitüberschreitung).
+- **Intervall nur noch über die Stunde verteilt:** v0.5.4 verteilte auch Tag, Woche und Monat gleichmäßig auf ihre Restzeit, als liefe das Radar rund um die Uhr. Am Montagabend mit 2 von 1.900 Wochenanfragen ergab das 278 s statt 10 s. Jetzt bremst nur die Stunde (höchstens 135 Anfragen = 27 s); Tag, Woche und Monat halten den Abruf erst an, wenn sie verbraucht sind. Der ehrliche Pause-Bildschirm dafür folgt mit v0.5.5.
+- Bekannt, nicht änderbar: Die 15 s bis zum Abbruch beim hängenden Server stammen aus dem ESP8266-Core (3.1.2), der die Handshake-Frist bei jedem Verbindungsaufbau fest auf 15 s setzt.
+
+**Webinterface**
+- **Gespeicherte API-Keys löschen:** Neben den Feldern für adsb.lol und aviationstack steht „Gespeicherten Key löschen“, sobald ein Key gespeichert ist. Nach einer Rückfrage wird nur der Key gelöscht; andere ungespeicherte Änderungen bleiben im Formular. (Bisher ging das nur für adsb.lol über ein einzelnes „-“, für aviationstack gar nicht.)
+- **Haltestellen aus der VVO-Suche** werden als Text dargestellt (Audit F-001); ein präparierter Name konnte bisher HTML einschleusen.
+
+**Gescheiterter Versuch: Sigma-Delta-Dimmung entfernt**
+- Die Sigma-Delta-Dimmung aus v0.5.3 (Test gegen gelegentliches Aufblitzen) **legt das WLAN lahm:** Mit ihr verband sich der Würfel nur noch mit 24/4 statt 72/30 Mbit/s, Ping und Webinterface fielen aus. Gegenprobe am 16.11.2026: zurück auf PWM, alles normal; wieder Sigma-Delta, sofort kein Ping. Dass mit Sigma-Delta kein Aufblitzen zu sehen war, lag vermutlich nur daran, dass kaum noch WLAN-Verkehr stattfand – das Aufblitzen hängt also wohl mit der WLAN-Aktivität zusammen.
+- Die Auswahl „Dimmverfahren“ ist entfernt, die Firmware dimmt nur noch per PWM; ein gespeicherter Wert wird ignoriert.
+
+**Stabilität und Prüfungen (Audit v0.5.4.3)**
+- **Countdown:** Eine abgelehnte Countdown-Anfrage ließ die Einstellungen im Arbeitsspeicher verändert zurück; jetzt wird erst geprüft, dann übernommen (F-002).
+- **Kontingent:** Springt die Uhr zurück, bleiben die Zähler von Stunde, Tag, Woche und Monat erhalten statt auf 0 zu fallen (F-003); die Zählerdatei wird über eine Zwischendatei geschrieben, ein Stromausfall beim Schreiben hinterlässt keine kaputte Datei (F-004).
+- **Einstellungen:** Koordinaten außerhalb der Erde und überlange Texte lehnt die Firmware selbst ab, nicht nur das Webinterface (F-006); beim Laden werden ungültige Koordinaten durch die Standardwerte ersetzt (F-019). Die Kartenabfrage lehnt Text statt Zahlen ab, statt ihn als 0,0 zu lesen (F-007).
+- **Abfahrten:** Die Minuten zählen seit dem letzten erfolgreichen Abruf herunter, auch wenn der VVO nicht erreichbar ist; abgefahrene Bahnen zeigen „-“ statt dauerhaft dieselbe Minutenzahl (F-009).
+- **3-Tage-Vorhersage:** Nach einem fehlgeschlagenen Abruf steht „LIVE / LETZTER STAND“ statt „OPEN-METEO LIVE“ (F-010).
+
+**WLAN**
+- **Schneller wieder im Netz nach dem Start:** Kam seit dem Start noch keine einzige Antwort, obwohl Abrufe liefen, verbindet der Netzwerk-Wächter nach 2 statt 10 Minuten neu. Am 16.11.2026 hatte der Würfel nach dem Einschalten WLAN, kam aber erst nach dem Neuverbinden ins Internet.
+- **Keine falschen „getrennt/verbunden“-Zeilen** mehr direkt nach dem Start (Überbleibsel aus dem ersten Verbindungsaufbau).
+
 ## v0.5.4.3-dev
 
 - **Radar fragt wieder Positionen ab:** In v0.5.4 schob jede wiederholte Routenabfrage für dasselbe Flugzeug den nächsten Positionsabruf um ein ganzes Intervall nach hinten. Weil diese Wiederholungen alle 2–5 Minuten kamen und das Kontingent-Intervall länger war, kam nie wieder ein Positionsabruf – das Radar blieb beim alten Flugzeug stehen (nachgestellt: 1 Positionsabruf in 2 Stunden). Jetzt gilt: höchstens eine adsb.lol-Routenabfrage zwischen zwei Positionsabrufen, und nur für ein neues Flugzeug.
@@ -71,7 +100,7 @@
 - **Notfälle:** Bei Squawk 7500/7600/7700 sind Rufzeichen und Routenzeile rot; in der Routenzeile wechseln Route und „SQUAWK 7700“ alle 3 s (ohne Route steht der Squawk dauerhaft).
 - **Filter:** Hubschrauber, Kleinflugzeuge, Segler/Ballone/Ultraleicht/Drohnen und Flugzeuge am Boden ausblendbar. Mit Filter fragt PixelStop alle Flugzeuge im Radius ab und liest sie einzeln ein (`src/RadarScan.h`), damit der Speicherbedarf nicht mit der Zahl der Flugzeuge wächst.
 - **Diagnose:** Erfolgreiche Radarabrufe stehen als eine Zeile im Log (mit dem kleinsten freien Speicher während des Abrufs), Fehler weiter mit allen Schritten; der Log reicht damit etwa fünfmal so lange. Zusatzabfragen melden „leer“ (keine Daten zum Flugzeug) oder „übersprungen“ mit Grund. Im Status: aktuelles Flugzeug und Zahl der geprüften Flugzeuge.
-- **Dimmverfahren (Test):** Unter „Anzeige“ wählbar zwischen Standard (PWM) und Sigma-Delta. Sigma-Delta nutzt einen eigenen Baustein des Chips und soll das gelegentliche Aufblitzen bei geringer Helligkeit beseitigen.
+- ~~**Dimmverfahren (Test):** Unter „Anzeige“ wählbar zwischen Standard (PWM) und Sigma-Delta.~~ Gescheitert: Sigma-Delta legt das WLAN lahm, in v0.5.4.4 entfernt.
 - **README:** aufklappbare „Mehr Beispiele“ mit realistischen Daten unter der Galerie; neuer Abschnitt „Flugradar: Darstellung und Einstellungen“ mit Beispielen aus dem Battlestar-Galactica-Universum (Quelle „DRADIS“), der Notfall als GIF mit sechs Bildern aus dem echten Displaycode; der Renderer kann den Quellnamen in der Fußzeile dafür setzen.
 - Workflow-Bausteine auf Node-24-Versionen (checkout v5, setup-node v5, setup-python v6, upload-artifact v6).
 
