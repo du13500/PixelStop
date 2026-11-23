@@ -6,7 +6,7 @@
 Bought as a small Wi-Fi cube with a rather modest stock firmware – and from day one with the plan to turn it into something of my own.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.4.7--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.4.8--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
@@ -81,6 +81,7 @@ The **Flight radar** tab adjusts the view:
 - **▲▼** between distance and altitude when climbing or descending at 300 ft/min or more.
 - **MIL** next to the callsign for military aircraft.
 - **Routes with stops:** three airports in smaller type, longer chains on two lines.
+- **Forecast in the web interface:** under *Flight radar → Radius and refresh* one sentence says how long the adsb.lol quotas last at the chosen interval, plus a collapsible table (hour, day, week, month). The values are an estimate (route requests about +10 %) and cost no memory in the firmware.
 - **Hide:** helicopters, light aircraft, gliders/balloons/ultralights/drones, aircraft on the ground.
 - **Always on:** emergencies (squawk 7500/7600/7700) with a red callsign and a red route line in which route and “SQUAWK 7700” alternate every 3 s; airline names that are too long alternate every 3 s as well.
 
@@ -221,7 +222,7 @@ On first start PixelStop opens the Wi-Fi hotspot **PixelStop-Setup**; at 192.168
 
 </details>
 
-## Status: v0.5.4.7-dev
+## Status: v0.5.4.8-dev
 
 | Area | Status |
 | --- | --- |
@@ -236,9 +237,10 @@ On first start PixelStop opens the Wi-Fi hotspot **PixelStop-Setup**; at 192.168
 | Radar options and filters, aircraft types, forecast as a view | ✅ running on hardware (v0.5.3) |
 | Protection against foreign web pages, rescue mode, reconnect after power cuts, network watchdog, compressed web interface | ⏳ hardware test pending (v0.5.4) |
 | Flight tracker with your own aviationstack key | ⏳ not fully tested on hardware |
-| Countdown in clock-radio style, “Modern” style, selectable sign | ⏳ hardware test pending (v0.5.4.5) |
-| Clock as Pixel, clock radio or Modern, 12/24 h everywhere, web interface in collapsible cards | ⏳ hardware test pending (v0.5.4.6) |
-| Countdown: afterglow can be switched off; the radar shows “searching” after a pause instead of an old aircraft | ⏳ hardware test pending (v0.5.4.7) |
+| Countdown in clock-radio style, “Modern” style, selectable sign | ✅ confirmed on hardware (v0.5.4.5) |
+| Clock as Pixel, clock radio or Modern, 12/24 h everywhere, web interface in collapsible cards | ✅ confirmed on hardware (v0.5.4.6) |
+| Countdown: afterglow can be switched off; the radar shows “searching” after a pause instead of an old aircraft | ⏳ hardware test pending (v0.5.4.7; afterglow confirmed) |
+| Radar: forecast of the requests in the web interface, “retrying” for at least 2 minutes; starting/stopping a countdown keeps unsaved input | ⏳ hardware test pending (v0.5.4.8) |
 
 All changes are listed in [`CHANGELOG.md`](CHANGELOG.md) (German), open checks in [`ROADMAP.md`](ROADMAP.md).
 

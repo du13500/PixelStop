@@ -6,7 +6,7 @@
 Gekauft als kleiner WLAN-Würfel mit eher bescheidener Werksfirmware – und von Anfang an mit dem Plan, etwas Eigenes daraus zu machen.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.4.7--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.4.8--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
 ![Lizenz](https://img.shields.io/badge/lizenz-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
@@ -81,6 +81,7 @@ Im Reiter **Flugradar** lässt sich die Anzeige anpassen:
 - **▲▼** zwischen Entfernung und Höhe bei Steig- oder Sinkflug ab 300 ft/min.
 - **MIL** neben dem Rufzeichen für Militärflugzeuge.
 - **Routen mit Zwischenstopps:** drei Flughäfen in kleinerer Schrift, längere Ketten auf zwei Zeilen.
+- **Hochrechnung im Webinterface:** Unter *Flugradar → Radius und Abruf* zeigt ein Satz, wie lange die Kontingente von adsb.lol beim gewählten Takt reichen, dazu eine aufklappbare Tabelle (Stunde, Tag, Woche, Monat). Die Werte sind eine Schätzung (Routenabfragen ca. +10 %) und kosten keinen Speicher in der Firmware.
 - **Ausblenden:** Hubschrauber, Kleinflugzeuge, Segler/Ballone/Ultraleicht/Drohnen, Flugzeuge am Boden.
 - **Immer aktiv:** Notfälle (Squawk 7500/7600/7700) mit rotem Rufzeichen und roter Routenzeile, in der Route und „SQUAWK 7700“ alle 3 s wechseln; zu lange Airline-Namen wechseln ebenfalls alle 3 s.
 
@@ -221,7 +222,7 @@ Beim ersten Start öffnet PixelStop den WLAN-Hotspot **PixelStop-Setup**; unter 
 
 </details>
 
-## Entwicklungsstand: v0.5.4.7-dev
+## Entwicklungsstand: v0.5.4.8-dev
 
 | Bereich | Stand |
 | --- | --- |
@@ -236,9 +237,10 @@ Beim ersten Start öffnet PixelStop den WLAN-Hotspot **PixelStop-Setup**; unter 
 | Radar-Optionen und Filter, Flugzeugtypen, Vorhersage als Ansicht | ✅ läuft auf Hardware (v0.5.3) |
 | Schutz gegen fremde Webseiten, Rettungsmodus, Wiederverbinden nach Stromausfall, Netzwerk-Wächter, komprimiertes Webinterface | ⏳ Hardwaretest offen (v0.5.4) |
 | Flug-Tracker mit eigenem aviationstack-Schlüssel | ⏳ nicht vollständig auf Hardware getestet |
-| Countdown im Radiowecker-Stil, Darstellung „Modern“, Vorzeichen wählbar | ⏳ Hardwaretest offen (v0.5.4.5) |
-| Uhr als Pixel, Radiowecker oder Modern, 12/24 h überall, Webinterface in aufklappbaren Karten | ⏳ Hardwaretest offen (v0.5.4.6) |
-| Countdown: Nachleuchten abschaltbar; Radar zeigt nach einer Pause „Suche“ statt eines alten Flugzeugs | ⏳ Hardwaretest offen (v0.5.4.7) |
+| Countdown im Radiowecker-Stil, Darstellung „Modern“, Vorzeichen wählbar | ✅ auf Hardware bestätigt (v0.5.4.5) |
+| Uhr als Pixel, Radiowecker oder Modern, 12/24 h überall, Webinterface in aufklappbaren Karten | ✅ auf Hardware bestätigt (v0.5.4.6) |
+| Countdown: Nachleuchten abschaltbar; Radar zeigt nach einer Pause „Suche“ statt eines alten Flugzeugs | ⏳ Hardwaretest offen (v0.5.4.7; Nachleuchten bestätigt) |
+| Radar: Hochrechnung der Abrufe im Webinterface, „Neuer Versuch“ mindestens 2 Minuten; Countdown starten/stoppen behält ungespeicherte Eingaben | ⏳ Hardwaretest offen (v0.5.4.8) |
 
 Alle Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md), offene Prüfungen in [`ROADMAP.md`](ROADMAP.md).
 

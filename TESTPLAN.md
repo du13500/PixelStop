@@ -1,33 +1,20 @@
 # Testplan
 
-Stand: v0.5.4.7-dev (23.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: v0.5.4.8-dev (23.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+
+## Hardwaretest v0.5.4.8-dev
+
+1. **Hochrechnung:** *Flugradar → Radius und Abruf*: unter „Aktualisierung“ steht ein Satz, darunter klappt die Tabelle auf (Stunde, Tag, Woche, Monat). Takt auf 10 s, dann auf 3 min stellen: der Satz ändert sich sofort, ohne Speichern. Ohne Radar in der Rotation steht „nicht in der Rotation“. Werte mit Status und Schlüsselportal vergleichen.
+2. **Countdown:** „Nachleuchten“ ausschalten, dann bei einem Countdown *Start / aktivieren* drücken. Der Haken bleibt aus; erst *Einstellungen speichern* übernimmt ihn (Seite neu laden: bleibt aus).
+3. **Neuer Versuch:** wie in v0.5.4.7 Punkt 3, aber der rote Bildschirm kommt erst nach mindestens 2 Minuten Suche (bei 3 Fehlschlägen).
 
 ## Hardwaretest v0.5.4.7-dev
 
-1. **Countdown, Nachleuchten:** Im Reiter *Countdown* die Karte *Darstellung* öffnen, „Nachleuchten“ ausschalten und speichern. Beim klassischen und beim modernen Countdown (Tage und Timer) bleiben die nicht leuchtenden Segmente schwarz; mit dem Haken glimmen sie wieder. Die Einstellung gilt für alle vier Countdowns und bleibt nach einem Neustart erhalten.
+1. **Countdown, Nachleuchten:** Im Reiter *Countdown* die Karte *Darstellung* öffnen, „Nachleuchten“ ausschalten und speichern. Beim klassischen und beim modernen Countdown (Tage und Timer) bleiben die nicht leuchtenden Segmente schwarz; mit dem Haken glimmen sie wieder. Die Einstellung gilt für alle vier Countdowns und bleibt nach einem Neustart erhalten. (23.11.: bestätigt mit dem Speichern-Knopf unten.)
 2. **Radar nach einer Pause:** Rotation mit Radar und mindestens einem weiteren Programm (z. B. Radar alle 3 Minuten). Kommt das Radar zurück, zeigt es nicht das Flugzeug von vor 3 Minuten, sondern kurz „SUCHE FLUGZEUGE“ mit dem Ort, danach den frischen Stand. Ist der Vorabruf schon rechtzeitig fertig, sieht man die Suche gar nicht.
 3. **Neuer Versuch:** WLAN der FRITZ!Box kurz abschalten und nach einer Rotationspause das Radar aufrufen. Erwartung: Suche, nach dem ersten Fehlschlag gelber Punkt und „NEUER VERSUCH“, erst nach dem dritten Fehlschlag in Folge der rote Bildschirm. WLAN wieder an: Das Radar findet von selbst zurück.
 4. **Ohne Pause:** Läuft das Radar dauerhaft (nur ein Programm), bleibt alles wie in v0.5.4.6: „LETZTER STAND“ nach einem Fehlschlag, grauer Punkt bei zu alten Daten.
 5. **Speicher:** Im Log nach „übersprungen: JSON-Speicher“ oder „übersprungen: Heap“ suchen. Solche Abrufe sollen keinen Fehlerbildschirm auslösen; der nächste Versuch kommt nach etwa 10 s. Weitere Logs mit „JSON:NoMemory“ bitte sammeln (freier Speicher, größter Block).
-6. Aus v0.5.4.6 weiter offen: siehe unten.
-
-## Hardwaretest v0.5.4.6-dev (weiter offen)
-
-1. **Uhr, Radiowecker:** Darstellung „Radiowecker“, Farbe nach Wahl. Die Ziffern sehen aus wie beim Countdown; mit „Nachleuchten“ glimmen die unbeleuchteten Segmente schwach, ohne nicht.
-2. **Sekunden und Blinken:** Sekunden und „Doppelpunkt blinkt“ einschalten. Pro Sekunde flackert nur die geänderte Stelle bzw. der Doppelpunkt, nicht die ganze Anzeige; das Radar und die Abfahrten laufen in der Rotation normal weiter.
-3. **Modern:** Rahmen, Stadt der Zeitzone unten links, „24H“ unten rechts, Balken für den Tagesfortschritt.
-4. **12 Stunden:** Format „12 Stunden“. Uhr mit „AM“/„PM“ und ohne führende Null; Fußzeilen in Abfahrten, Wetter, Radar und Tracker zeigen z. B. „2:05 PM“ vollständig, ohne den linken Fußzeilentext zu überdecken; Sonnenzeiten im Wetter ohne Zusatz.
-5. **Ohne Datum:** Datum ausschalten – die Ziffern werden größer und bleiben mittig.
-6. **Webinterface:** am iPhone alle Reiter durchgehen; Karten auf- und zuklappen, Seite neu laden – geöffnete Karten bleiben offen. Speichern mit allen Uhr-Einstellungen, danach neu laden: alles wieder da.
-7. **Status:** unter *System* oben die Liste mit Punkten; Punkte für WLAN, Abfahrten, Wetter und Flugradar passen zum Zustand.
-
-## Hardwaretest v0.5.4.5-dev (Countdown weiter offen; Radar läuft wieder)
-
-1. **Countdown klassisch:** Ein Tage-Countdown und ein Minuten-Timer zeigen die neuen Segment-Ziffern; beim Timer flackert pro Sekunde nur die geänderte Ziffer, nicht die ganze Anzeige.
-2. **Modern:** Darstellung auf „Modern“ stellen. Rahmen, „T-MINUS“ und Balken erscheinen; beim Timer wächst der Balken mit, beim Tage-Countdown entspricht er dem Anteil seit dem Startdatum.
-3. **Vorzeichen ausblenden:** einen kurzen Timer (z. B. 0:20) ohne Vorzeichen starten – er bleibt bei 00:00 stehen. Mit Vorzeichen läuft er wie bisher mit „+“ weiter (bei „Modern“ „T-PLUS“).
-4. **Startdatum:** Feld leer lassen und starten – danach steht der heutige Tag im Feld. Ein bereits laufender Tage-Countdown hat nach dem Update ein Startdatum.
-5. **Farben:** eine dunkle und eine helle Zahlfarbe wählen; das Glimmen der unbenutzten Segmente bleibt dezent.
 6. Aus v0.5.4.4 weiter offen: siehe unten.
 
 ## Aus v0.5.4.4-dev (weiter offen)

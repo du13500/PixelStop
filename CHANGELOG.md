@@ -1,5 +1,15 @@
 # Änderungen
 
+## v0.5.4.8-dev
+
+**Webinterface**
+- **Hochrechnung der Abrufe:** In *Flugradar → Radius und Abruf* steht unter „Aktualisierung“ ein Satz mit dem engsten Kontingent („Bei diesem Takt reicht das Tageskontingent nur bis ca. 19:36; danach Pause bis Di 01:00“) und eine aufklappbare Tabelle für Stunde, Tag, Woche und Monat (Verbraucht, Bedarf ca., reicht bis). Der Browser rechnet aus `/api/status` (Zähler und Grenzen) und den gewählten Einstellungen (Takt, Anteil des Radars an der Rotation, ca. +10 % Routenabfragen); die Firmware ändert sich dafür nicht. Ein fester Hinweis nennt, dass Dauerbetrieb nur mit adsb.lol nicht möglich ist.
+- **Countdown starten/stoppen** lädt nicht mehr die ganze Seite neu, sondern nur die Countdown-Karten. Ungespeicherte Änderungen in anderen Karten (z. B. „Nachleuchten“) bleiben stehen. Das war die Ursache, warum sich „Nachleuchten“ nach „Start / aktivieren“ wieder einschaltete; der globale Speichern-Knopf funktionierte.
+
+**Flugradar**
+- **Neuer Versuch dauert mindestens 2 Minuten:** Der rote Bildschirm „keine aktuellen Daten“ nach einer Pause kommt erst nach 3 Fehlschlägen in Folge **und** mindestens 2 Minuten Suche (`RADAR_SEARCH_MIN_MS`). Ein abgelehnter Schlüssel beendet die Suche weiterhin sofort.
+- Tests: `tools/test_radar.py` (dritter Fehlschlag vor Ablauf der 2 Minuten, danach Rot), `tests/webui.cjs` (Start behält ungespeichertes Nachleuchten, Hochrechnung mit Tabelle).
+
 ## v0.5.4.7-dev
 
 **Countdown**

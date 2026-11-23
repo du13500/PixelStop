@@ -137,6 +137,26 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
     if(await page.locator('#cdCard0').evaluate(e=>e.classList.contains('collapsed')))await page.locator('#cdCard0 h2.fold').click();
     await page.selectOption('#cdType0','2');assert(!(await page.locator('#cdStartDate0').isVisible()),'No start date for timers');
     assert(await page.locator('#countdownGhost').isChecked(),'Countdown afterglow is on by default');
+    // Start/stop of a countdown must not throw away other unsaved changes (v0.5.4.8).
+    await page.locator('#countdownGhost').uncheck();cdBody=null;await page.locator('#cdStart0').click();
+    for(let k=0;k<50&&!cdBody;k++)await page.waitForTimeout(20);await page.waitForTimeout(300);
+    assert(!(await page.locator('#countdownGhost').isChecked()),'Countdown start must keep unsaved afterglow setting');
+    await page.locator('#countdownGhost').check();
+    // Forecast of the request quota in the radar tab (v0.5.4.8).
+    const rotBefore=await page.evaluate(()=>[...Array(10).keys()].map(i=>[document.getElementById('modeOn'+i).checked,document.getElementById('modeSec'+i).value]));const pollBefore=await page.locator('#planePoll').inputValue();
+    await page.route('http://smalltv.test/api/status',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({adsbQuota:{h:[10,135],d:[357,470],w:[357,1900],m:[397,4750]}})}));
+    await go(page,'flugradar');await page.evaluate(()=>statusNow());
+    await page.waitForFunction(()=>!document.getElementById('fc').classList.contains('hidden'));
+    await page.selectOption('#planePoll','10');
+    await page.evaluate(()=>{for(let i=0;i<10;i++)document.getElementById('modeOn'+i).checked=(i===2);document.getElementById('modeOn2').dispatchEvent(new Event('change',{bubbles:true}))});
+    assert((await page.locator('#fcLine').textContent()).includes('Kontingent'),'Forecast mentions the quota at 10 s');
+    assert.strictEqual(await page.locator('#fcTable tr').count(),5,'Table has header plus four periods');
+    await page.selectOption('#planePoll','180');
+    await page.evaluate(()=>{document.getElementById('modeSec2').value='10';for(let i=0;i<10;i++)document.getElementById('modeOn'+i).checked=(i===2||i===0);document.getElementById('planePoll').dispatchEvent(new Event('change',{bubbles:true}))});
+    assert((await page.locator('#fcLine').textContent()).length>10,'Forecast line is filled for a slow interval');
+    await page.evaluate(()=>{document.getElementById('modeOn2').checked=false;document.getElementById('modeOn2').dispatchEvent(new Event('change',{bubbles:true}))});
+    assert((await page.locator('#fcLine').textContent()).includes('nicht in der Rotation'),'No requests without the radar in the rotation');
+    await page.evaluate(b=>b.forEach((v,i)=>{document.getElementById('modeOn'+i).checked=v[0];document.getElementById('modeSec'+i).value=v[1]}),rotBefore);await page.selectOption('#planePoll',pollBefore);
     // Sigma-delta dimming is gone (it stopped Wi-Fi, v0.5.4).
     assert.strictEqual(await page.locator('#backlightMode').count(),0);
    }

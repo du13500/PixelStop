@@ -31,6 +31,7 @@ static uint8_t g_consecutiveFailures = 0;
 // requests skipped in a row because our own memory reserve was short.
 static bool g_searching = false;
 static uint8_t g_searchFails = 0, g_skips = 0;
+static uint32_t g_searchStartMs = 0;
 static BearSSL::Session g_adsbSession;
 static BearSSL::Session g_routeSession;
 static BearSSL::Session g_adsbDbSession;
@@ -320,7 +321,7 @@ int flightRouteHttp() { return g_routeHttp; }
 uint16_t flightTlsRx() { return ADSB_LOL_TLS_RX; }
 uint32_t flightTlsMinBlock() { return radarTlsBudget(ADSB_LOL_TLS_RX, sizeof(br_ssl_client_context)).block; }
 void flightActivated() {
-  if(radarStaleOnEntry(millis(),g_lastOkMs)){g_searching=true;g_searchFails=0;}
+  if(radarStaleOnEntry(millis(),g_lastOkMs)){g_searching=true;g_searchFails=0;g_searchStartMs=millis();}
 }
 bool flightSearching() { return g_searching; }
 bool flightSearchRetry() { return g_searching&&g_searchFails>0; }
@@ -340,7 +341,7 @@ static bool flightFailure(const char* stage = "Fehler", bool providerPause = fal
   if (g_searching) {
     // The old aircraft stays hidden. A provider pause is no failure; a refused key ends the search at once.
     if (!providerPause && g_searchFails < 255) g_searchFails++;
-    if (!radarSearchGivesUp(g_searchFails, adsbLolAccessDenied(g_lastHttp))) return false;
+    if (!radarSearchGivesUp(g_searchFails, adsbLolAccessDenied(g_lastHttp), (uint32_t)(now - g_searchStartMs))) return false;
     g_searching = false; g_f.valid = false; g_f.error = true;
     return false;
   }
