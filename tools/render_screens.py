@@ -72,6 +72,17 @@ def top_level_items(code):
 SKIP = re.compile(r'JsonDocument|JsonObject|JsonArray|LittleFS|\bFile\b|server\.|WiFi|ESP\.|deserializeJson|serializeJson')
 views = ''.join(x for x in top_level_items(views_raw) if not SKIP.search(x))
 
+# Start, setup and rescue screens live in the network code: take their
+# top-level centerText() lines verbatim (conditional lines are left out).
+def screen_calls(start, end):
+    return '\n'.join(m.strip() for m in re.findall(r'^[ \t]*centerText\(.*\);[ \t]*$', between(start, end), re.M))
+SYSTEM = (
+    'static void drawSetupScreen() {\n' + screen_calls('centerText("SETUP"', '\n}') + '\n}\n'
+    'static void drawConnectingScreen() {\n' + screen_calls('centerText(TR("WLAN","WI-FI"), 80', '// 30 s:') + '\n}\n'
+    'static void drawConnectedScreen() {\n' + screen_calls('centerText(TR("VERBUNDEN"', 'delay(2200);') + '\n}\n'
+    'static void drawRescueScreen() {\n' + screen_calls('static void drawRescue() {', '\n}') + '\n}\n')
+assert SYSTEM.count('centerText') >= 12, SYSTEM
+
 ARDUINO_H = r'''
 #pragma once
 #include <string>
@@ -244,6 +255,9 @@ MAIN = r'''
 #include "DestinationFormat.h"
 static inline bool adsbLolAccessDenied(int c){return c==401||c==403||c==426;}
 ''' + GFX + '\n' + decl + '\n' + FIXTURES + '\n' + views + r'''
+struct FakeIp { String toString() const { return "192.168.1.50"; } };
+struct FakeWiFi { FakeIp localIP() const { return {}; } } WiFi;
+''' + SYSTEM + r'''
 static void dump(const char* path) {
   FILE* f = fopen(path, "wb"); fprintf(f, "P6\n240 240\n255\n");
   for (uint16_t p : framebuffer.px) { uint8_t rgb[3] = {(uint8_t)(((p >> 11) & 31) * 255 / 31), (uint8_t)(((p >> 5) & 63) * 255 / 63), (uint8_t)((p & 31) * 255 / 31)}; fwrite(rgb, 1, 3, f); }
@@ -267,7 +281,7 @@ int main(int argc, char** argv) {
 
   // ---- Abfahrten (Beispieldaten) ----
   cfg.mode = MODE_DEPARTURES; cfg.stopName = "Hauptbahnhof"; cfg.stopId = "33000028"; cfg.departureCount = 5;
-  dep("S1", "Meißen Triebischtal", 1); dep("3", "Wilder Mann", 3); dep("RE50", "Leipzig Hbf", 6, true);
+  dep("S1", "Meißen Triebischtal", 0); dep("3", "Wilder Mann", 3); dep("RE50", "Leipzig Hbf", 6, true);
   dep("8", "Hellerau", 9); dep("10", "Messe Dresden", 12, false, true);
   drawDepartures(); dump((out + "/abfahrten.ppm").c_str());
   // Fahrtziele ohne eigenen Ort und abgekürzt (S-Bahnhof Reick, Dresden)
@@ -285,6 +299,8 @@ int main(int argc, char** argv) {
   cfg.stopName = "Synagoge"; vvoNotSrv = true; drawDepartures(); dump((out + "/abfahrten-nicht-bedient.ppm").c_str()); vvoNotSrv = false;
   // VVO nicht erreichbar
   cfg.stopName = "Postplatz"; vvoErr = true; drawDepartures(); dump((out + "/abfahrten-fehler.ppm").c_str()); vvoErr = false;
+  // Noch keine Haltestelle gewählt
+  cfg.stopName = ""; cfg.stopId = ""; drawDepartures(); dump((out + "/abfahrten-unkonfiguriert.ppm").c_str()); cfg.stopId = "33000028";
 
   // ---- Wetter: deutsch Dresden in °C, englisch Berlin in °F ----
   cfg.mode = MODE_WEATHER; cfg.weatherCity = en ? "Berlin" : "Dresden"; cfg.weatherDisplayName = ""; cfg.weatherFahrenheit = en;
@@ -297,6 +313,13 @@ int main(int argc, char** argv) {
   wx.days = 3;
   wx.day[0] = {11.7f, 5.6f, 61, 70}; wx.day[1] = {9.8f, 3.2f, 3, 20}; wx.day[2] = {4.2f, -1.4f, 71, 60};
   weatherPage = 1; drawWeather(true); dump((out + "/vorhersage.ppm").c_str()); weatherPage = 0;
+  // Alle Wettersymbole nacheinander (Open-Meteo-Codes), eins pro Sekunde
+  { const int codes[][2] = {{0,1},{0,0},{2,1},{3,1},{45,1},{48,1},{53,1},{57,1},{63,1},{67,1},{81,1},{73,1},{85,0},{77,1},{95,1},{99,1}};
+    const float temps[] = {24.1f,12.3f,18.6f,9.4f,4.2f,-2.1f,7.8f,-0.6f,10.2f,-1.3f,13.5f,-3.4f,-1.2f,-4.6f,21.7f,19.3f};
+    for (int i = 0; i < 16; i++) { wx.code = codes[i][0]; wx.isDay = codes[i][1]; wx.currentC = temps[i]; drawWeather(true); frame("wetter-symbole", i); } }
+  wx.currentC = 8.9f; wx.code = 61; wx.isDay = true;
+  // Open-Meteo nicht erreichbar
+  wx.valid = false; wx.error = true; drawWeather(true); dump((out + "/wetter-fehler.ppm").c_str()); wx.valid = true; wx.error = false;
 
   // ---- Flugradar ----
   // Every scene is an animation: one frame per second, starting at a full 6 s
@@ -341,6 +364,16 @@ int main(int argc, char** argv) {
   fl.speedKnown = true; fl.speedKt = 248;
   radarGif("radar-name", 6, 18.6f, 17.4f, 7800, 7300, 5);
   cfg.planeSpeed = 0;
+  // Drei Flughäfen: Singapore Airlines SQ26 Singapur - Frankfurt - New York
+  cfg.planePlace = "Frankfurt";
+  plane("76cdb4", "SIA26", "Singapore Airlines", "9V-SWI", "B77W", "Boeing 777-300ER", nullptr);
+  strlcpy(fl.origin, "SIN", 4); strlcpy(fl.destination, "JFK", 4); parseFlightRoute("SIN-FRA-JFK", fl.route);
+  radarGif("radar-sq26", 6, 16.2f, 13.9f, 9800, 8900, 4);
+  // Lange Kette: United Island Hopper Honolulu - Majuro - Kwajalein - Kosrae - Pohnpei - Chuuk - Guam
+  cfg.planePlace = "Kwajalein";
+  plane("a1b2c3", "UAL154", "United Airlines", "", "B738", "Boeing 737-800", nullptr);
+  strlcpy(fl.origin, "HNL", 4); strlcpy(fl.destination, "GUM", 4); parseFlightRoute("HNL-MAJ-KWA-KSA-PNI-TKK-GUM", fl.route);
+  radarGif("radar-islandhopper", 6, 8.4f, 6.1f, 4200, 3100, 6);
   // Statuspunkt gelb: letzter Abruf fehlgeschlagen, Werte geschätzt
   cfg.planePlace = "Frankfurt";
   plane("3c4b26", "DLH9AT", "Lufthansa", "D-AIEF", "A21N", "Airbus A321neo", "FRA-BER");
@@ -390,22 +423,66 @@ int main(int argc, char** argv) {
   bsg("KARMA", "Colonial Fleet", "N/A", "Raptor", "BS75-R1", true);
   fl.motion.hasRate = true; fl.motion.rateFpm = -3000; cfg.planeTrend = true; strlcpy(fl.squawk, "7700", 5);
   radarGif("radar-karma", 6, 92.7f, 99.7f, (int32_t)lroundf(98700 / 0.3048f), (int32_t)lroundf(91700 / 0.3048f), 33);
+  // Funkausfall: RED2 (Starbuck) startet von der Pegasus, Funk gestört (7600).
+  cfg.planeTrend = false; cfg.planeDisplayName = "CIC Pegasus";
+  bsg("RED2", "Colonial Fleet", "N/A", "Viper MK II", "N7299C", true);
+  strlcpy(fl.origin, "BS62", 5); strlcpy(fl.squawk, "7600", 5);
+  radarGif("radar-red2", 6, 24.6f, 22.8f, -1, -1, 12);
+  // Entführung: Colonial One sieht die geenterte Galactica (7500), ohne Route.
+  cfg.planeDisplayName = "Colonial One";
+  bsg("GALACTICA", "Colonial Fleet", "N/A", "Jupiter-Class", "BS-75", true);
+  strlcpy(fl.origin, "N/A", 5); fl.route = FlightRoute{}; strlcpy(fl.squawk, "7500", 5);
+  radarGif("radar-galactica", 6, 3.2f, 3.2f, -1, -1, 5);
   planeSourceLabel = "ADSB.LOL"; okAgeMs = 4000; clockMs = 1000000; cfg.planeTrend = false; cfg.planeDisplayName = ""; cfg.planeShowPlace = false;
 
   // ---- Uhr ----
-  cfg.mode = MODE_CLOCK; drawClock(); dump((out + "/uhr.ppm").c_str());
+  cfg.mode = MODE_CLOCK;
+  // Radiowecker, 24 h mit Datum (Übersicht)
+  cfg.clockStyle = CLOCK_RADIO; cfg.clockRgb = 0xFF5D56; drawClock(); dump((out + "/uhr.ppm").c_str());
+  // Radiowecker mit blinkendem Doppelpunkt, ohne Datum
+  cfg.clockRgb = 0x5DD78B; cfg.clockBlink = true; cfg.clockDate = false;
+  for (int i = 0; i < 6; i++) { fakeNow = 1793956212 + i; drawClock(i == 0); frame("uhr-blinken", i); }
+  fakeNow = 1793956212; cfg.clockBlink = false;
+  // 12 Stunden mit AM/PM, Nachleuchten der leeren Stelle
+  cfg.clock12h = true; cfg.clockRgb = 0xF3CE00; fakeNow = 1793956212 + 4 * 3600; drawClock(); dump((out + "/uhr-12h.ppm").c_str());
+  fakeNow = 1793956212; cfg.clock12h = false; cfg.clockDate = true;
+  // Modern mit Sekunden und Tagesbalken
+  cfg.clockStyle = CLOCK_MODERN; cfg.clockRgb = 0x4FC3F7; cfg.clockSeconds = true;
+  for (int i = 0; i < 6; i++) { fakeNow = 1793956212 + i; drawClock(i == 0); frame("uhr-modern", i); }
+  fakeNow = 1793956212; cfg.clockSeconds = false;
+  // Pixel wie bisher
+  cfg.clockStyle = CLOCK_PIXEL; cfg.clockRgb = 0xFFFFFF; drawClock(); dump((out + "/uhr-pixel.ppm").c_str());
 
   // ---- Flug-Tracker ----
   cfg.mode = MODE_TRACKED_FLIGHT; cfg.trackedFlightNo = "LH1178"; cfg.aviationstackKey = "sample";
   tf.valid = true; strlcpy(tf.flightIata, "LH1178", 12); strlcpy(tf.flightIcao, "DLH1178", 12); strlcpy(tf.airline, "Lufthansa", 28);
   strlcpy(tf.origin, "DRS", 4); strlcpy(tf.destination, "FRA", 4); parseFlightRoute("DRS-FRA", tf.route);
   strlcpy(tf.status, "active", 16); strlcpy(tf.depScheduled, "09:40", 6); strlcpy(tf.depActual, "09:52", 6);
-  strlcpy(tf.arrScheduled, "10:50", 6); strlcpy(tf.arrEstimated, "10:58", 6); strlcpy(tf.registration, "D-AIBH", 16);
+  strlcpy(tf.arrScheduled, "10:50", 6); strlcpy(tf.arrEstimated, "10:58", 6); strlcpy(tf.arrActual, "N/A", 6); strlcpy(tf.registration, "D-AIBH", 16);
   strlcpy(tf.typeCode, "A319", 8); tf.altitudeM = 10970; tf.speedKmh = 812;
   tf.depScheduledEpoch = fakeNow - 1800; tf.depActualEpoch = fakeNow - 1080; tf.arrScheduledEpoch = fakeNow + 2400; tf.arrEstimatedEpoch = fakeNow + 2880;
   drawTrackedFlight(); dump((out + "/flugtracker.ppm").c_str());
   // Ohne aviationstack-Schlüssel
   cfg.aviationstackKey = ""; drawTrackedFlight(true); dump((out + "/flugtracker-ohne-key.ppm").c_str()); cfg.aviationstackKey = "sample";
+  // Ohne Flugnummer
+  cfg.trackedFlightNo = ""; drawTrackedFlight(true); dump((out + "/flugtracker-ohne-flug.ppm").c_str()); cfg.trackedFlightNo = "LH1178";
+  // Status im Lauf des Fluges: geplant, in der Luft, gelandet (je 2 s)
+  { const TrackedFlightSnapshot keep = tf;
+    for (int i = 0; i < 6; i++) {
+      tf = keep;
+      if (i < 2) { strlcpy(tf.status, "scheduled", 16); strlcpy(tf.depActual, "N/A", 6); tf.depActualEpoch = 0; tf.altitudeM = 0; tf.speedKmh = 0; }
+      else if (i >= 4) { strlcpy(tf.status, "landed", 16); strlcpy(tf.arrActual, "10:56", 6); tf.altitudeM = 0; tf.speedKmh = 0; }
+      drawTrackedFlight(i == 0 || i == 2 || i == 4); frame("flugtracker-status", i);
+    }
+    // Annulliert und umgeleitet
+    tf = keep; strlcpy(tf.status, "cancelled", 16); strlcpy(tf.depActual, "N/A", 6); tf.depActualEpoch = 0; tf.altitudeM = 0; tf.speedKmh = 0;
+    drawTrackedFlight(true); dump((out + "/flugtracker-annulliert.ppm").c_str());
+    tf = keep; strlcpy(tf.status, "diverted", 16);
+    drawTrackedFlight(true); dump((out + "/flugtracker-umgeleitet.ppm").c_str());
+    // Flug nicht gefunden, Tracker-Fehler
+    tf = TrackedFlightSnapshot{}; tf.notFound = true; drawTrackedFlight(true); dump((out + "/flugtracker-nicht-gefunden.ppm").c_str());
+    tf = TrackedFlightSnapshot{}; tf.error = true; drawTrackedFlight(true); dump((out + "/flugtracker-fehler.ppm").c_str());
+    tf = keep; }
 
   // ---- Countdowns ----
   const time_t base = fakeNow;
@@ -431,6 +508,12 @@ int main(int argc, char** argv) {
   c4.style = COUNTDOWN_MODERN; c4.showSign = false; c4.countColor = "#5DD78B"; c4.titleColor = "#5DD78B";
   fakeNow = base; drawCountdown(3); dump((out + "/countdown-modern-null.ppm").c_str());
   fakeNow = base;
+
+  // ---- Einrichtung und System ----
+  cfg.hostname = "pixelstop";
+  gfx->fillScreen(C_BLACK); drawSetupScreen(); dump((out + "/setup.ppm").c_str());
+  for (int i = 0; i < 6; i++) { gfx->fillScreen(C_BLACK); if (i < 3) drawConnectingScreen(); else drawConnectedScreen(); frame("start", i); }
+  apMode = false; gfx->fillScreen(C_BLACK); drawRescueScreen(); dump((out + "/rettung.ppm").c_str());
   return 0;
 }
 '''
@@ -458,18 +541,23 @@ with tempfile.TemporaryDirectory() as tmp:
     # Title, subtitle and an optional "fictional" tag per picture and language.
     CAPTIONS = {
         'de': {
-            'abfahrten': ('Abfahrten', 'Dresden Hbf · Verspätung und Ausfall'),
+            'abfahrten': ('Abfahrten', 'Dresden Hbf · jetzt, Verspätung, Ausfall'),
             'abfahrten-ziele': ('Kurze Fahrtziele', 'ohne eigenen Ort, „Meißen T.“ gekürzt'),
             'abfahrten-seiten': ('Zwei Seiten', 'zehn Abfahrten, Wechsel alle 5 s'),
             'abfahrten-nicht-bedient': ('Nicht bedient', 'Synagoge, seit dem Carolabrücken-Einsturz'),
             'abfahrten-fehler': ('VVO nicht erreichbar', 'keine Verbindung zur Auskunft'),
+            'abfahrten-unkonfiguriert': ('Erster Start', 'noch keine Haltestelle gewählt'),
             'wetter': ('Wetter', 'Dresden am Tag, leichter Regen'),
             'wetter-nacht': ('Nachts', 'Dresden, heiter'),
             'vorhersage': ('3-Tage-Vorhersage', 'Dresden, die nächsten drei Tage'),
+            'wetter-symbole': ('Wettersymbole', 'alle 16 Motive nacheinander'),
+            'wetter-fehler': ('Open-Meteo nicht erreichbar', 'keine Wetterdaten'),
             'flugradar': ('Normalfall', 'Emirates A380 über Dresden'),
             'radar-steigflug': ('Steigflug', 'ALROSA Tu-154M ab Mirny'),
             'radar-sinkflug': ('Sinkflug', 'European Air Charter MD-82 nach Varna'),
             'radar-name': ('Langer Name', 'Airline im Wechsel, km/h statt Kennzeichen'),
+            'radar-sq26': ('Drei Flughäfen', 'Singapore Airlines SIN – FRA – JFK'),
+            'radar-islandhopper': ('Lange Route', 'United Island Hopper, 7 Flughäfen'),
             'radar-boden': ('Am Boden', 'vor dem Start in Dresden, Höhe GND'),
             'radar-leer': ('Kein Flugzeug', 'nichts im gewählten Radius'),
             'radar-gelb': ('Letzter Stand', 'Abruf fehlgeschlagen, Werte geschätzt'),
@@ -477,32 +565,52 @@ with tempfile.TemporaryDirectory() as tmp:
             'radar-grau': ('Keine Daten', 'zu lange ohne Abruf, Werte stehen'),
             'radar-fehler': ('Abruf fehlgeschlagen', 'noch kein Stand vorhanden'),
             'radar-abgelehnt': ('Zugriff abgelehnt', 'adsb.lol lehnt ab, lange Pause'),
-            'radar-colone': ('4-stellige Codes', 'Flughafencodes mit 4 Zeichen, Höhe N/A', True),
+            'radar-colone': ('4-stellige Codes', 'Flughafencodes mit 4 Zeichen, dazu km/h', True),
             'radar-apollo': ('Militär', 'MIL-Markierung neben dem Rufzeichen', True),
             'radar-karma': ('Notfall', 'Squawk 7700 im Wechsel mit der Route', True),
+            'radar-red2': ('Funkausfall', 'Squawk 7600 im Wechsel mit der Route', True),
+            'radar-galactica': ('Entführung', 'ohne Route steht nur der Squawk', True),
             'flugtracker': ('Flug-Tracker', 'LH1178 Dresden – Frankfurt'),
             'flugtracker-ohne-key': ('Ohne API-Key', 'aviationstack-Schlüssel fehlt'),
-            'uhr': ('Uhr', 'mit Datum und Zeitzone'),
+            'flugtracker-ohne-flug': ('Ohne Flugnummer', 'noch kein Flug eingetragen'),
+            'flugtracker-status': ('Status', 'geplant, in der Luft, gelandet'),
+            'flugtracker-annulliert': ('Annulliert', 'der Flug fällt aus'),
+            'flugtracker-umgeleitet': ('Umgeleitet', 'der Flug landet woanders'),
+            'flugtracker-nicht-gefunden': ('Nicht gefunden', 'aviationstack kennt den Flug nicht'),
+            'flugtracker-fehler': ('Tracker-Fehler', 'Abruf bei aviationstack fehlgeschlagen'),
+            'uhr': ('Radiowecker', '24 h mit Datum'),
+            'uhr-blinken': ('Blinkender Doppelpunkt', 'ohne Datum, größere Ziffern'),
+            'uhr-12h': ('12 Stunden', 'AM/PM, leere Stelle glimmt mit'),
+            'uhr-modern': ('Modern', 'mit Sekunden und Tagesbalken'),
+            'uhr-pixel': ('Pixel', 'die klassische Darstellung'),
             'countdown-tage': ('Tage', 'klassisch, mit Vorzeichen'),
             'countdown-timer': ('Timer', 'Minuten : Sekunden'),
             'countdown-plus': ('Nach dem Ziel', 'zählt mit Plus weiter'),
             'countdown-tage-modern': ('Modern in Tagen', 'ohne Vorzeichen, Balken ab Start'),
             'countdown-modern': ('Modern als Timer', 'Std : Min : Sek mit Fortschritt'),
             'countdown-modern-null': ('Am Ziel', 'ohne Vorzeichen bleibt er bei null'),
+            'setup': ('Einrichtung', 'WLAN-Hotspot „PixelStop-Setup“'),
+            'start': ('Start', 'verbindet sich mit dem WLAN'),
+            'rettung': ('Rettungsmodus', 'nach mehreren Abstürzen in Folge'),
         },
         'en': {
-            'abfahrten': ('Departures', 'Dresden Hbf · delay and cancellation'),
+            'abfahrten': ('Departures', 'Dresden Hbf · now, delay, cancellation'),
             'abfahrten-ziele': ('Short destinations', 'town dropped, “Meißen T.” abbreviated'),
             'abfahrten-seiten': ('Two pages', 'ten departures, switching every 5 s'),
             'abfahrten-nicht-bedient': ('Not served', 'Synagoge, since the Carola Bridge collapse'),
             'abfahrten-fehler': ('VVO not reachable', 'no connection to the timetable service'),
+            'abfahrten-unkonfiguriert': ('First start', 'no stop chosen yet'),
             'wetter': ('Weather', 'Berlin by day, light rain'),
             'wetter-nacht': ('At night', 'Berlin, clear'),
             'vorhersage': ('3-day forecast', 'Berlin, the next three days'),
+            'wetter-symbole': ('Weather icons', 'all 16 motifs in turn'),
+            'wetter-fehler': ('Open-Meteo not reachable', 'no weather data'),
             'flugradar': ('Normal', 'Emirates A380 over Dresden'),
             'radar-steigflug': ('Climbing', 'ALROSA Tu-154M out of Mirny'),
             'radar-sinkflug': ('Descending', 'European Air Charter MD-82 to Varna'),
             'radar-name': ('Long name', 'airline alternating, km/h for registration'),
+            'radar-sq26': ('Three airports', 'Singapore Airlines SIN – FRA – JFK'),
+            'radar-islandhopper': ('Long route', 'United Island Hopper, 7 airports'),
             'radar-boden': ('On the ground', 'before take-off in Dresden, GND'),
             'radar-leer': ('No aircraft', 'nothing within the chosen radius'),
             'radar-gelb': ('Last data', 'request failed, values estimated'),
@@ -510,27 +618,42 @@ with tempfile.TemporaryDirectory() as tmp:
             'radar-grau': ('No data', 'too long without a request, frozen'),
             'radar-fehler': ('Request failed', 'no data received yet'),
             'radar-abgelehnt': ('Access denied', 'adsb.lol refuses, long pause'),
-            'radar-colone': ('4-character codes', 'airport codes with 4 characters, altitude N/A', True),
+            'radar-colone': ('4-character codes', 'airport codes with 4 characters, plus km/h', True),
             'radar-apollo': ('Military', 'MIL marking next to the callsign', True),
             'radar-karma': ('Emergency', 'squawk 7700 alternating with the route', True),
+            'radar-red2': ('Radio failure', 'squawk 7600 alternating with the route', True),
+            'radar-galactica': ('Hijack', 'without a route only the squawk shows', True),
             'flugtracker': ('Flight tracker', 'LH1178 Dresden – Frankfurt'),
             'flugtracker-ohne-key': ('Without API key', 'aviationstack key missing'),
-            'uhr': ('Clock', 'with date and time zone'),
+            'flugtracker-ohne-flug': ('No flight number', 'no flight entered yet'),
+            'flugtracker-status': ('Status', 'scheduled, in the air, landed'),
+            'flugtracker-annulliert': ('Cancelled', 'the flight does not operate'),
+            'flugtracker-umgeleitet': ('Diverted', 'the flight lands elsewhere'),
+            'flugtracker-nicht-gefunden': ('Not found', 'aviationstack does not know the flight'),
+            'flugtracker-fehler': ('Tracker error', 'aviationstack request failed'),
+            'uhr': ('Clock radio', '24 h with date'),
+            'uhr-blinken': ('Blinking colon', 'without date, larger digits'),
+            'uhr-12h': ('12 hours', 'AM/PM, empty digit glows faintly'),
+            'uhr-modern': ('Modern', 'with seconds and day bar'),
+            'uhr-pixel': ('Pixel', 'the classic style'),
             'countdown-tage': ('Days', 'classic, with sign'),
             'countdown-timer': ('Timer', 'minutes : seconds'),
             'countdown-plus': ('After the target', 'counts on with a plus'),
             'countdown-tage-modern': ('Modern in days', 'no sign, bar from the start date'),
             'countdown-modern': ('Modern timer', 'hrs : min : sec with progress'),
             'countdown-modern-null': ('At the target', 'without a sign it stops at zero'),
+            'setup': ('Setup', 'Wi-Fi hotspot “PixelStop-Setup”'),
+            'start': ('Start', 'connects to the Wi-Fi'),
+            'rettung': ('Rescue mode', 'after repeated crashes'),
         },
     }
     # Overview: one card per programme (picture, title, subtitle).
     OVERVIEW = {
         'de': [('abfahrten', 'Abfahrten', 'VVO live'), ('wetter', 'Wetter', 'Open-Meteo'), ('vorhersage', '3-Tage-Vorhersage', 'Open-Meteo'),
-               ('flugradar', 'Flugradar', 'adsb.lol'), ('flugtracker', 'Flug-Tracker', 'aviationstack'), ('uhr', 'Uhr', 'Zeitzone wählbar'),
+               ('flugradar', 'Flugradar', 'adsb.lol'), ('flugtracker', 'Flug-Tracker', 'aviationstack'), ('uhr', 'Uhr', 'Pixel, Radiowecker, Modern'),
                ('countdown-tage', 'Countdown', 'vier Timer, Tage oder Zeit')],
         'en': [('abfahrten', 'Departures', 'VVO live'), ('wetter', 'Weather', 'Open-Meteo'), ('vorhersage', '3-day forecast', 'Open-Meteo'),
-               ('flugradar', 'Flight radar', 'adsb.lol'), ('flugtracker', 'Flight tracker', 'aviationstack'), ('uhr', 'Clock', 'time zone of your choice'),
+               ('flugradar', 'Flight radar', 'adsb.lol'), ('flugtracker', 'Flight tracker', 'aviationstack'), ('uhr', 'Clock', 'pixel, clock radio, modern'),
                ('countdown-tage', 'Countdown', 'four timers, days or time')],
     }
     FONTS = Path('/usr/share/fonts/opentype/inter')

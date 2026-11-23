@@ -2,7 +2,28 @@
 
 ## v0.5.4.6-dev
 
-(in Arbeit)
+**Uhr**
+- **Drei Darstellungen:** „Pixel“ (wie bisher), „Radiowecker“ mit denselben Segmentziffern wie der Countdown und „Modern“ mit Rahmen, Stadt der Zeitzone, „24H“ bzw. „AM/PM“ und einem Balken für den Tagesfortschritt.
+- **Einstellbar:** Farbe, Sekunden, blinkender Doppelpunkt, Datum an/aus und – bei Radiowecker und Modern – das Nachleuchten der unbeleuchteten Segmente. Ohne Sekunden und Datum werden die Ziffern größer. Mit Sekunden oder blinkendem Doppelpunkt wird jede Sekunde nur die geänderte Stelle neu gezeichnet.
+- **12 oder 24 Stunden** gilt überall: Uhr (mit „AM“/„PM“, ohne führende Null; im Radiowecker glimmt die leere Stelle mit), Fußzeilen aller Ansichten („2:05 PM“), Plan- und Ist-Zeiten im Flug-Tracker sowie Sonnenauf- und -untergang (ohne Zusatz).
+
+**Webinterface**
+- **Alle Karten aufklappbar:** Beim ersten Öffnen ist nur die wichtigste Karte eines Reiters offen; der Browser merkt sich, welche Karten offen sind. Meldet das Speichern einen Fehler (z. B. ungültige Koordinaten), klappt die betroffene Karte auf.
+- **Neuer Reiter „Uhr“** mit den Karten *Zeit* (Zeitzone, 12/24 h) und *Darstellung*.
+- **Anzeige:** Die neue Karte *Helligkeit* fasst Tag-Helligkeit und Nachtmodus zusammen; ist „nachts dimmen“ aus, sind Beginn, Ende und Nacht-Helligkeit ausgegraut. Die Zeitzone ist in den Reiter Uhr umgezogen.
+- **Abfahrten:** Karten *Haltestelle* (ID unter einem Aufklapper), *Verkehrsmittel* (zweispaltig) und *Darstellung und Abruf*.
+- **Wetter:** Karten *Standort* und *Darstellung und Abruf*.
+- **Flugradar:** fünf Karten statt einer langen Seite – *Standort*, *Radius und Abruf*, *Darstellung*, *Ausblenden* (zweispaltig) und *API-Key und Datenquelle*; lange Erklärungen hinter „ⓘ Mehr dazu“. „Standortname Darstellung“ heißt jetzt „Ortsname im Kopf anzeigen“.
+- **Flug-Tracker:** Karten *Flug* und *API-Key*.
+- **System:** *Status* steht oben und ist eine gegliederte Liste (Gerät, WLAN, Datenquellen, Flugradar, adsb.lol-Kontingent) mit farbigen Punkten für WLAN-Signal und Datenquellen; *Dienste und Datenquellen* steht zugeklappt ganz unten.
+- Kleine Korrekturen: Haken in mehrzeiligen Auswahlfeldern werden nicht mehr gestaucht.
+
+**README und Bilder**
+- Badges „Hardwaretest“ und „Hobbyprojekt“ entfernt.
+- Bildlinks mit Versionszusatz (`?v=0.5.4.6`), damit GitHub und Browser nach einer Änderung sofort die neuen Bilder zeigen.
+- Gleichmäßige Abstände: Alle Bilder einer Gruppe stehen in einem Absatz und brechen selbst um (bisher hatte die zweite Reihe einer Gruppe eine größere Lücke).
+- Radar neu gruppiert: *Flugbewegungen*, *Anzeige* (langer Name, 4-stellige Codes, am Boden, drei Flughäfen mit Singapore Airlines SQ26 SIN – FRA – JFK, lange Route mit dem United Island Hopper, MIL), *Notfälle* (fiktiv: 7500 GALACTICA, 7600 RED2, 7700 KARMA), *Datenstand* und *Ohne Flugzeug*.
+- Neue Bilder: Abfahrt „JETZT“, erster Start ohne Haltestelle, alle 16 Wettersymbole als GIF, Open-Meteo nicht erreichbar, Flug-Tracker ohne Flugnummer, Status-Verlauf als GIF, annulliert, umgeleitet, nicht gefunden, Tracker-Fehler, fünf Uhr-Varianten und das neue Kapitel *Einrichtung und System* (Setup-Hotspot, Start als GIF, Rettungsmodus).
 
 ## v0.5.4.5-dev
 

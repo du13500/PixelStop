@@ -1,8 +1,18 @@
 # Testplan
 
-Stand: v0.5.4.5-dev (22.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: v0.5.4.6-dev (23.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
 
-## Hardwaretest v0.5.4.5-dev
+## Hardwaretest v0.5.4.6-dev
+
+1. **Uhr, Radiowecker:** Darstellung „Radiowecker“, Farbe nach Wahl. Die Ziffern sehen aus wie beim Countdown; mit „Nachleuchten“ glimmen die unbeleuchteten Segmente schwach, ohne nicht.
+2. **Sekunden und Blinken:** Sekunden und „Doppelpunkt blinkt“ einschalten. Pro Sekunde flackert nur die geänderte Stelle bzw. der Doppelpunkt, nicht die ganze Anzeige; das Radar und die Abfahrten laufen in der Rotation normal weiter.
+3. **Modern:** Rahmen, Stadt der Zeitzone unten links, „24H“ unten rechts, Balken für den Tagesfortschritt.
+4. **12 Stunden:** Format „12 Stunden“. Uhr mit „AM“/„PM“ und ohne führende Null; Fußzeilen in Abfahrten, Wetter, Radar und Tracker zeigen z. B. „2:05 PM“ vollständig, ohne den linken Fußzeilentext zu überdecken; Sonnenzeiten im Wetter ohne Zusatz.
+5. **Ohne Datum:** Datum ausschalten – die Ziffern werden größer und bleiben mittig.
+6. **Webinterface:** am iPhone alle Reiter durchgehen; Karten auf- und zuklappen, Seite neu laden – geöffnete Karten bleiben offen. Speichern mit allen Uhr-Einstellungen, danach neu laden: alles wieder da.
+7. **Status:** unter *System* oben die Liste mit Punkten; Punkte für WLAN, Abfahrten, Wetter und Flugradar passen zum Zustand.
+
+## Hardwaretest v0.5.4.5-dev (Countdown weiter offen; Radar läuft wieder)
 
 1. **Countdown klassisch:** Ein Tage-Countdown und ein Minuten-Timer zeigen die neuen Segment-Ziffern; beim Timer flackert pro Sekunde nur die geänderte Ziffer, nicht die ganze Anzeige.
 2. **Modern:** Darstellung auf „Modern“ stellen. Rahmen, „T-MINUS“ und Balken erscheinen; beim Timer wächst der Balken mit, beim Tage-Countdown entspricht er dem Anteil seit dem Startdatum.
@@ -35,14 +45,14 @@ Stand: v0.5.4.5-dev (22.11.2026). Dieser Plan wird mit jeder Version aktualisier
 
 ## Stand des letzten Builds
 
-v0.5.4.5-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
+v0.5.4.6-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
 
 | | belegt | von | Anteil |
 | --- | --- | --- | --- |
-| Statischer RAM | 51.440 Byte | 81.920 Byte | 62,8 % |
+| Statischer RAM | 51.484 Byte | 81.920 Byte | 62,8 % |
 | Flash | 738.235 Byte | 1.044.464 Byte | 70,7 % |
 
-Bis zur Grenze bleiben 160 Byte. Das komprimierte Webinterface spart gegenüber v0.5.3.1 rund 42 KB Flash. `tools/check_ram.py` lässt den Build ab 51.600 Byte statischem RAM scheitern, damit für TLS-Abrufe genug Speicher frei bleibt.
+Bis zur Grenze bleiben 116 Byte. Das komprimierte Webinterface spart gegenüber v0.5.3.1 rund 42 KB Flash. `tools/check_ram.py` lässt den Build ab 51.600 Byte statischem RAM scheitern, damit für TLS-Abrufe genug Speicher frei bleibt.
 
 ## Lokale Prüfungen
 

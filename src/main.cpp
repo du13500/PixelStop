@@ -570,7 +570,7 @@ static String isoFromDays(int32_t z) {
   z+=719468; const int32_t era=(z>=0?z:z-146096)/146097; const uint32_t doe=(uint32_t)(z-era*146097);
   const uint32_t yoe=(doe-doe/1460+doe/36524-doe/146096)/365; const uint32_t doy=doe-(365*yoe+yoe/4-yoe/100);
   const uint32_t mp=(5*doy+2)/153, d=doy-(153*mp+2)/5+1, m=mp<10?mp+3:mp-9; const int32_t y=(int32_t)yoe+era*400+(m<=2);
-  char b[12]; snprintf(b,sizeof b,"%04ld-%02u-%02u",(long)y,(unsigned)m,(unsigned)d); return String(b);
+  char b[24]; snprintf(b,sizeof b,"%04ld-%02u-%02u",(long)y,(unsigned)m,(unsigned)d); return String(b);
 }
 
 static uint8_t decimalDigits(uint32_t v) {
