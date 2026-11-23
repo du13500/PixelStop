@@ -6,19 +6,19 @@
 Gekauft als kleiner WLAN-Würfel mit eher bescheidener Werksfirmware – und von Anfang an mit dem Plan, etwas Eigenes daraus zu machen.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.4.6--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.4.7--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
 ![Lizenz](https://img.shields.io/badge/lizenz-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
 
 <p align="center">
-<img src="docs/screens/de/kachel-abfahrten.png?v=0.5.4.6" width="260" alt="Abfahrten">
-<img src="docs/screens/de/kachel-wetter.png?v=0.5.4.6" width="260" alt="Wetter">
-<img src="docs/screens/de/kachel-vorhersage.png?v=0.5.4.6" width="260" alt="3-Tage-Vorhersage">
-<img src="docs/screens/de/kachel-flugradar.png?v=0.5.4.6" width="260" alt="Flugradar">
-<img src="docs/screens/de/kachel-flugtracker.png?v=0.5.4.6" width="260" alt="Flug-Tracker">
-<img src="docs/screens/de/kachel-uhr.png?v=0.5.4.6" width="260" alt="Uhr">
-<img src="docs/screens/de/kachel-countdown-tage.png?v=0.5.4.6" width="260" alt="Countdown">
+<img src="docs/screens/de/kachel-abfahrten.png?v=0.5.4.7" width="260" alt="Abfahrten">
+<img src="docs/screens/de/kachel-wetter.png?v=0.5.4.7" width="260" alt="Wetter">
+<img src="docs/screens/de/kachel-vorhersage.png?v=0.5.4.7" width="260" alt="3-Tage-Vorhersage">
+<img src="docs/screens/de/kachel-flugradar.png?v=0.5.4.7" width="260" alt="Flugradar">
+<img src="docs/screens/de/kachel-flugtracker.png?v=0.5.4.7" width="260" alt="Flug-Tracker">
+<img src="docs/screens/de/kachel-uhr.png?v=0.5.4.7" width="260" alt="Uhr">
+<img src="docs/screens/de/kachel-countdown-tage.png?v=0.5.4.7" width="260" alt="Countdown">
 </p>
 <p align="center"><sub>Echte Ausgabe der Firmware mit Beispieldaten · mehr Bilder und Erklärungen unter <a href="#programme">Programme</a></sub></p>
 
@@ -37,12 +37,12 @@ Zum Aufklappen: was jedes Programm zeigt, was sich einstellen lässt und alle Be
 Live-Abfahrten einer Haltestelle des Verkehrsverbunds Oberelbe (VVO): Linie, Ziel, Minuten bis zur Abfahrt, Verspätung (gelb) und Ausfall (✕). Drei bis fünf Abfahrten auf einer Seite oder zehn auf zwei Seiten im Wechsel alle 5 Sekunden, Filter nach Verkehrsmittel. Fahrtziele lassen sich ohne den eigenen Ort und abgekürzt anzeigen. Die Minuten zählen zwischen den Abrufen herunter – auch dann, wenn der VVO gerade nicht erreichbar ist.
 
 <p align="center">
-<img src="docs/screens/de/abfahrten.png?v=0.5.4.6" width="260" alt="Abfahrten: Dresden Hbf mit Verspätung und Ausfall">
-<img src="docs/screens/de/abfahrten-ziele.png?v=0.5.4.6" width="260" alt="Kurze Fahrtziele">
-<img src="docs/screens/de/abfahrten-seiten.gif?v=0.5.4.6" width="260" alt="Zehn Abfahrten auf zwei Seiten">
-<img src="docs/screens/de/abfahrten-nicht-bedient.png?v=0.5.4.6" width="260" alt="Haltestelle wird nicht bedient">
-<img src="docs/screens/de/abfahrten-fehler.png?v=0.5.4.6" width="260" alt="VVO nicht erreichbar">
-<img src="docs/screens/de/abfahrten-unkonfiguriert.png?v=0.5.4.6" width="260" alt="Noch keine Haltestelle gewählt">
+<img src="docs/screens/de/abfahrten.png?v=0.5.4.7" width="260" alt="Abfahrten: Dresden Hbf mit Verspätung und Ausfall">
+<img src="docs/screens/de/abfahrten-ziele.png?v=0.5.4.7" width="260" alt="Kurze Fahrtziele">
+<img src="docs/screens/de/abfahrten-seiten.gif?v=0.5.4.7" width="260" alt="Zehn Abfahrten auf zwei Seiten">
+<img src="docs/screens/de/abfahrten-nicht-bedient.png?v=0.5.4.7" width="260" alt="Haltestelle wird nicht bedient">
+<img src="docs/screens/de/abfahrten-fehler.png?v=0.5.4.7" width="260" alt="VVO nicht erreichbar">
+<img src="docs/screens/de/abfahrten-unkonfiguriert.png?v=0.5.4.7" width="260" alt="Noch keine Haltestelle gewählt">
 </p>
 
 </details>
@@ -52,10 +52,10 @@ Live-Abfahrten einer Haltestelle des Verkehrsverbunds Oberelbe (VVO): Linie, Zie
 Aktuelle Temperatur, Wetterbild für Tag und Nacht, Höchst- und Tiefstwert, Regenwahrscheinlichkeit sowie Sonnenauf- und -untergang, in °C oder °F. Der Ort wird über eine Suche, die Karte oder Koordinaten gewählt; ein eigener Anzeigename ist möglich.
 
 <p align="center">
-<img src="docs/screens/de/wetter.png?v=0.5.4.6" width="260" alt="Wetter: Dresden am Tag">
-<img src="docs/screens/de/wetter-nacht.png?v=0.5.4.6" width="260" alt="Wetter: Dresden nachts">
-<img src="docs/screens/de/wetter-symbole.gif?v=0.5.4.6" width="260" alt="Alle Wettersymbole nacheinander">
-<img src="docs/screens/de/wetter-fehler.png?v=0.5.4.6" width="260" alt="Open-Meteo nicht erreichbar">
+<img src="docs/screens/de/wetter.png?v=0.5.4.7" width="260" alt="Wetter: Dresden am Tag">
+<img src="docs/screens/de/wetter-nacht.png?v=0.5.4.7" width="260" alt="Wetter: Dresden nachts">
+<img src="docs/screens/de/wetter-symbole.gif?v=0.5.4.7" width="260" alt="Alle Wettersymbole nacheinander">
+<img src="docs/screens/de/wetter-fehler.png?v=0.5.4.7" width="260" alt="Open-Meteo nicht erreichbar">
 </p>
 
 </details>
@@ -65,14 +65,14 @@ Aktuelle Temperatur, Wetterbild für Tag und Nacht, Höchst- und Tiefstwert, Reg
 Wochentag, Wetterbild, Höchst- und Tiefstwert und Regenwahrscheinlichkeit für die nächsten drei Tage – als eigene Ansicht in der Rotation.
 
 <p align="center">
-<img src="docs/screens/de/vorhersage.png?v=0.5.4.6" width="260" alt="3-Tage-Vorhersage für Dresden">
+<img src="docs/screens/de/vorhersage.png?v=0.5.4.7" width="260" alt="3-Tage-Vorhersage für Dresden">
 </p>
 
 </details>
 
 <details><summary><b>✈️ Flugradar</b></summary>
 
-Das nächste Flugzeug im gewählten Umkreis: Rufzeichen, Airline, Route, Typ, Kennzeichen, Entfernung und Höhe. Zwischen zwei Abrufen rechnet der Würfel Entfernung und Höhe weiter; die Fußzeile zeigt, wie alt der letzte Abruf ist.
+Das nächste Flugzeug im gewählten Umkreis: Rufzeichen, Airline, Route, Typ, Kennzeichen, Entfernung und Höhe. Zwischen zwei Abrufen rechnet der Würfel Entfernung und Höhe weiter; die Fußzeile zeigt, wie alt der letzte Abruf ist. Kommt das Radar nach einer Pause in der Rotation zurück und ist der letzte Stand älter als 30 Sekunden, zeigt PixelStop kein altes Flugzeug, sondern **SUCHE FLUGZEUGE**, bis der erste frische Abruf da ist; scheitert er, bleibt die Suche stehen („NEUER VERSUCH“), und erst nach drei Fehlschlägen in Folge erscheint „Abruf fehlgeschlagen“.
 
 Im Reiter **Flugradar** lässt sich die Anzeige anpassen:
 
@@ -86,40 +86,42 @@ Im Reiter **Flugradar** lässt sich die Anzeige anpassen:
 
 <p align="center">
 <sub><b>Flugbewegungen</b></sub><br>
-<img src="docs/screens/de/flugradar.gif?v=0.5.4.6" width="260" alt="Flugradar: Emirates A380 über Dresden">
-<img src="docs/screens/de/radar-steigflug.gif?v=0.5.4.6" width="260" alt="Steigflug: ALROSA Tu-154M ab Mirny">
-<img src="docs/screens/de/radar-sinkflug.gif?v=0.5.4.6" width="260" alt="Sinkflug: European Air Charter MD-82 nach Varna">
+<img src="docs/screens/de/flugradar.gif?v=0.5.4.7" width="260" alt="Flugradar: Emirates A380 über Dresden">
+<img src="docs/screens/de/radar-steigflug.gif?v=0.5.4.7" width="260" alt="Steigflug: ALROSA Tu-154M ab Mirny">
+<img src="docs/screens/de/radar-sinkflug.gif?v=0.5.4.7" width="260" alt="Sinkflug: European Air Charter MD-82 nach Varna">
 </p>
 
 <p align="center">
 <sub><b>Anzeige</b></sub><br>
-<img src="docs/screens/de/radar-name.gif?v=0.5.4.6" width="260" alt="Langer Airline-Name im Wechsel">
-<img src="docs/screens/de/radar-colone.gif?v=0.5.4.6" width="260" alt="4-stellige Codes (fiktiv)">
-<img src="docs/screens/de/radar-boden.gif?v=0.5.4.6" width="260" alt="Flugzeug am Boden">
-<img src="docs/screens/de/radar-sq26.gif?v=0.5.4.6" width="260" alt="Singapore Airlines SIN – FRA – JFK">
-<img src="docs/screens/de/radar-islandhopper.gif?v=0.5.4.6" width="260" alt="United Island Hopper mit 7 Flughäfen">
-<img src="docs/screens/de/radar-apollo.gif?v=0.5.4.6" width="260" alt="Militär (fiktiv)">
+<img src="docs/screens/de/radar-name.gif?v=0.5.4.7" width="260" alt="Langer Airline-Name im Wechsel">
+<img src="docs/screens/de/radar-colone.gif?v=0.5.4.7" width="260" alt="4-stellige Codes (fiktiv)">
+<img src="docs/screens/de/radar-boden.gif?v=0.5.4.7" width="260" alt="Flugzeug am Boden">
+<img src="docs/screens/de/radar-sq26.gif?v=0.5.4.7" width="260" alt="Singapore Airlines SIN – FRA – JFK">
+<img src="docs/screens/de/radar-islandhopper.gif?v=0.5.4.7" width="260" alt="United Island Hopper mit 7 Flughäfen">
+<img src="docs/screens/de/radar-apollo.gif?v=0.5.4.7" width="260" alt="Militär (fiktiv)">
 </p>
 
 <p align="center">
 <sub><b>Notfälle · fiktive Daten</b></sub><br>
-<img src="docs/screens/de/radar-galactica.gif?v=0.5.4.6" width="260" alt="Entführung, Squawk 7500 (fiktiv)">
-<img src="docs/screens/de/radar-red2.gif?v=0.5.4.6" width="260" alt="Funkausfall, Squawk 7600 (fiktiv)">
-<img src="docs/screens/de/radar-karma.gif?v=0.5.4.6" width="260" alt="Notfall (fiktiv)">
+<img src="docs/screens/de/radar-galactica.gif?v=0.5.4.7" width="260" alt="Entführung, Squawk 7500 (fiktiv)">
+<img src="docs/screens/de/radar-red2.gif?v=0.5.4.7" width="260" alt="Funkausfall, Squawk 7600 (fiktiv)">
+<img src="docs/screens/de/radar-karma.gif?v=0.5.4.7" width="260" alt="Notfall (fiktiv)">
 </p>
 
 <p align="center">
 <sub><b>Datenstand</b></sub><br>
-<img src="docs/screens/de/radar-gelb.gif?v=0.5.4.6" width="260" alt="Letzter Stand nach fehlgeschlagenem Abruf">
-<img src="docs/screens/de/radar-pause.gif?v=0.5.4.6" width="260" alt="Abrufpause">
-<img src="docs/screens/de/radar-grau.gif?v=0.5.4.6" width="260" alt="Keine Daten mehr">
+<img src="docs/screens/de/radar-gelb.gif?v=0.5.4.7" width="260" alt="Letzter Stand nach fehlgeschlagenem Abruf">
+<img src="docs/screens/de/radar-pause.gif?v=0.5.4.7" width="260" alt="Abrufpause">
+<img src="docs/screens/de/radar-grau.gif?v=0.5.4.7" width="260" alt="Keine Daten mehr">
 </p>
 
 <p align="center">
 <sub><b>Ohne Flugzeug</b></sub><br>
-<img src="docs/screens/de/radar-leer.png?v=0.5.4.6" width="260" alt="Kein Flugzeug im Radius">
-<img src="docs/screens/de/radar-fehler.png?v=0.5.4.6" width="260" alt="Abruf fehlgeschlagen">
-<img src="docs/screens/de/radar-abgelehnt.png?v=0.5.4.6" width="260" alt="adsb.lol: Zugriff abgelehnt">
+<img src="docs/screens/de/radar-leer.png?v=0.5.4.7" width="260" alt="Kein Flugzeug im Radius">
+<img src="docs/screens/de/radar-suche.png?v=0.5.4.7" width="260" alt="Suche nach einer Pause">
+<img src="docs/screens/de/radar-suche-neu.png?v=0.5.4.7" width="260" alt="Suche: neuer Versuch">
+<img src="docs/screens/de/radar-fehler.png?v=0.5.4.7" width="260" alt="Abruf fehlgeschlagen">
+<img src="docs/screens/de/radar-abgelehnt.png?v=0.5.4.7" width="260" alt="adsb.lol: Zugriff abgelehnt">
 </p>
 
 | Radar-Fußzeile | Bedeutung |
@@ -128,6 +130,8 @@ Im Reiter **Flugradar** lässt sich die Anzeige anpassen:
 | `LETZTER STAND 16s` | Abruf fehlgeschlagen, vorheriger Stand wird weiter gezeigt |
 | `ABRUFPAUSE 46s` | adsb.lol bittet um eine Pause; Alter des letzten Abrufs |
 | `KEIN FLUGZEUG` | Abfrage erfolgreich, aber nichts im Umkreis |
+| `SUCHE` | nach einer Pause: noch kein frischer Abruf, das alte Flugzeug bleibt verborgen |
+| `NEUER VERSUCH` | der erste Abruf nach der Pause ist fehlgeschlagen; nächster Versuch folgt |
 | `ADSB.LOL / Zugriff abgelehnt` | adsb.lol lehnt ab (401/403/426); lange Pause statt ständiger Wiederholung |
 
 | Punkt in der Fußzeile | Bedeutung |
@@ -145,22 +149,22 @@ Ein bestimmter Flug mit Plan- und Ist-Zeiten, Status, Flugzeit sowie Live-Höhe 
 
 <p align="center">
 <sub><b>Im Flug</b></sub><br>
-<img src="docs/screens/de/flugtracker.png?v=0.5.4.6" width="260" alt="Flug-Tracker LH1178">
-<img src="docs/screens/de/flugtracker-status.gif?v=0.5.4.6" width="260" alt="Status geplant, in der Luft, gelandet">
-<img src="docs/screens/de/flugtracker-umgeleitet.png?v=0.5.4.6" width="260" alt="Flug umgeleitet">
+<img src="docs/screens/de/flugtracker.png?v=0.5.4.7" width="260" alt="Flug-Tracker LH1178">
+<img src="docs/screens/de/flugtracker-status.gif?v=0.5.4.7" width="260" alt="Status geplant, in der Luft, gelandet">
+<img src="docs/screens/de/flugtracker-umgeleitet.png?v=0.5.4.7" width="260" alt="Flug umgeleitet">
 </p>
 
 <p align="center">
 <sub><b>Sonderfälle</b></sub><br>
-<img src="docs/screens/de/flugtracker-annulliert.png?v=0.5.4.6" width="260" alt="Flug annulliert">
-<img src="docs/screens/de/flugtracker-nicht-gefunden.png?v=0.5.4.6" width="260" alt="Flug nicht gefunden">
-<img src="docs/screens/de/flugtracker-fehler.png?v=0.5.4.6" width="260" alt="Tracker-Fehler">
+<img src="docs/screens/de/flugtracker-annulliert.png?v=0.5.4.7" width="260" alt="Flug annulliert">
+<img src="docs/screens/de/flugtracker-nicht-gefunden.png?v=0.5.4.7" width="260" alt="Flug nicht gefunden">
+<img src="docs/screens/de/flugtracker-fehler.png?v=0.5.4.7" width="260" alt="Tracker-Fehler">
 </p>
 
 <p align="center">
 <sub><b>Einrichtung</b></sub><br>
-<img src="docs/screens/de/flugtracker-ohne-flug.png?v=0.5.4.6" width="260" alt="Flug-Tracker ohne Flugnummer">
-<img src="docs/screens/de/flugtracker-ohne-key.png?v=0.5.4.6" width="260" alt="Flug-Tracker ohne API-Key">
+<img src="docs/screens/de/flugtracker-ohne-flug.png?v=0.5.4.7" width="260" alt="Flug-Tracker ohne Flugnummer">
+<img src="docs/screens/de/flugtracker-ohne-key.png?v=0.5.4.7" width="260" alt="Flug-Tracker ohne API-Key">
 </p>
 
 </details>
@@ -170,11 +174,11 @@ Ein bestimmter Flug mit Plan- und Ist-Zeiten, Status, Flugzeit sowie Live-Höhe 
 Uhrzeit und Datum in der gewählten Zeitzone – als **Pixel**, als **Radiowecker** mit Segmentziffern oder als **Modern** mit Rahmen und Tagesbalken. Einstellbar sind Farbe, Sekunden, blinkender Doppelpunkt, Datum und das Nachleuchten der Segmente. Das Format **12 oder 24 Stunden** gilt für alle Ansichten, auch für die Fußzeilen, den Flug-Tracker und die Sonnenzeiten.
 
 <p align="center">
-<img src="docs/screens/de/uhr.png?v=0.5.4.6" width="260" alt="Radiowecker mit Datum">
-<img src="docs/screens/de/uhr-blinken.gif?v=0.5.4.6" width="260" alt="Radiowecker mit blinkendem Doppelpunkt">
-<img src="docs/screens/de/uhr-12h.png?v=0.5.4.6" width="260" alt="Radiowecker im 12-Stunden-Format">
-<img src="docs/screens/de/uhr-modern.gif?v=0.5.4.6" width="260" alt="Uhr im Stil Modern">
-<img src="docs/screens/de/uhr-pixel.png?v=0.5.4.6" width="260" alt="Uhr im Stil Pixel">
+<img src="docs/screens/de/uhr.png?v=0.5.4.7" width="260" alt="Radiowecker mit Datum">
+<img src="docs/screens/de/uhr-blinken.gif?v=0.5.4.7" width="260" alt="Radiowecker mit blinkendem Doppelpunkt">
+<img src="docs/screens/de/uhr-12h.png?v=0.5.4.7" width="260" alt="Radiowecker im 12-Stunden-Format">
+<img src="docs/screens/de/uhr-modern.gif?v=0.5.4.7" width="260" alt="Uhr im Stil Modern">
+<img src="docs/screens/de/uhr-pixel.png?v=0.5.4.7" width="260" alt="Uhr im Stil Pixel">
 </p>
 
 </details>
@@ -183,22 +187,24 @@ Uhrzeit und Datum in der gewählten Zeitzone – als **Pixel**, als **Radiowecke
 
 Vier unabhängige Countdowns in Tagen, in Stunden : Minuten : Sekunden oder in Minuten : Sekunden, jeweils mit eigenem Titel und eigenen Farben. Die Ziffern sehen aus wie bei einem LED-Radiowecker, nicht leuchtende Segmente glimmen schwach mit.
 
+- **Nachleuchten:** eine Einstellung für alle vier Countdowns und beide Darstellungen; ausgeschaltet bleiben die nicht leuchtenden Segmente dunkel.
 - **Darstellung:** „Klassisch“ oder „Modern“ mit Rahmen, „T-MINUS“/„T-PLUS“ und Fortschrittsbalken.
 - **Vorzeichen:** „−“ vor dem Ziel und „+“ danach – oder ohne Vorzeichen; dann bleibt der Countdown bei null stehen.
 - **Startdatum** (Tage): bestimmt den Fortschrittsbalken der Darstellung „Modern“; bleibt es leer, wird beim Start der heutige Tag eingetragen.
 
 <p align="center">
 <sub><b>Klassisch</b></sub><br>
-<img src="docs/screens/de/countdown-tage.png?v=0.5.4.6" width="260" alt="Countdown in Tagen">
-<img src="docs/screens/de/countdown-timer.gif?v=0.5.4.6" width="260" alt="Countdown-Timer">
-<img src="docs/screens/de/countdown-plus.gif?v=0.5.4.6" width="260" alt="Countdown nach dem Ziel">
+<img src="docs/screens/de/countdown-tage.png?v=0.5.4.7" width="260" alt="Countdown in Tagen">
+<img src="docs/screens/de/countdown-ohne-nachleuchten.png?v=0.5.4.7" width="260" alt="Countdown ohne Nachleuchten">
+<img src="docs/screens/de/countdown-timer.gif?v=0.5.4.7" width="260" alt="Countdown-Timer">
+<img src="docs/screens/de/countdown-plus.gif?v=0.5.4.7" width="260" alt="Countdown nach dem Ziel">
 </p>
 
 <p align="center">
 <sub><b>Modern</b></sub><br>
-<img src="docs/screens/de/countdown-tage-modern.png?v=0.5.4.6" width="260" alt="Modern in Tagen">
-<img src="docs/screens/de/countdown-modern.gif?v=0.5.4.6" width="260" alt="Modern als Timer">
-<img src="docs/screens/de/countdown-modern-null.png?v=0.5.4.6" width="260" alt="Modern am Ziel ohne Vorzeichen">
+<img src="docs/screens/de/countdown-tage-modern.png?v=0.5.4.7" width="260" alt="Modern in Tagen">
+<img src="docs/screens/de/countdown-modern.gif?v=0.5.4.7" width="260" alt="Modern als Timer">
+<img src="docs/screens/de/countdown-modern-null.png?v=0.5.4.7" width="260" alt="Modern am Ziel ohne Vorzeichen">
 </p>
 
 </details>
@@ -208,14 +214,14 @@ Vier unabhängige Countdowns in Tagen, in Stunden : Minuten : Sekunden oder in M
 Beim ersten Start öffnet PixelStop den WLAN-Hotspot **PixelStop-Setup**; unter 192.168.4.1 lassen sich WLAN und alles Weitere einstellen. Danach verbindet sich der Würfel und zeigt kurz seine Adresse. Stürzt die Firmware mehrmals kurz hintereinander ab, startet der **Rettungsmodus**: keine Abrufe, aber Webinterface und Firmware-Update bleiben erreichbar.
 
 <p align="center">
-<img src="docs/screens/de/setup.png?v=0.5.4.6" width="260" alt="Setup-Hotspot">
-<img src="docs/screens/de/start.gif?v=0.5.4.6" width="260" alt="Start und WLAN-Verbindung">
-<img src="docs/screens/de/rettung.png?v=0.5.4.6" width="260" alt="Rettungsmodus">
+<img src="docs/screens/de/setup.png?v=0.5.4.7" width="260" alt="Setup-Hotspot">
+<img src="docs/screens/de/start.gif?v=0.5.4.7" width="260" alt="Start und WLAN-Verbindung">
+<img src="docs/screens/de/rettung.png?v=0.5.4.7" width="260" alt="Rettungsmodus">
 </p>
 
 </details>
 
-## Entwicklungsstand: v0.5.4.6-dev
+## Entwicklungsstand: v0.5.4.7-dev
 
 | Bereich | Stand |
 | --- | --- |
@@ -232,6 +238,7 @@ Beim ersten Start öffnet PixelStop den WLAN-Hotspot **PixelStop-Setup**; unter 
 | Flug-Tracker mit eigenem aviationstack-Schlüssel | ⏳ nicht vollständig auf Hardware getestet |
 | Countdown im Radiowecker-Stil, Darstellung „Modern“, Vorzeichen wählbar | ⏳ Hardwaretest offen (v0.5.4.5) |
 | Uhr als Pixel, Radiowecker oder Modern, 12/24 h überall, Webinterface in aufklappbaren Karten | ⏳ Hardwaretest offen (v0.5.4.6) |
+| Countdown: Nachleuchten abschaltbar; Radar zeigt nach einer Pause „Suche“ statt eines alten Flugzeugs | ⏳ Hardwaretest offen (v0.5.4.7) |
 
 Alle Änderungen stehen in [`CHANGELOG.md`](CHANGELOG.md), offene Prüfungen in [`ROADMAP.md`](ROADMAP.md).
 

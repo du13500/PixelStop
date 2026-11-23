@@ -94,6 +94,7 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
    await page.waitForFunction(()=>document.querySelector('.toast')?.textContent.includes('gespeichert'));
    assert(posted&&posted.timeZone==='Asia/Tokyo','Selected zone missing in save payload');
    assert(posted.clockStyle===1&&posted.clock12h===true&&posted.clockSeconds===true&&posted.clockDate===true&&/^#[0-9a-f]{6}$/.test(posted.clockColor),'Clock settings missing in save payload');
+   assert.strictEqual(posted.countdownGhost,true,'Countdown afterglow missing in save payload');
    assert.strictEqual(posted.planePlaceToggleSec,0,'No-switch option missing in save payload');
    assert.strictEqual(posted.planeShowAge,false,'Disabled age missing in save payload');
    await page.waitForFunction(()=>document.getElementById('timeZone').value==='Asia/Tokyo');
@@ -135,6 +136,7 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
     await page.waitForFunction(()=>document.querySelector('.toast')?.textContent.includes('Countdown'));
     if(await page.locator('#cdCard0').evaluate(e=>e.classList.contains('collapsed')))await page.locator('#cdCard0 h2.fold').click();
     await page.selectOption('#cdType0','2');assert(!(await page.locator('#cdStartDate0').isVisible()),'No start date for timers');
+    assert(await page.locator('#countdownGhost').isChecked(),'Countdown afterglow is on by default');
     // Sigma-delta dimming is gone (it stopped Wi-Fi, v0.5.4).
     assert.strictEqual(await page.locator('#backlightMode').count(),0);
    }

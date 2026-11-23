@@ -1,5 +1,20 @@
 # Änderungen
 
+## v0.5.4.7-dev
+
+**Countdown**
+- **Nachleuchten abschaltbar:** Im Reiter *Countdown* gibt es die Karte *Darstellung* mit der Option „Nachleuchten“. Sie gilt für alle vier Countdowns und beide Darstellungen (Klassisch und Modern). Ausgeschaltet bleiben die nicht leuchtenden Segmente dunkel; Standard ist weiter „an“.
+
+**Flugradar: ehrlich beim Zurückkommen in die Rotation**
+- **Suche statt altem Flugzeug:** Wird das Radar wieder aktiv (Vorabruf vor dem Programmwechsel oder „Jetzt anzeigen“) und der letzte erfolgreiche Abruf ist 30 s oder älter, zeigt PixelStop kein altes Flugzeug mehr. Stattdessen steht „SUCHE FLUGZEUGE“ mit dem Ortsnamen auf dem Display, bis der erste frische Abruf da ist. Ist der letzte Stand jünger, läuft alles wie bisher.
+- **Neuer Versuch statt rotem Bildschirm:** Scheitert der erste Abruf, bleibt die Suche stehen, die Fußzeile zeigt „NEUER VERSUCH“ mit gelbem Punkt. Der rote Bildschirm „keine aktuellen Daten“ kommt erst nach **drei Fehlschlägen in Folge** (eine Abrufpause des Anbieters zählt nicht), sofort bei „Zugriff abgelehnt“ (401/403/426) und wie bisher, wenn seit dem Start noch nie Daten kamen. Bis dahin werden die Routen des alten Flugzeugs nicht weiter angefragt.
+- **Speicherabbruch ist kein Fehler:** Bricht ein Abruf an der eigenen Speicherreserve ab (Heap-Prüfung vor dem Abruf, „JSON-Speicher knapp“ oder JSON NoMemory, siehe Log vom 23.11.), zählt das als „übersprungen“. Die Daten bleiben unverändert, es wird kein Fehler gezählt, und der nächste Versuch folgt nach etwa 10 s statt nach 45 s bzw. dem eingestellten Intervall – nie schneller, als Kontingent und Mindestabstand erlauben. Hält der Engpass über sechs Versuche an, zählt er doch als Fehlschlag.
+- Tests: `tools/test_radar.py` (Suche, drei Fehlschläge, Zugriff abgelehnt, Anbieterpause, Überspringen mit 10-s-Wiederholung, Grenzen durch Kontingent), `tools/test_display.py` (Suchanzeige, Fußzeilen, keine Neuzeichnung ohne Änderung), `tools/test_radar_schedule.py` (Zeitplan unverändert).
+
+**README und Bilder**
+- Neue Bilder: *Suche* und *Neuer Versuch* (Radar, Gruppe „Ohne Flugzeug“) sowie *Ohne Nachleuchten* (Countdown); Fußzeilen-Tabelle des Radars um „SUCHE“ und „NEUER VERSUCH“ ergänzt, Bildlinks mit `?v=0.5.4.7`.
+- Das Hilfsskript für die Bildbereiche liegt jetzt im Repo: `tools/readme_galerie.py` (Aufruf im Wurzelverzeichnis: `python3 tools/readme_galerie.py .`).
+
 ## v0.5.4.6-dev
 
 **Uhr**

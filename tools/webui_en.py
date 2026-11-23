@@ -198,6 +198,8 @@ EXACT.update({
  "Nachleuchten": "Afterglow",
  "Nachleuchten: Unbeleuchtete Segmente glimmen schwach mit, wie bei einem echten Radiowecker. Ohne Sekunden und Datum werden die Ziffern größer.":
    "Afterglow: unlit segments glow faintly, like on a real clock radio. Without seconds and date the digits get larger.",
+ "Nachleuchten: Nicht leuchtende Segmente glimmen schwach mit. Die Einstellung gilt für alle vier Countdowns und beide Darstellungen.":
+   "Afterglow: unlit segments glow faintly. The setting applies to all four countdowns and both styles.",
  "Notfälle (Squawk 7500/7600/7700) werden nie ausgeblendet, Flugzeuge ohne Kategorie ebenfalls nicht.": "Emergencies (squawk 7500/7600/7700) and aircraft without a category are never hidden.",
  "Ohne Key zeigt der Tracker „API-KEY FEHLT“.": "Without a key the tracker shows “API KEY MISSING”.", "Ortsname im Kopf anzeigen": "Show place name in the header",
  "Ortsnamen auf Deutsch anzeigen, wenn verfügbar": "Show place names in German when available", "Pixel": "Pixel",

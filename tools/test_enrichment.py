@@ -16,7 +16,7 @@ code=r'''
 #include <cstdint>
 static uint32_t now=1000;uint32_t millis(){return now;}
 struct FlightSnapshot {bool valid=true,error=false,onGround=false,altitudeKnown=false;int altitudeFt=0;char hex[8]="abc",callsign[12]="DLH062",airline[64]={},typeName[80]={},typeCode[8]={},category[4]={},origin[4]={},destination[4]={};FlightRoute route={};};
-static FlightSnapshot g_f;static bool g_providerPaused=false;
+static FlightSnapshot g_f;static bool g_providerPaused=false,g_searching=false;
 static RoutePoint g_position={51,13};
 static Enrichment g_cache[3]={};static uint8_t g_cacheNext=0;static uint32_t g_lastEnrichmentMs=0;
 static const char *g_routeStatus="",*g_routeSource="",*g_stage="";

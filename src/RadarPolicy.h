@@ -30,9 +30,26 @@ static constexpr uint16_t RADAR_MIN_POLL_SEC = 10;
 // adsb.lol has two servers and a new attempt may reach the other one. Quota
 // limits (AdsbQuota.h) still apply on top.
 static constexpr uint32_t RADAR_RETRY_MS = 45000;
-static inline uint32_t radarRetryIntervalMs(uint32_t interval, bool connectionFailed, uint8_t failures) {
+// A request stopped by our own memory reserve (heap check, JSON NoMemory) is skipped,
+// not failed: the next attempt comes after about 10 s. Quota limits still apply on top.
+// After RADAR_MAX_SKIPS in a row the shortage counts as a failure.
+static constexpr uint32_t RADAR_SKIP_RETRY_MS = 10000;
+static constexpr uint8_t RADAR_MAX_SKIPS = 6;
+static inline uint32_t radarRetryIntervalMs(uint32_t interval, bool connectionFailed, uint8_t failures, bool skipped = false) {
+  if (skipped && interval > RADAR_SKIP_RETRY_MS) return RADAR_SKIP_RETRY_MS;
   return connectionFailed && failures >= 1 && failures <= 2 && interval > RADAR_RETRY_MS ? RADAR_RETRY_MS : interval;
 }
 static inline bool radarExpired(uint32_t now, uint32_t lastOk, bool valid) {
   return valid && (uint32_t)(now - lastOk) >= RADAR_MAX_AGE_MS;
+}
+// Back in the rotation after a pause: data older than 30 s is not shown any more.
+// The radar searches until the first fresh answer; the red "no current data" screen
+// comes only after RADAR_SEARCH_FAILS failed requests in a row, at once when the
+// provider refuses the key, or when there never was any data (lastOk == 0).
+static constexpr uint8_t RADAR_SEARCH_FAILS = 3;
+static inline bool radarStaleOnEntry(uint32_t now, uint32_t lastOk) {
+  return lastOk && (uint32_t)(now - lastOk) >= RADAR_MAX_AGE_MS;
+}
+static inline bool radarSearchGivesUp(uint8_t failures, bool accessDenied) {
+  return accessDenied || failures >= RADAR_SEARCH_FAILS;
 }
