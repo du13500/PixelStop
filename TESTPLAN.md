@@ -50,7 +50,7 @@ v0.5.4.6-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnt
 | | belegt | von | Anteil |
 | --- | --- | --- | --- |
 | Statischer RAM | 51.484 Byte | 81.920 Byte | 62,8 % |
-| Flash | 738.235 Byte | 1.044.464 Byte | 70,7 % |
+| Flash | 743.895 Byte | 1.044.464 Byte | 71,2 % |
 
 Bis zur Grenze bleiben 116 Byte. Das komprimierte Webinterface spart gegenüber v0.5.3.1 rund 42 KB Flash. `tools/check_ram.py` lässt den Build ab 51.600 Byte statischem RAM scheitern, damit für TLS-Abrufe genug Speicher frei bleibt.
 
