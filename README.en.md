@@ -6,10 +6,8 @@
 Bought as a small Wi-Fi cube with a rather modest stock firmware – and from day one with the plan to turn it into something of my own.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.4.5--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.4.6--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
-![Hardware test](https://img.shields.io/badge/hardware%20test-v0.5.4.5%20pending-yellow)
-![Hobby project](https://img.shields.io/badge/hobby%20project-non--commercial-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
 
@@ -179,7 +177,7 @@ Four independent countdowns in days, in hours : minutes : seconds or in minutes 
 
 </details>
 
-## Status: v0.5.4.5-dev
+## Status: v0.5.4.6-dev
 
 | Area | Status |
 | --- | --- |

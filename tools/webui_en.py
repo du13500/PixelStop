@@ -184,12 +184,45 @@ EXACT = {
  "Positionsdaten fehlen": "position data missing", "keine Flugzeuge": "no aircraft", "ok": "ok", "Rettungsmodus aktiv": "rescue mode active",
 }
 
+# v0.5.4.6: collapsible cards, clock tab, status list
+EXACT.update({
+ "12 Stunden (2:05 PM)": "12 hours (2:05 PM)", "24 Stunden (14:05)": "24 hours (14:05)", "API-Key": "API key",
+ "API-Key und Datenquelle": "API key and data source", "Aktuelles Flugzeug": "Current aircraft", "Darstellung und Abruf": "Display and refresh",
+ "Datum": "Date", "Die 3-Tage-Vorhersage nutzt denselben Ort und dieselben Einstellungen.": "The 3-day forecast uses the same place and settings.",
+ "Die Aktualisierung ist ein Wunschwert: PixelStop bleibt immer unter den Grenzen von adsb.lol.": "The refresh is a target value: PixelStop always stays within the adsb.lol limits.",
+ "Doppelpunkt blinkt": "Blinking colon", "Farbe der Uhrzeit": "Clock colour", "Flug": "Flight", "Format": "Format",
+ "Freier Speicher": "Free memory", "Geprüfte Flugzeuge": "Aircraft checked", "Gerät": "Device", "Haltestellen-ID": "Stop ID",
+ "Helligkeit": "Brightness", "Live vom Verkehrsverbund Oberelbe (VVO). Haltestelle suchen und Treffer wählen.": "Live from Verkehrsverbund Oberelbe (VVO). Search for a stop and pick a result.",
+ "Mit Filter fragt PixelStop alle Flugzeuge im Radius ab und zeigt das nächste passende. Die Antwort ist größer, bei großem Radius dauert der Abruf etwas länger.":
+   "With a filter, PixelStop requests all aircraft within the radius and shows the nearest match. The response is larger, so with a large radius the request takes a little longer.",
+ "Nachleuchten": "Afterglow",
+ "Nachleuchten: Unbeleuchtete Segmente glimmen schwach mit, wie bei einem echten Radiowecker. Ohne Sekunden und Datum werden die Ziffern größer.":
+   "Afterglow: unlit segments glow faintly, like on a real clock radio. Without seconds and date the digits get larger.",
+ "Notfälle (Squawk 7500/7600/7700) werden nie ausgeblendet, Flugzeuge ohne Kategorie ebenfalls nicht.": "Emergencies (squawk 7500/7600/7700) and aircraft without a category are never hidden.",
+ "Ohne Key zeigt der Tracker „API-KEY FEHLT“.": "Without a key the tracker shows “API KEY MISSING”.", "Ortsname im Kopf anzeigen": "Show place name in the header",
+ "Ortsnamen auf Deutsch anzeigen, wenn verfügbar": "Show place names in German when available", "Pixel": "Pixel",
+ "PixelStop teilt die Anfragen so ein, dass die Grenzen von adsb.lol (pro Stunde, Tag, Woche und Monat) nie überschritten werden, und fragt nur ab, während das Radar angezeigt wird. Das tatsächliche Intervall steht unter System → Status.":
+   "PixelStop spreads its requests so that the adsb.lol limits (per hour, day, week and month) are never exceeded, and only requests data while the radar is shown. The actual interval is shown under System → Status.",
+ "Radiowecker": "Clock radio", "Radius und Abruf": "Radius and refresh", "Schlüssel": "Key",
+ "Sommer- und Winterzeit werden nach den Regeln der Zone umgestellt.": "Daylight saving time follows the rules of the zone.", "Standort": "Location",
+ "Vier dauerhaft gespeicherte Countdowns. Tage zählen nach Kalendertagen; ohne Vorzeichen bleibt ein Countdown bei null stehen.":
+   "Four permanently stored countdowns. Days count calendar days; without a sign a countdown stops at zero.",
+ "Wechsel mit „In der Nähe“": "Alternate with “Nearby”", "Zeit": "Time",
+ "Zeitzone und Format gelten überall: Uhr, Fußzeilen, Nachtmodus, Wetter und Countdowns.": "Time zone and format apply everywhere: clock, footers, night mode, weather and countdowns.",
+ "gilt für alle Darstellungen": "applies to all styles", "ohne Schlüssel": "without key", "vorhanden": "present",
+ "Laufzeit": "Uptime", "Neuverbindungen": "Reconnects", "Signal": "Signal", "Datenquellen": "Data sources", "Abruf": "Request",
+ "Intervall": "Interval", "Route": "Route", "Stunde": "Hour", "Tag": "Day", "Woche": "Week", "Monat": "Month", "adsb.lol-Kontingent": "adsb.lol quota",
+ "Netz": "Network", "Fehler": "Error", "bereit": "ready", "Daten vorhanden": "data available",
+})
+
+
 PREFIX = {
  "Anfrage fehlgeschlagen (": "Request failed (", "Wird für ": "Showing for ", "Ausgewählt: ": "Selected: ", "Kartenposition übernommen: ": "Map position applied: ",
  "Ortsdaten © ": "Place data © ", "Ortsdienst antwortet mit HTTP ": "Place service answered HTTP ", "Position ausgewählt · ": "Position selected · ",
 }
 
 FRAGMENTS = {
+ " Abfahrten": " departures", " · mind. ": " · min. ",
  " · Marker auf Ortsmitte gesetzt": " · marker set to place centre", " · Ortsname wird ermittelt…": " · looking up place name…",
  " Optional einen Anzeigenamen eingeben.": " Optionally enter a display name.",
  " s angezeigt · danach geht die Rotation weiter": " s · then the rotation continues",
