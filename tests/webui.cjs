@@ -21,8 +21,14 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
    await page.goto('http://smalltv.test/');
    await page.waitForFunction(()=>document.getElementById('nightStart').value==='22:00');
    assert.strictEqual(await page.locator('#timeZone').inputValue(),'Europe/Berlin');
-   assert(!(await page.locator('#geoAdvanced').evaluate(e=>e.open)));
-   assert(await page.locator('#serviceInfo').evaluate(e=>e.previousElementSibling.textContent.includes('Firmware-Update')));
+   // Collapsible cards (v0.5.4.6): only the first card of a tab is open at first;
+   // services stay last and closed. Then everything is opened for the checks below.
+   assert(await page.locator('#geoAdvanced').evaluate(e=>e.classList.contains('collapsed')),'Advanced settings start closed');
+   assert(await page.locator('#serviceInfo').evaluate(e=>e.parentElement.lastElementChild===e&&e.classList.contains('collapsed')));
+   assert(!(await page.locator('[data-k="rot"]').evaluate(e=>e.classList.contains('collapsed'))),'First card of a tab starts open');
+   assert(await page.locator('[data-k="light"]').evaluate(e=>e.classList.contains('collapsed')));
+   await page.evaluate(()=>document.querySelectorAll('.card.fold.collapsed').forEach(c=>c.querySelector('h2').click()));
+   assert(await page.evaluate(()=>JSON.parse(localStorage.getItem('pixelstop.fold')).light===true),'Open cards are remembered');
    assert(!(await page.locator('#wetter').textContent()).includes('Ortsauswahl über diesen Browser'));
    assert(!(await page.locator('#flugradar').textContent()).includes('Ortsauswahl über diesen Browser'));
 
@@ -30,11 +36,8 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
    assert.strictEqual(await page.locator('#brightness').getAttribute('min'),'1');
    assert.strictEqual(await page.locator('#nightBrightness').getAttribute('min'),'1');
    assert.strictEqual(await page.locator('#timeZone option').count(),50);
-   const tzOrder=await page.evaluate(()=>{
-    const cards=[...document.querySelectorAll('#anzeige .card')];
-    return cards.map(c=>c.querySelector('h2')?.textContent);
-   });
-   assert(tzOrder.indexOf('Zeitzone')<tzOrder.indexOf('Nachtmodus'));
+   assert.strictEqual(await page.locator('#uhr #timeZone').count(),1,'Time zone lives on the clock tab');
+   assert.strictEqual(await page.locator('[data-k="light"] #nightStart').count(),1,'Night mode belongs to brightness');
    const layout=await page.evaluate(()=>{
     const a=document.getElementById('nightStart'),b=document.getElementById('nightEnd');
     const rect=e=>{const r=e.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}};
@@ -71,8 +74,8 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
    assert(await page.locator('#planeShowAge').isChecked(),'Age defaults to enabled for older settings');
    await page.locator('#planeShowAge').uncheck();
    const style=await page.evaluate(()=>{
-    const h=getComputedStyle(document.querySelector('#flugradar .subhead'));
-    const l=getComputedStyle(document.querySelector('#flugradar label'));
+    const h=getComputedStyle(document.querySelector('#abfahrten .subhead'));
+    const l=getComputedStyle(document.querySelector('#abfahrten label'));
     return {head:[h.color,h.fontSize,h.fontWeight],label:[l.color,l.fontSize,l.fontWeight]};
    });
    assert.deepStrictEqual(style.head,style.label);
@@ -81,11 +84,16 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
     await page.locator('#nightStart').scrollIntoViewIfNeeded();
     await page.screenshot({path:path.join(process.env.SMALLTV_SCREENSHOTS,`night-${width}.png`)});
    }
-   await go(page,'anzeige');
+   await go(page,'uhr');
    await page.locator('#timeZone').selectOption('Asia/Tokyo');
+   // Clock: afterglow only for segment styles; all clock settings are saved.
+   assert(await page.locator('#clockGhost').isDisabled(),'Afterglow off for the pixel style');
+   await page.locator('#clockStyle').selectOption('1');assert(await page.locator('#clockGhost').isEnabled());
+   await page.locator('#clock12h').selectOption('1');await page.locator('#clockSeconds').check();
    await page.getByRole('button',{name:'Einstellungen speichern',exact:true}).click();
    await page.waitForFunction(()=>document.querySelector('.toast')?.textContent.includes('gespeichert'));
    assert(posted&&posted.timeZone==='Asia/Tokyo','Selected zone missing in save payload');
+   assert(posted.clockStyle===1&&posted.clock12h===true&&posted.clockSeconds===true&&posted.clockDate===true&&/^#[0-9a-f]{6}$/.test(posted.clockColor),'Clock settings missing in save payload');
    assert.strictEqual(posted.planePlaceToggleSec,0,'No-switch option missing in save payload');
    assert.strictEqual(posted.planeShowAge,false,'Disabled age missing in save payload');
    await page.waitForFunction(()=>document.getElementById('timeZone').value==='Asia/Tokyo');
@@ -215,8 +223,6 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
     assert.strictEqual(limited,1,'Provider pause must apply to both search/map programs');
     assert(await page.locator('#saveBtn').isEnabled(),'Provider pause must release save');
     await go(page,'system');
-    assert(!(await page.locator('#geoAdvanced').evaluate(e=>e.open)),'Advanced settings must start closed');
-    await page.locator('#geoAdvanced summary').click();
     await page.locator('#geoProviderUrl').fill('https://geo.example.test/nominatim/');await page.locator('#geoProviderBtn').click();
     assert.strictEqual(await page.evaluate(()=>localStorage.getItem('smalltv.geoProvider')),'https://geo.example.test/nominatim/','Provider must be replaceable without firmware update');
     // Wi-Fi names are shown as text (no markup) and keep blanks at the end.

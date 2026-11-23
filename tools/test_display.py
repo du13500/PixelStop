@@ -23,6 +23,7 @@ pre=r'''
 #include <cmath>
 #include <algorithm>
 #include <ctime>
+#include <cctype>
 #include "PixelFont.h"
 #include "FlightRoute.h"
 #include "AircraftLabel.h"
@@ -44,6 +45,10 @@ struct String:std::string {
  String substring(size_t a,size_t b)const{return substr(a,b-a);}
  int indexOf(const String& q,int start=0)const{auto p=find(q,start);return p==npos?-1:(int)p;}
  int indexOf(char q,int start=0)const{auto p=find(q,start);return p==npos?-1:(int)p;}
+ int lastIndexOf(char q)const{auto p=rfind(q);return p==npos?-1:(int)p;}
+ String substring(size_t a)const{return substr(a);}
+ void replace(char a,char b){for(auto& c:*this)if(c==a)c=b;}
+ void toUpperCase(){for(auto& c:*this)c=toupper((unsigned char)c);}
 };
 struct Draw {String text;int y,size,x,color;Draw(String t,int yy,int ss,int xx=-1,int cc=-1):text(t),y(yy),size(ss),x(xx),color(cc){}};
 struct Rect {int x,y,w,h,color;};
@@ -80,13 +85,16 @@ struct CountdownSlot{String title,titleColor="#ffffff",countColor="#ffffff";uint
 struct SegLayout{int h,w,t,gap,colon,total;};
 uint8_t barValue=255;uint8_t countdownProgress(const CountdownSlot&){return barValue;}
 String countdownUnit(uint8_t t){return t==0?"TAGE":(t==1?"STD MIN SEK":"MIN SEK");}
+String timerValue="00:01:09";
 enum Language:uint8_t{LANG_DE=0,LANG_EN=1};
-struct Settings{uint8_t lang=LANG_DE;String stopPlace;String trackedFlightNo,aviationstackKey,planePlace,planeDisplayName,stopName,stopId,weatherDisplayName,weatherCity,timeZone;bool planeShowPlace=false,planeShowAge=true,departureCompactDestinations=false,departureAbbreviate=true,departureDropTown=true,weatherForecast=true,weatherFahrenheit=false,weatherTempColor=false;uint16_t planePlaceToggleSec=10;uint8_t planeOperator=0,planeSpeed=0;bool planeTrend=false,planeMarkMilitary=true;uint8_t departureCount=5;CountdownSlot countdown[4];} cfg;
+struct Settings{uint8_t lang=LANG_DE;String stopPlace;String trackedFlightNo,aviationstackKey,planePlace,planeDisplayName,stopName,stopId,weatherDisplayName,weatherCity,timeZone;bool planeShowPlace=false,planeShowAge=true,departureCompactDestinations=false,departureAbbreviate=true,departureDropTown=true,weatherForecast=true,weatherFahrenheit=false,weatherTempColor=false;uint16_t planePlaceToggleSec=10;uint8_t planeOperator=0,planeSpeed=0;bool planeTrend=false,planeMarkMilitary=true;uint8_t departureCount=5;CountdownSlot countdown[4];uint8_t clockStyle=0;bool clock12h=false,clockSeconds=false,clockBlink=false,clockDate=true,clockGhost=true;uint32_t clockRgb=0xFFFFFF;} cfg;
+enum ClockStyle:uint8_t{CLOCK_PIXEL=0,CLOCK_RADIO=1,CLOCK_MODERN=2};
+bool pmValue=false;String clockDigits(bool,bool& pm,uint8_t& pct){pm=pmValue;pct=50;return timerValue;}
+String clockDateText(){return "FR  06.11.2026";}
 static String tr(PGM_P de,PGM_P en){return String(cfg.lang==LANG_EN?en:de);}
 #define TR(de,en) tr(PSTR(de),PSTR(en))
 String lastCountdownRendered[4];uint8_t departurePage=0;uint8_t weatherPage=0;
 uint16_t color565(const String&){return C_WHITE;}
-String timerValue="00:01:09";
 String countdownValue(const CountdownSlot&){return timerValue;}
 float displayTempValue(float c){return c;}
 uint16_t weatherTempColor565(float){return C_WHITE;}
@@ -317,11 +325,23 @@ int main(){
  // Clock: unchanged minute/date -> no draw; one changed digit clears one cell.
  timerValue="14:22";clearDraws();drawClock();assert(fullScreens==1);clearDraws();drawClock(false);assert(fullScreens==0&&rects.empty()&&draws.empty());
  timerValue="14:23";clearDraws();drawClock(false);assert(fullScreens==0&&rects.size()==1&&draws.size()==1&&draws[0].text=="3");
+ // 12-hour times everywhere: "2:05 PM", midnight is 12 AM, other texts stay
+ cfg.clock12h=true;assert(clockHHMM("14:05")=="2:05 PM");assert(clockHHMM("00:30")=="12:30 AM");assert(clockHHMM("09:40",false)=="9:40");assert(clockHHMM("N/A")=="N/A");
+ pmValue=true;timerValue="2:05";clearDraws();drawClock();{bool pm=false;for(auto d:draws)if(d.text=="PM")pm=true;assert(pm);}
+ cfg.clock12h=false;pmValue=false;
+ // Clock radio: digits are segments (no text), one changed digit clears one cell
+ cfg.clockStyle=CLOCK_RADIO;timerValue="14:22";clearDraws();drawClock();assert(fullScreens==1);{bool digitText=false;for(auto d:draws)if(d.text.find('1')!=std::string::npos&&d.size>=4)digitText=true;assert(!digitText);}
+ timerValue="14:23";clearDraws();drawClock(false);assert(fullScreens==0);{int clears=0;for(auto q:rects)if(q.color==C_BLACK&&q.h>=40)clears++;assert(clears==1);}
+ // blinking colon ';' keeps the layout (same character class as ':')
+ timerValue="14;23";clearDraws();drawClock(false);assert(fullScreens==0);
+ // Modern: frame lines, "24H" tag and the day bar
+ cfg.clockStyle=CLOCK_MODERN;timerValue="14:23";clearDraws();drawClock();assert(fullScreens==1&&!lines.empty());{bool tag=false;for(auto d:draws)if(d.text=="24H")tag=true;assert(tag);int bar=0;for(auto q:rects)if(q.y==182&&q.h==2&&q.color!=C_BLACK)bar=q.w;assert(bar==88);}
+ cfg.clockStyle=CLOCK_PIXEL;
  puts("Real display: selective radar/new aircraft, stale states, tracker footer, weather motifs and Unicode bounds OK");
 }
 '''
 pre+='\nstatic bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;\nstatic String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;static const int PLANE_FOOTER_X=18;static const char* planeSourceLabel="ADSB.LOL";\nstatic String lastPlaneCall,lastPlaneOperator,lastPlaneRoute,lastPlaneReg;static int8_t lastPlaneTrend=0;\n'
-names=['nextCodepoint','glyphCount','drawSpecialGlyph','textW','crop','stopTown','departureText','beginView','visibleText','visibleCenter','planePlaceTitle','drawPlaneHeader','routePart','drawFlightRoute','samePlane','planeDistance','planeAltitude','compactType','planeFooterLabel','drawPlaneAge','drawPlaneDot','drawPlaneFooter','planeSecondPhase','planeOperatorText','planeSpeedText','drawPlane','drawTrackedFlight','wxLen','drawCloud','drawSun','drawMoon','drawSnowflake','drawWeatherIconAt','drawWeatherIcon','drawSunEventIcon','centerTextIn','drawForecast','drawWeather','departureMinutesNow','drawDepartures','segMask','scale565','segH','segV','segPart','drawSegDigit','segClass','segCharW','segLayout','drawSegString','drawCountdownBar','drawCountdown','drawClock']
+names=['nextCodepoint','glyphCount','drawSpecialGlyph','textW','crop','clockHHMM','rgb565','stopTown','departureText','beginView','visibleText','visibleCenter','planePlaceTitle','drawPlaneHeader','routePart','drawFlightRoute','samePlane','planeDistance','planeAltitude','compactType','planeFooterLabel','drawPlaneAge','drawPlaneDot','drawPlaneFooter','planeSecondPhase','planeOperatorText','planeSpeedText','drawPlane','drawTrackedFlight','wxLen','drawCloud','drawSun','drawMoon','drawSnowflake','drawWeatherIconAt','drawWeatherIcon','drawSunEventIcon','centerTextIn','drawForecast','drawWeather','departureMinutesNow','drawDepartures','segMask','scale565','segH','segV','segPart','drawSegDigit','segClass','segCharW','segLayout','drawSegString','drawModernFrame','drawCountdownBar','drawCountdown','drawClock']
 import collections
 _types=re.findall(r'\{"([A-Z0-9]{2,4})","([^"]*)"\}',(root/'src/AircraftLabel.h').read_text())
 assert len(_types)>=200 and all(len(n)<=18 and n.isascii() for _,n in _types),'aircraft names must be ASCII and at most 18 characters'

@@ -119,6 +119,10 @@ struct Settings {
   uint16_t rotationSec[MODE_COUNT] = {30,20,20,15,20,20,20,20,20,15};
   uint8_t brightness = 70;
   String timeZone = "Europe/Berlin";
+  // Clock view; clock12h applies to every time of day on the display.
+  uint8_t clockStyle = 0;            // ClockStyle
+  bool clock12h = false, clockSeconds = false, clockBlink = false, clockDate = true, clockGhost = true;
+  uint32_t clockRgb = 0xFFFFFF;
 
   bool nightEnabled = true;
   uint16_t nightStart = 22 * 60;
@@ -291,6 +295,17 @@ static bool visibleCenter(uint8_t id,const String& text,int y,uint8_t size,uint1
   return visibleText(id,text,(TFT_W-textW(text,size))/2,y,size,color,8,top,224,height);
 }
 
+// "HH:MM..." as shown on the display: unchanged in 24-hour mode, "2:05 PM"
+// in 12-hour mode (without the suffix where the context makes it clear).
+static String clockHHMM(const char* s,bool suffix=true) {
+  if(!s)return String();
+  if(!cfg.clock12h||strlen(s)<5||s[2]!=':'||!isdigit((unsigned char)s[0])||!isdigit((unsigned char)s[1]))return String(s);
+  int h=(s[0]-'0')*10+(s[1]-'0');const bool pm=h>=12;h%=12;if(!h)h=12;
+  String o=String(h)+String(s+2);
+  if(suffix)o+=pm?F(" PM"):F(" AM");
+  return o;
+}
+
 static String timeHHMM() {
   time_t now = time(nullptr);
   if (now < 1609459200) return "--:--";
@@ -298,7 +313,7 @@ static String timeHHMM() {
   localtime_r(&now, &t);
   char b[6];
   snprintf(b, sizeof(b), "%02d:%02d", t.tm_hour, t.tm_min);
-  return String(b);
+  return clockHHMM(b);
 }
 
 static void applyTimeZone() {
@@ -380,10 +395,23 @@ static bool validHexColor(const String& s) {
   return true;
 }
 
+// Clock settings, shared by the config file and the web interface.
+static void clockToJson(JsonDocument& d) {
+  char c[8];snprintf(c,sizeof c,"#%06lx",(unsigned long)(cfg.clockRgb&0xFFFFFFUL));
+  d[F("clockStyle")]=cfg.clockStyle;d[F("clock12h")]=cfg.clock12h;d[F("clockSeconds")]=cfg.clockSeconds;d[F("clockBlink")]=cfg.clockBlink;
+  d[F("clockDate")]=cfg.clockDate;d[F("clockGhost")]=cfg.clockGhost;d[F("clockColor")]=c;
+}
+static void clockFromJson(JsonDocument& d) {
+  cfg.clockStyle=constrain((int)(d[F("clockStyle")]|cfg.clockStyle),0,2);cfg.clock12h=d[F("clock12h")]|cfg.clock12h;
+  cfg.clockSeconds=d[F("clockSeconds")]|cfg.clockSeconds;cfg.clockBlink=d[F("clockBlink")]|cfg.clockBlink;
+  cfg.clockDate=d[F("clockDate")]|cfg.clockDate;cfg.clockGhost=d[F("clockGhost")]|cfg.clockGhost;
+  const String c=d[F("clockColor")]|"";if(validHexColor(c))cfg.clockRgb=strtoul(c.c_str()+1,nullptr,16);
+}
+
 static bool saveConfig() {
   JsonDocument d;
   d["ssid"] = cfg.ssid; d["pass"] = cfg.pass; d["hostname"] = cfg.hostname;
-  d["timeZone"] = cfg.timeZone;
+  d["timeZone"] = cfg.timeZone; clockToJson(d);
   d["mode"] = cfg.mode; d["rotationMask"] = cfg.rotationMask; d["brightness"] = cfg.brightness;
   JsonArray rs = d["rotationSec"].to<JsonArray>(); for(uint8_t i=0;i<MODE_COUNT;i++) rs.add(cfg.rotationSec[i]);
   d["nightEnabled"] = cfg.nightEnabled; d["nightStart"] = cfg.nightStart; d["nightEnd"] = cfg.nightEnd; d["nightBrightness"] = cfg.nightBrightness;
@@ -425,6 +453,7 @@ static void loadConfig() {
   JsonDocument d; if (deserializeJson(d, f)) { f.close(); return; } f.close();
   cfg.ssid = d["ssid"] | cfg.ssid; cfg.pass = d["pass"] | cfg.pass; cfg.hostname = d["hostname"] | cfg.hostname; cfg.hostname.trim(); cfg.hostname.toLowerCase(); // mDNS ignores case; saving must not see a "new" name
   if(d["timeZone"].is<const char*>() && timeZoneIndex(d["timeZone"].as<const char*>())>=0)cfg.timeZone=d["timeZone"].as<String>();
+  clockFromJson(d);
   cfg.mode = constrain((int)(d["mode"] | cfg.mode), 0, MODE_COUNT-1);
   if(d["rotationMask"].is<uint16_t>() || d["rotationMask"].is<int>()) cfg.rotationMask = ((uint16_t)(d["rotationMask"] | cfg.rotationMask)) & 0x03FFU;
   else cfg.rotationMask = (1U << cfg.mode); // migrate v0.4 single-view configuration
@@ -454,12 +483,12 @@ static void loadConfig() {
 
 // ---- display views -----------------------------------------------------------
 static void drawFooterClockOnly() {
-  String tm=timeHHMM();visibleText(31,tm,232-textW(tm,1),226,1,C_GRAY,196,224,36,12);
+  String tm=timeHHMM();visibleText(31,tm,232-textW(tm,1),226,1,C_GRAY,184,224,48,12);
 }
 
 static void drawFooter(const String& label, bool withClock=true, int x=8) {
   if(viewFresh)gfx->drawFastHLine(8,218,224,C_DGRAY);
-  visibleText(30,label,x,226,1,C_GRAY,8,223,186,14);
+  visibleText(30,label,x,226,1,C_GRAY,8,223,176,14);
   if(withClock)drawFooterClockOnly();
 }
 
@@ -541,7 +570,7 @@ static String isoFromDays(int32_t z) {
   z+=719468; const int32_t era=(z>=0?z:z-146096)/146097; const uint32_t doe=(uint32_t)(z-era*146097);
   const uint32_t yoe=(doe-doe/1460+doe/36524-doe/146096)/365; const uint32_t doy=doe-(365*yoe+yoe/4-yoe/100);
   const uint32_t mp=(5*doy+2)/153, d=doy-(153*mp+2)/5+1, m=mp<10?mp+3:mp-9; const int32_t y=(int32_t)yoe+era*400+(m<=2);
-  char b[12]; snprintf(b,sizeof b,"%04ld-%02u-%02u",(long)y,(unsigned)m,(unsigned)d); return String(b);
+  char b[24]; snprintf(b,sizeof b,"%04ld-%02u-%02u",(long)y,(unsigned)m,(unsigned)d); return String(b);
 }
 
 static uint8_t decimalDigits(uint32_t v) {
@@ -613,8 +642,9 @@ static void drawSegDigit(int x,int y,int w,int h,int t,uint8_t mask,uint16_t on,
 }
 
 struct SegLayout { int h,w,t,gap,colon,total; };
-static uint8_t segClass(char c) { return c>='0'&&c<='9'?0:(c==':'?1:2); }
-static int segCharW(char c,const SegLayout& L) { return c==':'?L.colon:L.w+L.t; }
+// '_' is an unlit digit (ghost segments only), ';' a colon that is off.
+static uint8_t segClass(char c) { return (c>='0'&&c<='9')||c=='_'?0:(c==':'||c==';'?1:2); }
+static int segCharW(char c,const SegLayout& L) { return segClass(c)==1?L.colon:L.w+L.t; }
 
 // Largest digits (height <= maxH) for which the whole value fits into maxW.
 static SegLayout segLayout(const String& v,int maxW,int maxH) {
@@ -630,8 +660,8 @@ static SegLayout segLayout(const String& v,int maxW,int maxH) {
 
 // Draws the value centred; y is the top centre line of the digits. With
 // `partial`, only characters that differ from `old` are cleared and redrawn.
-static void drawSegString(const String& v,int y,const SegLayout& L,uint16_t on,bool partial,const String& old) {
-  const uint16_t glow=scale565(on,30),ghost=scale565(on,10);
+static void drawSegString(const String& v,int y,const SegLayout& L,uint16_t on,bool partial,const String& old,bool ghosts=true) {
+  const uint16_t glow=scale565(on,30),ghost=ghosts?scale565(on,10):C_BLACK;
   int x=(TFT_W-L.total)/2;
   for(size_t i=0;i<v.length();i++){
     const char c=v[i]; const int cw=segCharW(c,L);
@@ -639,10 +669,12 @@ static void drawSegString(const String& v,int y,const SegLayout& L,uint16_t on,b
     if(partial)gfx->fillRect(x-2,y-L.t/2-2,cw+4,L.h+L.t+4,C_BLACK);
     const int dx=x+L.t/2,m=y+L.h/2;
     if(c>='0'&&c<='9')drawSegDigit(dx,y,L.w,L.h,L.t,segMask((uint8_t)(c-'0')),on,glow,ghost);
-    else if(c==':'){
+    else if(c=='_'){if(ghosts)drawSegDigit(dx,y,L.w,L.h,L.t,0,on,glow,ghost);}
+    else if(c==':'||c==';'){
       const int s=max(4,L.t-1),cx=x+cw/2;
       for(uint8_t k=0;k<2;k++){const int cy=y+L.h*(k?7:3)/10;
-        gfx->fillRect(cx-s/2-2,cy-s/2-2,s+4,s+4,glow);gfx->fillRect(cx-s/2,cy-s/2,s,s,on);}
+        if(c==':'){gfx->fillRect(cx-s/2-2,cy-s/2-2,s+4,s+4,glow);gfx->fillRect(cx-s/2,cy-s/2,s,s,on);}
+        else if(ghosts)gfx->fillRect(cx-s/2,cy-s/2,s,s,ghost);}
     } else if(c=='-'||c=='+'){
       // The sign is a segment of its own in the same style (no ghost segments).
       segH(dx,dx+L.w,m,L.t+4,glow);
@@ -941,8 +973,8 @@ static void drawWeather(bool force=true) {
   String rain=w.rainPct>=0?String(TR("REGEN ","RAIN "))+String(w.rainPct)+"%":String(TR("REGEN --","RAIN --"));
   visibleText(7,rain,18,197,1,C_CYAN,8,194,106,16);
   if(force){drawSunEventIcon(118,196,true);drawSunEventIcon(174,196,false);}
-  visibleText(8,String(w.sunrise),133,197,1,C_GRAY,133,194,32,16);
-  visibleText(9,String(w.sunset),189,197,1,C_GRAY,189,194,36,16);
+  visibleText(8,clockHHMM(w.sunrise,false),133,197,1,C_GRAY,133,194,32,16);
+  visibleText(9,clockHHMM(w.sunset,false),189,197,1,C_GRAY,189,194,36,16);
   drawFooter(w.error?TR("LIVE / LETZTER STAND","LIVE / LAST DATA"):"OPEN-METEO LIVE");
 }
 
@@ -1199,8 +1231,8 @@ static void drawTrackedFlight(bool force=true) {
   if(force)drawFlightRoute(f.route,f.origin,f.destination,36);
   visibleCenter(1,flightStatusGerman(f.status),64,1,C_GRAY,62,12);
 
-  auto row=[](uint8_t id,const String& label,const char* value,int y,uint16_t col){
-    String v=(value&&*value)?String(value):String("N/A");
+  auto row=[](uint8_t id,const String& label,const char* value,int y,uint16_t col,bool clock=true){
+    String v=(value&&*value)?(clock?clockHHMM(value):String(value)):String("N/A");
     visibleText(id+10,label,8,y+5,1,C_GRAY,8,y,88,20);
     visibleText(id,v,232-textW(v,2),y,2,col,100,y,132,20);
   };
@@ -1208,11 +1240,20 @@ static void drawTrackedFlight(bool force=true) {
   row(3,TR("AB IST","DEP ACTUAL"),f.depActual,105,C_WHITE);
   row(4,TR("AN PLAN","ARR SCHED"),f.arrScheduled,128,C_WHITE);
   if(strcmp(f.arrActual,"N/A"))row(5,TR("AN IST","ARR ACTUAL"),f.arrActual,151,C_GREEN);else row(5,TR("AN ETA","ARR ETA"),f.arrEstimated,151,C_CYAN);
-  String dur=trackedFlightDuration(f);row(6,TR("FLUGZEIT","FLIGHT TIME"),dur.c_str(),174,C_WHITE);
+  String dur=trackedFlightDuration(f);row(6,TR("FLUGZEIT","FLIGHT TIME"),dur.c_str(),174,C_WHITE,false);
   String alt=f.altitudeM>0?String(f.altitudeM)+" m":String("N/A");
   String spd=f.speedKmh>1?String((int)lroundf(f.speedKmh))+" km/h":String("N/A");
   visibleText(7,alt,8,204,1,C_CYAN,8,200,110,14);visibleText(8,spd,232-textW(spd,1),204,1,C_CYAN,120,200,112,14);
   drawFooter(f.error ? TR("LETZTER STAND","LAST DATA") : "AVIATIONSTACK + ADSB.LOL");
+}
+
+// Modern style: frame with bevelled corners, bar on top, progress bar outline with ticks.
+static void drawModernFrame(uint16_t on,uint16_t dim) {
+  static const uint8_t frame[] PROGMEM={10,40, 40,40, 52,28, 188,28, 200,40, 230,40, 230,196, 210,216, 30,216, 10,196, 10,40};
+  for(uint8_t i=0;i+3<(int)sizeof frame;i+=2)gfx->drawLine(pgm_read_byte(frame+i),pgm_read_byte(frame+i+1),pgm_read_byte(frame+i+2),pgm_read_byte(frame+i+3),dim);
+  gfx->fillRect(40,12,161,4,on);
+  gfx->drawRect(30,180,181,6,dim);
+  for(uint8_t i=0;i<10;i++)gfx->drawFastVLine(30+i*20,188,4,dim);
 }
 
 // Modern style progress bar: outline from x 30 to 210, fill = passed share (empty when unknown).
@@ -1237,15 +1278,10 @@ static void drawCountdown(uint8_t slot,bool force=true) {
   if(modern){
     L=segLayout(value,190,72);y=68+(92-L.h-L.t)/2+L.t/2;
     if(layout){
-      // Frame with bevelled corners (x,y pairs, closed).
-      static const uint8_t frame[] PROGMEM={10,40, 40,40, 52,28, 188,28, 200,40, 230,40, 230,196, 210,216, 30,216, 10,196, 10,40};
-      for(uint8_t i=0;i+3<(int)sizeof frame;i+=2)gfx->drawLine(pgm_read_byte(frame+i),pgm_read_byte(frame+i+1),pgm_read_byte(frame+i+2),pgm_read_byte(frame+i+3),dim);
-      gfx->fillRect(40,12,161,4,on);
+      drawModernFrame(on,dim);
       if(hasTitle)centerText(title,46,2,color565(c.titleColor));
       printDisplayTextAt(24,166,value.length()&&value[0]=='+'?String(F("T-PLUS")):String(F("T-MINUS")),1,dim);
       const String unit=countdownUnit(c.type);printDisplayTextAt(216-textW(unit,1),166,unit,1,dim);
-      gfx->drawRect(30,180,181,6,dim);
-      for(uint8_t i=0;i<10;i++)gfx->drawFastVLine(30+i*20,188,4,dim);
       oldBar=254;
     }
     const uint8_t bar=countdownProgress(c);if(bar!=oldBar){drawCountdownBar(bar,on);oldBar=bar;}
@@ -1260,15 +1296,78 @@ static void drawCountdown(uint8_t slot,bool force=true) {
   lastCountdownRendered[slot]=value;lastSlot=slot;oldTitle=title;oldTitleColor=c.titleColor;oldColor=c.countColor;oldType=c.type;oldStyle=c.style;
 }
 
+enum ClockStyle : uint8_t { CLOCK_PIXEL = 0, CLOCK_RADIO = 1, CLOCK_MODERN = 2 };
+static uint16_t rgb565(uint32_t rgb) { return (uint16_t)(((rgb>>8)&0xF800)|((rgb>>5)&0x07E0)|((rgb>>3)&0x001F)); }
+
+static String clockDateText() {
+  time_t now=time(nullptr);if(now<=1609459200)return String(TR("warte auf NTP","waiting for NTP"));
+  struct tm tmv;localtime_r(&now,&tmv);static const char* wdDe[]={"SO","MO","DI","MI","DO","FR","SA"};static const char* wdEn[]={"SU","MO","TU","WE","TH","FR","SA"};char b[32];
+  if(cfg.lang==LANG_EN)snprintf(b,sizeof(b),"%s  %04d-%02d-%02d",wdEn[tmv.tm_wday],tmv.tm_year+1900,tmv.tm_mon+1,tmv.tm_mday);
+  else snprintf(b,sizeof(b),"%s  %02d.%02d.%04d",wdDe[tmv.tm_wday],tmv.tm_mday,tmv.tm_mon+1,tmv.tm_year+1900);
+  return String(b);
+}
+
+// HH:MM or HH:MM:SS. Segment styles use '_' for the empty first hour digit in
+// 12-hour mode and ';' for a colon that is off while blinking.
+static String clockDigits(bool segments,bool& pm,uint8_t& dayPct) {
+  time_t now=time(nullptr);pm=false;dayPct=255;
+  if(now<1609459200)return cfg.clockSeconds?String(F("--:--:--")):String(F("--:--"));
+  struct tm t;localtime_r(&now,&t);
+  int h=t.tm_hour;pm=h>=12;dayPct=(uint8_t)((h*60+t.tm_min)*100/1440);
+  if(cfg.clock12h){h%=12;if(!h)h=12;}
+  const char sep=(cfg.clockBlink&&(t.tm_sec&1))?(segments?';':' '):':';
+  char b[12];
+  if(cfg.clock12h&&h<10)snprintf(b,sizeof b,segments?"_%d%c%02d":"%d%c%02d",h,sep,t.tm_min);
+  else snprintf(b,sizeof b,"%02d%c%02d",h,sep,t.tm_min);
+  if(cfg.clockSeconds){const size_t n=strlen(b);snprintf(b+n,sizeof b-n,"%c%02d",sep,t.tm_sec);}
+  return String(b);
+}
+
 static void drawClock(bool fullRedraw=true) {
-  beginView(fullRedraw);if(fullRedraw)drawFooter(crop(cfg.timeZone,36).c_str(),false);
-  String t=timeHHMM(),old=visibleFields[1].text;int x=(TFT_W-textW(t,6))/2;
-  if(fullRedraw||old.length()!=t.length()){if(!fullRedraw)gfx->fillRect(0,72,TFT_W,66,C_BLACK);centerText(t,84,6,C_WHITE);}
-  else for(size_t i=0;i<t.length();i++)if(t[i]!=old[i]){gfx->fillRect(x+i*36,84,36,48,C_BLACK);printDisplayTextAt(x+i*36,84,t.substring(i,i+1),6,C_WHITE);}
-  visibleFields[1].text=t;
-  time_t now=time(nullptr);String date=TR("warte auf NTP","waiting for NTP");
-  if(now>1609459200){struct tm tmv;localtime_r(&now,&tmv);static const char* wdDe[]={"SO","MO","DI","MI","DO","FR","SA"};static const char* wdEn[]={"SU","MO","TU","WE","TH","FR","SA"};char b[32];if(cfg.lang==LANG_EN)snprintf(b,sizeof(b),"%s  %04d-%02d-%02d",wdEn[tmv.tm_wday],tmv.tm_year+1900,tmv.tm_mon+1,tmv.tm_mday);else snprintf(b,sizeof(b),"%s  %02d.%02d.%04d",wdDe[tmv.tm_wday],tmv.tm_mday,tmv.tm_mon+1,tmv.tm_year+1900);date=b;}
-  visibleCenter(2,date,145,2,C_GRAY,140,28);
+  static uint8_t oldBar=254;
+  const uint8_t style=cfg.clockStyle;const bool seg=style!=CLOCK_PIXEL;
+  bool pm;uint8_t pct;
+  const String v=clockDigits(seg,pm,pct),old=visibleFields[1].text;
+  bool layout=fullRedraw||old.length()!=v.length();
+  if(!layout&&seg)for(size_t i=0;i<v.length();i++)if(segClass(v[i])!=segClass(old[i]))layout=true;
+  beginView(layout);
+  const uint16_t on=rgb565(cfg.clockRgb),dim=scale565(on,35),soft=scale565(on,65);
+  const String date=cfg.clockDate?clockDateText():String();
+  const String ampm=cfg.clock12h?String(pm?F("PM"):F("AM")):String();
+  if(style==CLOCK_MODERN){
+    const SegLayout L=segLayout(v,190,72);const int y=68+(92-L.h-L.t)/2+L.t/2;
+    if(layout){
+      drawModernFrame(on,dim);oldBar=254;
+      String city=cfg.timeZone.substring(cfg.timeZone.lastIndexOf('/')+1);city.replace('_',' ');city.toUpperCase();
+      printDisplayTextAt(24,166,crop(city,16),1,dim);
+    }
+    if(date.length())visibleText(2,date,(TFT_W-textW(date,2))/2,46,2,soft,14,44,212,18);
+    const String tag=ampm.length()?ampm:String(F("24H"));
+    visibleText(3,tag,216-textW(tag,1),166,1,dim,150,164,66,10);
+    if(layout||v!=old)drawSegString(v,y,L,on,!layout,old,cfg.clockGhost);
+    if(pct!=oldBar){drawCountdownBar(pct,on);oldBar=pct;}
+  } else {
+    const bool hasDate=date.length()>0,hasAm=ampm.length()>0;
+    int top,dateY,right;
+    if(seg){
+      const SegLayout L=segLayout(v,216,hasDate?96:124);
+      top=8+(206-((hasAm?24:0)+L.h+L.t+(hasDate?36:0)))/2;
+      const int y=top+(hasAm?24:0)+L.t/2;
+      if(layout||v!=old)drawSegString(v,y,L,on,!layout,old,cfg.clockGhost);
+      dateY=y+L.h+L.t/2+16;right=(TFT_W+L.total)/2;
+    } else {
+      const uint8_t size=cfg.clockSeconds?4:(hasDate?6:7);const int ch=8*size,cw=6*size;
+      top=8+(206-((hasAm?24:0)+ch+(hasDate?36:0)))/2;
+      const int y=top+(hasAm?24:0),x=(TFT_W-textW(v,size))/2;
+      if(layout)printDisplayTextAt(x,y,v,size,on);
+      else for(size_t i=0;i<v.length();i++)if(v[i]!=old[i]){gfx->fillRect(x+i*cw,y,cw,ch,C_BLACK);printDisplayTextAt(x+i*cw,y,v.substring(i,i+1),size,on);}
+      dateY=y+ch+14;right=x+textW(v,size);
+    }
+    if(hasAm)visibleText(3,ampm,right-textW(ampm,2),top,2,soft,8,top-2,224,20);
+    if(hasDate)visibleCenter(2,date,dateY,2,seg?soft:C_GRAY,dateY-4,22);
+    if(layout)drawFooter(crop(cfg.timeZone,36).c_str(),false);
+  }
+  visibleFields[1].text=v;
 }
 
 
@@ -1459,7 +1558,7 @@ static void updateCountdownSettings(JsonObjectConst in,CountdownSlot& c) {
 
 static void apiGetConfig() {
   JsonDocument d;
-  d["ssid"]=cfg.ssid;d["hostname"]=cfg.hostname;d["mode"]=cfg.mode;d["rotationMask"]=cfg.rotationMask;d["brightness"]=cfg.brightness;d["timeZone"]=cfg.timeZone;
+  d["ssid"]=cfg.ssid;d["hostname"]=cfg.hostname;d["mode"]=cfg.mode;d["rotationMask"]=cfg.rotationMask;d["brightness"]=cfg.brightness;d["timeZone"]=cfg.timeZone;clockToJson(d);
   JsonArray rs=d["rotationSec"].to<JsonArray>();for(uint8_t i=0;i<MODE_COUNT;i++)rs.add(cfg.rotationSec[i]);
   d["nightEnabled"]=cfg.nightEnabled;d["nightStart"]=cfg.nightStart;d["nightEnd"]=cfg.nightEnd;d["nightBrightness"]=cfg.nightBrightness;
   d["stopName"]=cfg.stopName;d["stopPlace"]=cfg.stopPlace;d["stopId"]=cfg.stopId;d["departureCount"]=cfg.departureCount;d["departurePoll"]=cfg.departurePoll;d["vvoMotMask"]=cfg.vvoMotMask;d["lang"]=cfg.lang;d["departureCompactDestinations"]=cfg.departureCompactDestinations;d["departureAbbreviate"]=cfg.departureAbbreviate;d["departureDropTown"]=cfg.departureDropTown;
@@ -1511,6 +1610,7 @@ static void apiPostConfig() {
   if(!modeEnabled(cfg.mode))cfg.mode=firstEnabledMode();
   cfg.brightness=constrain((int)(d["brightness"]|cfg.brightness),1,100);
   if(d["timeZone"].is<const char*>())cfg.timeZone=d["timeZone"].as<String>();
+  clockFromJson(d);
   cfg.nightEnabled=d["nightEnabled"]|cfg.nightEnabled;cfg.nightStart=constrain((int)(d["nightStart"]|cfg.nightStart),0,1439);cfg.nightEnd=constrain((int)(d["nightEnd"]|cfg.nightEnd),0,1439);cfg.nightBrightness=constrain((int)(d["nightBrightness"]|cfg.nightBrightness),1,100);
   if(d["stopName"].is<const char*>()) cfg.stopName=d["stopName"].as<String>();
   if(d["stopPlace"].is<const char*>()) cfg.stopPlace=d["stopPlace"].as<String>();
@@ -1825,6 +1925,7 @@ void loop() {
     if(!apMode)networkWatchdog(nowMs);
     flightExpire();
     if(cfg.mode==MODE_PLANE)drawPlane(false); // continued distance/altitude, status dot and age
+    if(cfg.mode==MODE_CLOCK&&(cfg.clockSeconds||cfg.clockBlink))drawClock(false);
     time_t ep=time(nullptr);
     if(ep>1609459200){
       struct tm t; localtime_r(&ep,&t);
