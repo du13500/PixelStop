@@ -121,7 +121,7 @@ struct Settings {
   String timeZone = "Europe/Berlin";
   // Clock view; clock12h applies to every time of day on the display.
   uint8_t clockStyle = 0;            // ClockStyle
-  bool clock12h = false, clockSeconds = false, clockBlink = false, clockDate = true, clockGhost = true;
+  bool clock12h = false, clockSeconds = false, clockBlink = false, clockDate = true, clockGhost = true, countdownGhost = true;
   uint32_t clockRgb = 0xFFFFFF;
 
   bool nightEnabled = true;
@@ -399,12 +399,13 @@ static bool validHexColor(const String& s) {
 static void clockToJson(JsonDocument& d) {
   char c[8];snprintf(c,sizeof c,"#%06lx",(unsigned long)(cfg.clockRgb&0xFFFFFFUL));
   d[F("clockStyle")]=cfg.clockStyle;d[F("clock12h")]=cfg.clock12h;d[F("clockSeconds")]=cfg.clockSeconds;d[F("clockBlink")]=cfg.clockBlink;
-  d[F("clockDate")]=cfg.clockDate;d[F("clockGhost")]=cfg.clockGhost;d[F("clockColor")]=c;
+  d[F("clockDate")]=cfg.clockDate;d[F("clockGhost")]=cfg.clockGhost;d[F("countdownGhost")]=cfg.countdownGhost;d[F("clockColor")]=c;
 }
 static void clockFromJson(JsonDocument& d) {
   cfg.clockStyle=constrain((int)(d[F("clockStyle")]|cfg.clockStyle),0,2);cfg.clock12h=d[F("clock12h")]|cfg.clock12h;
   cfg.clockSeconds=d[F("clockSeconds")]|cfg.clockSeconds;cfg.clockBlink=d[F("clockBlink")]|cfg.clockBlink;
   cfg.clockDate=d[F("clockDate")]|cfg.clockDate;cfg.clockGhost=d[F("clockGhost")]|cfg.clockGhost;
+  cfg.countdownGhost=d[F("countdownGhost")]|cfg.countdownGhost;
   const String c=d[F("clockColor")]|"";if(validHexColor(c))cfg.clockRgb=strtoul(c.c_str()+1,nullptr,16);
 }
 
@@ -1072,7 +1073,7 @@ static String compactType(const FlightSnapshot& f) {
 // Reception age follows the current status. Only this number/unit field
 // changes each second; the status label and clock keep their own areas.
 static bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;
-static String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;
+static String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;static uint8_t lastPlaneSearch=0;
 static String lastPlaneCall,lastPlaneOperator,lastPlaneRoute,lastPlaneReg;static int8_t lastPlaneTrend=0;
 // The footer starts with a status dot; label and age follow after it.
 static const int PLANE_FOOTER_X=18;
@@ -1120,9 +1121,24 @@ static String planeSpeedText(const FlightSnapshot& f) {
 static void drawPlane(bool force=true) {
   const FlightSnapshot& f=flightData();
   const bool paused=f.valid&&flightProviderPaused();
-  bool full=force||!planeRendered||f.valid!=lastPlaneRendered.valid||
+  // Back after a pause: no old aircraft, "searching" until the first fresh answer.
+  const uint8_t search=flightSearching()?(uint8_t)(1+(flightSearchRetry()?1:0)+(flightProviderPaused()?2:0)):0;
+  bool full=force||!planeRendered||search!=lastPlaneSearch||f.valid!=lastPlaneRendered.valid||
     (f.valid&&!samePlane(f,lastPlaneRendered))||(!f.valid&&f.error!=lastPlaneRendered.error);
   beginView(full);if(full)drawPlaneHeader();
+  lastPlaneSearch=search;
+  if(search){
+    if(full){
+      centerText(TR("SUCHE FLUGZEUGE","SEARCHING AIRCRAFT"),84,2,C_WHITE);
+      const String place=planePlaceTitle();
+      if(place.length())centerText(place,118,2,C_GRAY);
+      visibleFields[28].valid=false;visibleFields[29].valid=false;visibleFields[30].valid=false;
+      const bool yellow=search>=3||search==2;
+      drawFooter(search>=3?String(TR("ABRUFPAUSE","PAUSED")):String(search==2?TR("NEUER VERSUCH","RETRYING"):TR("SUCHE","SEARCHING")),true,PLANE_FOOTER_X);
+      gfx->fillCircle(11,229,3,yellow?C_YELLOW:C_GRAY);lastPlaneDot=-1;
+    }
+    lastPlaneRendered=f;planeRendered=true;return;
+  }
   if(!f.valid){
     if(full){
       if(f.error&&adsbLolAccessDenied(flightLastHttp())){centerText("ADSB.LOL",80,3,C_RED);centerText(TR("Zugriff abgelehnt","Access denied"),118,2,C_WHITE);centerText(String("HTTP ")+String(flightLastHttp())+(flightLastHttp()==426?"":TR(" - Schlüssel prüfen"," - check key")),146,1,C_GRAY);centerText(TR("längere Pause vor neuem Versuch","pausing before next try"),162,1,C_GRAY);}
@@ -1292,7 +1308,7 @@ static void drawCountdown(uint8_t slot,bool force=true) {
     y=top+(area-(L.h+L.t+34))/2+L.t/2;
     if(layout){const String unit=countdownUnit(c.type);centerText(unit,y+L.h+L.t/2+18,2,scale565(on,80));}
   }
-  if(layout||value!=old)drawSegString(value,y,L,on,!layout,old);
+  if(layout||value!=old)drawSegString(value,y,L,on,!layout,old,cfg.countdownGhost);
   lastCountdownRendered[slot]=value;lastSlot=slot;oldTitle=title;oldTitleColor=c.titleColor;oldColor=c.countColor;oldType=c.type;oldStyle=c.style;
 }
 
@@ -1919,6 +1935,8 @@ void loop() {
     if(nowMs-lastSecond>=1000){lastSecond=nowMs;applyBrightness();}
     yield();return;
   }
+  // The radar becomes active again (prefetch before the rotation, or shown at once): old data are dropped.
+  {static bool radarWasActive=false;const bool active=radarActive();if(active&&!radarWasActive)flightActivated();radarWasActive=active;}
   if(nowMs-lastSecond>=1000){
     lastSecond=nowMs; applyBrightness();
     adsbLolQuotaSave();

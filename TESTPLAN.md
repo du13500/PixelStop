@@ -1,8 +1,17 @@
 # Testplan
 
-Stand: v0.5.4.6-dev (23.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
+Stand: v0.5.4.7-dev (23.11.2026). Dieser Plan wird mit jeder Version aktualisiert; frühere Pläne stehen in der Git-Historie, Änderungen in [`CHANGELOG.md`](CHANGELOG.md).
 
-## Hardwaretest v0.5.4.6-dev
+## Hardwaretest v0.5.4.7-dev
+
+1. **Countdown, Nachleuchten:** Im Reiter *Countdown* die Karte *Darstellung* öffnen, „Nachleuchten“ ausschalten und speichern. Beim klassischen und beim modernen Countdown (Tage und Timer) bleiben die nicht leuchtenden Segmente schwarz; mit dem Haken glimmen sie wieder. Die Einstellung gilt für alle vier Countdowns und bleibt nach einem Neustart erhalten.
+2. **Radar nach einer Pause:** Rotation mit Radar und mindestens einem weiteren Programm (z. B. Radar alle 3 Minuten). Kommt das Radar zurück, zeigt es nicht das Flugzeug von vor 3 Minuten, sondern kurz „SUCHE FLUGZEUGE“ mit dem Ort, danach den frischen Stand. Ist der Vorabruf schon rechtzeitig fertig, sieht man die Suche gar nicht.
+3. **Neuer Versuch:** WLAN der FRITZ!Box kurz abschalten und nach einer Rotationspause das Radar aufrufen. Erwartung: Suche, nach dem ersten Fehlschlag gelber Punkt und „NEUER VERSUCH“, erst nach dem dritten Fehlschlag in Folge der rote Bildschirm. WLAN wieder an: Das Radar findet von selbst zurück.
+4. **Ohne Pause:** Läuft das Radar dauerhaft (nur ein Programm), bleibt alles wie in v0.5.4.6: „LETZTER STAND“ nach einem Fehlschlag, grauer Punkt bei zu alten Daten.
+5. **Speicher:** Im Log nach „übersprungen: JSON-Speicher“ oder „übersprungen: Heap“ suchen. Solche Abrufe sollen keinen Fehlerbildschirm auslösen; der nächste Versuch kommt nach etwa 10 s. Weitere Logs mit „JSON:NoMemory“ bitte sammeln (freier Speicher, größter Block).
+6. Aus v0.5.4.6 weiter offen: siehe unten.
+
+## Hardwaretest v0.5.4.6-dev (weiter offen)
 
 1. **Uhr, Radiowecker:** Darstellung „Radiowecker“, Farbe nach Wahl. Die Ziffern sehen aus wie beim Countdown; mit „Nachleuchten“ glimmen die unbeleuchteten Segmente schwach, ohne nicht.
 2. **Sekunden und Blinken:** Sekunden und „Doppelpunkt blinkt“ einschalten. Pro Sekunde flackert nur die geänderte Stelle bzw. der Doppelpunkt, nicht die ganze Anzeige; das Radar und die Abfahrten laufen in der Rotation normal weiter.
@@ -45,7 +54,7 @@ Stand: v0.5.4.6-dev (23.11.2026). Dieser Plan wird mit jeder Version aktualisier
 
 ## Stand des letzten Builds
 
-v0.5.4.6-dev, GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
+v0.5.4.6-dev (Zahlen von v0.5.4.7 folgen nach dem CI-Lauf), GitHub Actions, PlatformIO mit ESP8266-Framework 3.1.2 und gepinnten Bibliotheken:
 
 | | belegt | von | Anteil |
 | --- | --- | --- | --- |

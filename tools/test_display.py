@@ -87,14 +87,14 @@ uint8_t barValue=255;uint8_t countdownProgress(const CountdownSlot&){return barV
 String countdownUnit(uint8_t t){return t==0?"TAGE":(t==1?"STD MIN SEK":"MIN SEK");}
 String timerValue="00:01:09";
 enum Language:uint8_t{LANG_DE=0,LANG_EN=1};
-struct Settings{uint8_t lang=LANG_DE;String stopPlace;String trackedFlightNo,aviationstackKey,planePlace,planeDisplayName,stopName,stopId,weatherDisplayName,weatherCity,timeZone;bool planeShowPlace=false,planeShowAge=true,departureCompactDestinations=false,departureAbbreviate=true,departureDropTown=true,weatherForecast=true,weatherFahrenheit=false,weatherTempColor=false;uint16_t planePlaceToggleSec=10;uint8_t planeOperator=0,planeSpeed=0;bool planeTrend=false,planeMarkMilitary=true;uint8_t departureCount=5;CountdownSlot countdown[4];uint8_t clockStyle=0;bool clock12h=false,clockSeconds=false,clockBlink=false,clockDate=true,clockGhost=true;uint32_t clockRgb=0xFFFFFF;} cfg;
+struct Settings{uint8_t lang=LANG_DE;String stopPlace;String trackedFlightNo,aviationstackKey,planePlace,planeDisplayName,stopName,stopId,weatherDisplayName,weatherCity,timeZone;bool planeShowPlace=false,planeShowAge=true,departureCompactDestinations=false,departureAbbreviate=true,departureDropTown=true,weatherForecast=true,weatherFahrenheit=false,weatherTempColor=false;uint16_t planePlaceToggleSec=10;uint8_t planeOperator=0,planeSpeed=0;bool planeTrend=false,planeMarkMilitary=true;uint8_t departureCount=5;CountdownSlot countdown[4];uint8_t clockStyle=0;bool clock12h=false,clockSeconds=false,clockBlink=false,clockDate=true,clockGhost=true,countdownGhost=true;uint32_t clockRgb=0xFFFFFF;} cfg;
 enum ClockStyle:uint8_t{CLOCK_PIXEL=0,CLOCK_RADIO=1,CLOCK_MODERN=2};
 bool pmValue=false;String clockDigits(bool,bool& pm,uint8_t& pct){pm=pmValue;pct=50;return timerValue;}
 String clockDateText(){return "FR  06.11.2026";}
 static String tr(PGM_P de,PGM_P en){return String(cfg.lang==LANG_EN?en:de);}
 #define TR(de,en) tr(PSTR(de),PSTR(en))
 String lastCountdownRendered[4];uint8_t departurePage=0;uint8_t weatherPage=0;
-uint16_t color565(const String&){return C_WHITE;}
+uint16_t color565(const String& s){return s=="#fedcba"?(uint16_t)0xFFFF:C_WHITE;}   // only the test colour has real shades
 String countdownValue(const CountdownSlot&){return timerValue;}
 float displayTempValue(float c){return c;}
 uint16_t weatherTempColor565(float){return C_WHITE;}
@@ -119,7 +119,7 @@ TrackedFlightSnapshot data={};FlightSnapshot plane={};FlightSnapshot lastPlaneRe
 const TrackedFlightSnapshot& trackedFlightData(){return data;}
 const FlightSnapshot& flightData(){return plane;}
 uint32_t clockMs=100000,lastOkMs=65000;bool providerPaused=false;
-uint32_t millis(){return clockMs;}float flightLiveDistanceKm(const FlightSnapshot& f){return f.distanceKm;}int32_t flightLiveAltitudeFt(const FlightSnapshot& f){return f.altitudeFt;}uint32_t flightPollIntervalMs(){return 30000;}uint32_t flightLastOkMs(){return lastOkMs;}bool flightProviderPaused(){return providerPaused;}static int lastHttp=0;int flightLastHttp(){return lastHttp;}static bool adsbLolAccessDenied(int c){return c==401||c==403||c==426;}
+uint32_t millis(){return clockMs;}float flightLiveDistanceKm(const FlightSnapshot& f){return f.distanceKm;}int32_t flightLiveAltitudeFt(const FlightSnapshot& f){return f.altitudeFt;}uint32_t flightPollIntervalMs(){return 30000;}uint32_t flightLastOkMs(){return lastOkMs;}bool flightProviderPaused(){return providerPaused;}static bool searching=false,searchRetry=false;bool flightSearching(){return searching;}bool flightSearchRetry(){return searchRetry;}static int lastHttp=0;int flightLastHttp(){return lastHttp;}static bool adsbLolAccessDenied(int c){return c==401||c==403||c==426;}
 String trackedFlightDuration(const TrackedFlightSnapshot&){return "01:30";}
 void clearDraws(){draws.clear();rects.clear();circles.clear();lines.clear();tris.clear();fullScreens=0;footer="not drawn";}
 '''
@@ -321,6 +321,16 @@ int main(){
  timerValue="+00:00:01";clearDraws();drawCountdown(0,false);assert(fullScreens==1);{bool plus=false;for(auto d:draws)if(d.text=="T-PLUS")plus=true;assert(plus);}
  // no sign: the digits take the whole width and get larger
  {SegLayout a=segLayout("-00:00:05",216,100),b=segLayout("00:00:05",216,100);assert(b.h>a.h&&a.total<=216&&b.total<=216);}
+ // Afterglow off: unlit segments are not drawn at all, in both styles
+ {const String savedColor=cfg.countdown[0].countColor;cfg.countdown[0].countColor="#fedcba";
+  const uint16_t on=color565(cfg.countdown[0].countColor),ghost=scale565(on,10);assert(ghost!=C_BLACK);
+  auto ghosts=[&]{int n=0;for(auto q:rects)if(q.color==ghost)n++;for(auto t:tris)if(t.color==ghost)n++;return n;};
+  timerValue="00:01:08";cfg.countdown[0].style=0;
+  cfg.countdownGhost=true;clearDraws();drawCountdown(0);assert(ghosts()>0);
+  cfg.countdownGhost=false;clearDraws();drawCountdown(0);assert(ghosts()==0&&fullScreens==1);
+  clearDraws();timerValue="00:01:07";drawCountdown(0,false);assert(ghosts()==0&&fullScreens==0);   // changed digit without ghost
+  cfg.countdown[0].style=COUNTDOWN_MODERN;barValue=50;clearDraws();drawCountdown(0);assert(ghosts()==0);
+  cfg.countdownGhost=true;clearDraws();drawCountdown(0);assert(ghosts()>0);cfg.countdown[0].countColor=savedColor;}
  cfg.countdown[0].style=0;barValue=255;
  // Clock: unchanged minute/date -> no draw; one changed digit clears one cell.
  timerValue="14:22";clearDraws();drawClock();assert(fullScreens==1);clearDraws();drawClock(false);assert(fullScreens==0&&rects.empty()&&draws.empty());
@@ -337,10 +347,19 @@ int main(){
  // Modern: frame lines, "24H" tag and the day bar
  cfg.clockStyle=CLOCK_MODERN;timerValue="14:23";clearDraws();drawClock();assert(fullScreens==1&&!lines.empty());{bool tag=false;for(auto d:draws)if(d.text=="24H")tag=true;assert(tag);int bar=0;for(auto q:rects)if(q.y==182&&q.h==2&&q.color!=C_BLACK)bar=q.w;assert(bar==88);}
  cfg.clockStyle=CLOCK_PIXEL;
+ // v0.5.4.7: back after a pause the radar searches and shows no old aircraft
+ plane={};plane.valid=true;strcpy(plane.callsign,"DLH123");cfg.planePlace="Dresden";cfg.planeDisplayName="";planeRendered=false;
+ searching=true;searchRetry=false;clearDraws();drawPlane();
+ {bool find=false,call=false,place=false;for(auto d:draws){if(d.text=="SUCHE FLUGZEUGE")find=true;if(d.text=="DLH123")call=true;if(d.text=="Dresden")place=true;}assert(find&&!call&&place&&footer=="SUCHE");}
+ clearDraws();drawPlane(false);assert(fullScreens==0&&draws.empty());                       // nothing changes: no redraw
+ searchRetry=true;clearDraws();drawPlane(false);assert(fullScreens==1&&footer=="NEUER VERSUCH");
+ providerPaused=true;clearDraws();drawPlane(false);assert(fullScreens==1&&footer=="ABRUFPAUSE");providerPaused=false;
+ searching=false;searchRetry=false;clearDraws();drawPlane(false);{bool call=false;for(auto d:draws)if(d.text=="DLH123")call=true;assert(fullScreens==1&&call);}   // answer is there: aircraft again
+ plane={};
  puts("Real display: selective radar/new aircraft, stale states, tracker footer, weather motifs and Unicode bounds OK");
 }
 '''
-pre+='\nstatic bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;\nstatic String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;static const int PLANE_FOOTER_X=18;static const char* planeSourceLabel="ADSB.LOL";\nstatic String lastPlaneCall,lastPlaneOperator,lastPlaneRoute,lastPlaneReg;static int8_t lastPlaneTrend=0;\n'
+pre+='\nstatic bool lastPlanePauseRendered=false,lastPlaneAgeRendered=true;\nstatic String lastPlaneDist,lastPlaneAlt;static int32_t lastPlaneDot=-1;static uint8_t lastPlaneSearch=0;static const int PLANE_FOOTER_X=18;static const char* planeSourceLabel="ADSB.LOL";\nstatic String lastPlaneCall,lastPlaneOperator,lastPlaneRoute,lastPlaneReg;static int8_t lastPlaneTrend=0;\n'
 names=['nextCodepoint','glyphCount','drawSpecialGlyph','textW','crop','clockHHMM','rgb565','stopTown','departureText','beginView','visibleText','visibleCenter','planePlaceTitle','drawPlaneHeader','routePart','drawFlightRoute','samePlane','planeDistance','planeAltitude','compactType','planeFooterLabel','drawPlaneAge','drawPlaneDot','drawPlaneFooter','planeSecondPhase','planeOperatorText','planeSpeedText','drawPlane','drawTrackedFlight','wxLen','drawCloud','drawSun','drawMoon','drawSnowflake','drawWeatherIconAt','drawWeatherIcon','drawSunEventIcon','centerTextIn','drawForecast','drawWeather','departureMinutesNow','drawDepartures','segMask','scale565','segH','segV','segPart','drawSegDigit','segClass','segCharW','segLayout','drawSegString','drawModernFrame','drawCountdownBar','drawCountdown','drawClock']
 import collections
 _types=re.findall(r'\{"([A-Z0-9]{2,4})","([^"]*)"\}',(root/'src/AircraftLabel.h').read_text())

@@ -224,6 +224,9 @@ static uint32_t okAgeMs = 4000;
 uint32_t flightLastOkMs() { return clockMs - okAgeMs; }
 static bool providerPaused = false;
 bool flightProviderPaused() { return providerPaused; }
+static bool searching = false, searchRetry = false;
+bool flightSearching() { return searching; }
+bool flightSearchRetry() { return searchRetry; }
 static int lastHttp = 200;
 int flightLastHttp() { return lastHttp; }
 uint32_t flightWaitSec() { return 0; }
@@ -401,6 +404,13 @@ int main(int argc, char** argv) {
   // Fehler: Abruf fehlgeschlagen ohne vorherigen Stand, und adsb.lol lehnt ab
   cfg.planePlace = "Dresden"; fl.error = true; drawPlane(); dump((out + "/radar-fehler.ppm").c_str());
   lastHttp = 403; drawPlane(); dump((out + "/radar-abgelehnt.ppm").c_str()); lastHttp = 200; fl = FlightSnapshot{};
+  // Nach einer Pause im Radar: kein altes Flugzeug, "Suche" bis zum ersten frischen Abruf
+  cfg.planePlace = "Dresden-Klotzsche";
+  plane("896180", "UAE45", "Emirates", "A6-EVK", "A388", "Airbus A380-800", "DXB-FRA");
+  cfg.planeShowPlace = false;   // Standard: Kopf "IN DER NÄHE", der Ort steht im Text
+  searching = true; searchRetry = false; drawPlane(); dump((out + "/radar-suche.ppm").c_str());
+  searchRetry = true; drawPlane(); dump((out + "/radar-suche-neu.ppm").c_str());
+  searching = false; searchRetry = false; fl = FlightSnapshot{}; cfg.planeShowPlace = true;
 
   // Fiktive Daten (Battlestar Galactica) für Militär und Notfall, damit keine
   // echten Flüge so aussehen: Quelle "DRADIS" statt adsb.lol, 4-stellige Codes.
@@ -489,6 +499,7 @@ int main(int argc, char** argv) {
   CountdownSlot& c1 = cfg.countdown[0]; c1.title = en ? "Vacation" : "Urlaub"; c1.type = COUNTDOWN_DAYS; c1.targetDate = "2026-12-23"; c1.active = true; c1.dayDigits = 3;
   cfg.mode = MODE_COUNTDOWN1; drawCountdown(0); dump((out + "/countdown-tage.ppm").c_str());
   // Modern, ohne Vorzeichen, Startdatum 1.10. -> Balken
+  cfg.countdownGhost = false; drawCountdown(0); dump((out + "/countdown-ohne-nachleuchten.ppm").c_str()); cfg.countdownGhost = true;
   c1.style = COUNTDOWN_MODERN; c1.showSign = false; c1.startDay = (int32_t)daysFromCivilDate(2026, 10, 1); c1.countColor = "#FF4F6E"; c1.titleColor = "#FF4F6E";
   drawCountdown(0); dump((out + "/countdown-tage-modern.ppm").c_str());
   CountdownSlot& c2 = cfg.countdown[1]; c2.title = "Pizza"; c2.type = COUNTDOWN_MS; c2.titleColor = "#F3CE00"; c2.countColor = "#5DD78B";
@@ -563,6 +574,9 @@ with tempfile.TemporaryDirectory() as tmp:
             'radar-gelb': ('Letzter Stand', 'Abruf fehlgeschlagen, Werte geschätzt'),
             'radar-pause': ('Abrufpause', 'adsb.lol bittet um eine Pause'),
             'radar-grau': ('Keine Daten', 'zu lange ohne Abruf, Werte stehen'),
+            'radar-suche': ('Suche', 'nach einer Pause, kein altes Flugzeug'),
+            'radar-suche-neu': ('Neuer Versuch', 'erster Abruf fehlgeschlagen'),
+            'countdown-ohne-nachleuchten': ('Ohne Nachleuchten', 'nicht leuchtende Segmente bleiben dunkel'),
             'radar-fehler': ('Abruf fehlgeschlagen', 'noch kein Stand vorhanden'),
             'radar-abgelehnt': ('Zugriff abgelehnt', 'adsb.lol lehnt ab, lange Pause'),
             'radar-colone': ('4-stellige Codes', 'Flughafencodes mit 4 Zeichen, dazu km/h', True),
@@ -616,6 +630,9 @@ with tempfile.TemporaryDirectory() as tmp:
             'radar-gelb': ('Last data', 'request failed, values estimated'),
             'radar-pause': ('Paused', 'adsb.lol asks for a pause'),
             'radar-grau': ('No data', 'too long without a request, frozen'),
+            'radar-suche': ('Searching', 'after a pause, no old aircraft'),
+            'radar-suche-neu': ('Retrying', 'first request failed'),
+            'countdown-ohne-nachleuchten': ('Without afterglow', 'unlit segments stay dark'),
             'radar-fehler': ('Request failed', 'no data received yet'),
             'radar-abgelehnt': ('Access denied', 'adsb.lol refuses, long pause'),
             'radar-colone': ('4-character codes', 'airport codes with 4 characters, plus km/h', True),

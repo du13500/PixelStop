@@ -43,11 +43,13 @@ static uint32_t g_lastPollMs=0,g_lastOkMs=0,g_firstFailureMs=0,g_intervalMs=0;
 static bool g_hasPolled=false,g_providerPaused=false;
 static uint8_t g_consecutiveFailures=0;static bool g_connectionFailed=false;
 static int g_lastHttp=0;
+static bool g_searching=false;static uint8_t g_searchFails=0,g_skips=0;
+static bool adsbLolAccessDenied(int c){return c==401||c==403||c==426;}
 static const char* g_stage="bereit";
 static uint16_t g_scanned=0;
 static int requests=0;
 '''
-funcs='\n'.join(function(n) for n in ['tlsHeapReady','flightPollDue','flightExpire','flightFailure','flightSuccess'])
+funcs='\n'.join(function(n) for n in ['tlsHeapReady','flightPollDue','flightExpire','flightFailure','flightSkipped','flightSuccess','flightActivated','flightSearching','flightSearchRetry'])
 # Run the original pre-request section verbatim; replace only the network body.
 fetch=function('flightFetch').split('  uint16_t radiusNm',1)[0]
 fetch+='  (void)homeLat;(void)homeLon;(void)radiusKm;(void)scan;(void)rx;requests++;return true;\n}\n'
@@ -59,7 +61,7 @@ tests='''int main(){
  ESP.heap=need.total;g_consecutiveFailures=0;
  g_f.valid=true;g_f.error=false;g_lastOkMs=10000;clockMs=15000;
  ESP.block=6000;assert(!flightFetch(51,13,25,0));assert(requests==1);
- assert(g_f.valid&&g_f.error);assert(!strcmp(g_stage,"übersprungen: Heap"));
+ assert(g_f.valid&&!g_f.error&&!g_consecutiveFailures&&g_skips==2);assert(!strcmp(g_stage,"übersprungen: Heap"));   // our own reserve: skipped, not failed
  // 5 s is no longer selectable: the radar asks at most every 10 s.
  assert(!flightPollDue(5,1.0f));clockMs=24999;assert(!flightPollDue(5,1.0f));clockMs=25000;assert(flightPollDue(5,1.0f)&&g_intervalMs==10000);
  // The quota (AdsbQuota.h) and a pending route lookup take precedence.
@@ -68,6 +70,7 @@ tests='''int main(){
  pending.phase=3;assert(flightPollDue(10,1.0f));pending.phase=0;enrichDue=false;
  minimumInterval=15000;clockMs=29999;assert(!flightPollDue(5,1.0f));clockMs=30000;assert(flightPollDue(5,1.0f));minimumInterval=0;
  budgetInterval=12000;clockMs=26999;assert(!flightPollDue(5,0.25f)&&lastShare==0.25f);clockMs=27000;assert(flightPollDue(5,0.25f)&&g_intervalMs==12000);budgetInterval=0;
+ g_f.error=true;   // a real failed request (the skip above leaves the data untouched)
  clockMs=39999;assert(!flightExpire());clockMs=40000;assert(flightExpire());assert(!g_f.valid&&g_f.error);assert(!flightExpire());
  ESP.heap=need.total;ESP.block=need.block;assert(flightFetch(51,13,25,0));
  g_f={true,false};flightSuccess();assert(!g_consecutiveFailures&&g_lastOkMs==40000);
@@ -92,6 +95,29 @@ tests='''int main(){
  nameFound=true;assert(flightFetch(51,13,25,0));flightSuccess();assert(!g_connectionFailed);
  // Unsigned elapsed times remain valid across the millis wrap.
  g_f={true,true};g_lastOkMs=0xfffffff0U;clockMs=29983;assert(!flightExpire());clockMs=29984;assert(flightExpire());
+ // ---- v0.5.4.7: back in the rotation after a pause -> search instead of an old aircraft
+ g_searching=false;g_searchFails=0;g_skips=0;g_consecutiveFailures=0;g_providerPaused=false;g_connectionFailed=false;g_lastHttp=0;
+ g_f={true,false};clockMs=100000;flightSuccess();
+ clockMs=129999;flightActivated();assert(!flightSearching());          // younger than 30 s: goes on as before
+ clockMs=130000;flightActivated();assert(flightSearching()&&!flightSearchRetry());
+ g_f.error=true;assert(!flightExpire()&&g_f.valid);g_f.error=false;     // no expiry while searching
+ assert(!flightFailure("Verbindung fehlgeschlagen"));assert(flightSearching()&&flightSearchRetry()&&g_f.valid&&!g_f.error);
+ assert(!flightFailure("HTTP-Fehler"));assert(flightSearching());
+ assert(!flightFailure("Abrufpause: Anbieter",true));assert(flightSearching()&&g_searchFails==2);   // a provider pause is no failure
+ assert(!flightFailure("JSON-Fehler"));assert(!flightSearching()&&!g_f.valid&&g_f.error);          // third failure in a row: red screen
+ g_f={true,false};flightSuccess();clockMs=200000;flightActivated();assert(flightSearching());
+ g_f={true,false};flightSuccess();assert(!flightSearching()&&!g_searchFails);                       // first fresh answer ends the search
+ clockMs=300000;flightActivated();assert(flightSearching());g_lastHttp=403;
+ assert(!flightFailure("Zugriff abgelehnt"));assert(!flightSearching()&&!g_f.valid&&g_f.error);g_lastHttp=0;   // refused key: no retries
+ g_f={};g_lastOkMs=0;flightActivated();assert(!flightSearching());                                 // never any data: nothing to search for
+ // Skipped (own memory reserve): no failure, search goes on, next attempt after 10 s instead of 45/180 s
+ g_f={true,false};clockMs=400000;flightSuccess();clockMs=440000;flightActivated();assert(flightSearching());
+ ESP.heap=need.total;ESP.block=6000;
+ for(int i=0;i<RADAR_MAX_SKIPS;i++){assert(!flightFetch(51,13,25,0));assert(flightSearching()&&!flightSearchRetry()&&!g_consecutiveFailures&&g_skips==i+1);}
+ {uint32_t t0=g_lastPollMs;clockMs=t0+9999;assert(!flightPollDue(180,1.0f));clockMs=t0+10000;assert(flightPollDue(180,1.0f)&&g_intervalMs==10000);
+  minimumInterval=15000;clockMs=t0+14999;assert(!flightPollDue(180,1.0f));clockMs=t0+15000;assert(flightPollDue(180,1.0f));minimumInterval=0;}   // quota limits still apply
+ assert(!flightFetch(51,13,25,0));assert(!g_skips&&g_searchFails==1&&flightSearchRetry());          // shortage that does not go away is a failure after all
+ ESP.block=need.block;
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:

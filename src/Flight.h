@@ -48,6 +48,12 @@ int flightLastHttp();
 uint16_t flightTlsRx();
 
 bool flightExpire();
+// The radar became active (prefetch or on screen): data older than 30 s are not shown
+// any more, the radar searches until the first fresh answer (RadarPolicy.h).
+void flightActivated();
+bool flightSearching();
+// A request has already failed during this search ("NEUER VERSUCH").
+bool flightSearchRetry();
 uint32_t flightTlsMinBlock();
 
 uint32_t flightWaitSec();

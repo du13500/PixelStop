@@ -53,7 +53,7 @@ static Enrichment g_cache[3]={};static uint8_t g_cacheNext=0;static uint32_t g_l
 static bool g_routeSincePoll=false;static uint32_t g_lastPollMs=0,g_lastOkMs=0,g_intervalMs=0;static bool g_hasPolled=false,g_providerPaused=false;
 static const char* g_stage="";
 static const uint16_t RADAR_MIN_POLL_SEC=10;
-static uint8_t g_consecutiveFailures=0;static bool g_connectionFailed=false;
+static uint8_t g_consecutiveFailures=0;static bool g_connectionFailed=false;static bool g_searching=false;static uint8_t g_skips=0;
 RETRY
 enum {SERVICE_ADSB_LOL,SERVICE_ADSB_DB};
 static uint32_t providerUntil=0,minIntervalUntil=0,minInterval=0;

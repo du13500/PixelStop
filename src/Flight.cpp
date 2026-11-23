@@ -27,6 +27,10 @@ static uint32_t g_lastOkMs = 0;
 static bool g_providerPaused = false;
 static uint32_t g_firstFailureMs = 0;
 static uint8_t g_consecutiveFailures = 0;
+// Searching after a pause (flightActivated), failed requests during it, and
+// requests skipped in a row because our own memory reserve was short.
+static bool g_searching = false;
+static uint8_t g_searchFails = 0, g_skips = 0;
 static BearSSL::Session g_adsbSession;
 static BearSSL::Session g_routeSession;
 static BearSSL::Session g_adsbDbSession;
@@ -237,7 +241,7 @@ static bool routeSlotFree(){
   return !minimum||(uint32_t)(millis()-g_lastPollMs)>=minimum;
 }
 bool flightEnrichmentDue(){
- if(!g_f.valid||g_f.error||!routePointValid(g_position)||!g_f.callsign[0])return false;
+ if(g_searching||!g_f.valid||g_f.error||!routePointValid(g_position)||!g_f.callsign[0])return false;
  Enrichment* e=currentEnrichment();
  if(e&&e->phase<3)return e->phase==0?routeSlotFree():!serviceWaitMs(SERVICE_ADSB_DB);
  if(g_lastEnrichmentMs&&(uint32_t)(millis()-g_lastEnrichmentMs)<60000UL)return false;
@@ -270,6 +274,7 @@ void flightReset() {
   g_providerPaused = false;
   g_firstFailureMs = 0;
   g_consecutiveFailures = 0;
+  g_searching = false; g_searchFails = 0; g_skips = 0;
   g_connectionFailed = false;
   // Keep bounded enrichment and provider cooldowns when saving settings.
   g_lastHttp = 0;
@@ -285,7 +290,8 @@ bool flightPollDue(uint16_t pollSec, float visibleShare) {
   uint32_t interval=(uint32_t)pollSec*1000UL;
   uint32_t minimum=serviceMinIntervalMs(SERVICE_ADSB_LOL);
   if(interval<minimum)interval=minimum;
-  interval=radarRetryIntervalMs(interval,g_connectionFailed,g_consecutiveFailures);
+  interval=radarRetryIntervalMs(interval,g_connectionFailed,g_consecutiveFailures,g_skips>0);
+  if(interval<minimum)interval=minimum;
   uint32_t budget=adsbLolBudgetIntervalMs(visibleShare);
   if(interval<budget)interval=budget;
   g_intervalMs=interval;
@@ -313,8 +319,13 @@ const char* flightRouteSource() { return g_routeSource; }
 int flightRouteHttp() { return g_routeHttp; }
 uint16_t flightTlsRx() { return ADSB_LOL_TLS_RX; }
 uint32_t flightTlsMinBlock() { return radarTlsBudget(ADSB_LOL_TLS_RX, sizeof(br_ssl_client_context)).block; }
+void flightActivated() {
+  if(radarStaleOnEntry(millis(),g_lastOkMs)){g_searching=true;g_searchFails=0;}
+}
+bool flightSearching() { return g_searching; }
+bool flightSearchRetry() { return g_searching&&g_searchFails>0; }
 bool flightExpire() {
-  if(g_providerPaused||!g_f.error||!radarExpired(millis(),g_lastOkMs,g_f.valid))return false;
+  if(g_searching||g_providerPaused||!g_f.error||!radarExpired(millis(),g_lastOkMs,g_f.valid))return false;
   g_f.valid=false;g_f.error=true;g_stage="Daten veraltet";
   return true;
 }
@@ -322,9 +333,17 @@ bool flightExpire() {
 static bool flightFailure(const char* stage = "Fehler", bool providerPause = false) {
   g_providerPaused = providerPause;
   g_stage = stage;
+  g_skips = 0;
   uint32_t now = millis();
   if (g_consecutiveFailures == 0) g_firstFailureMs = now;
   if (g_consecutiveFailures < 255) g_consecutiveFailures++;
+  if (g_searching) {
+    // The old aircraft stays hidden. A provider pause is no failure; a refused key ends the search at once.
+    if (!providerPause && g_searchFails < 255) g_searchFails++;
+    if (!radarSearchGivesUp(g_searchFails, adsbLolAccessDenied(g_lastHttp))) return false;
+    g_searching = false; g_f.valid = false; g_f.error = true;
+    return false;
+  }
   uint32_t since = g_lastOkMs ? (uint32_t)(now - g_lastOkMs) : (uint32_t)(now - g_firstFailureMs);
   g_f.error = true;
   if (!providerPause && since >= RADAR_MAX_AGE_MS) {
@@ -334,7 +353,17 @@ static bool flightFailure(const char* stage = "Fehler", bool providerPause = fal
   return false;
 }
 
+// Request stopped by our own memory reserve: not a failure of the provider or the
+// network. The old data stay as they are; the next attempt follows after 10 s.
+static bool flightSkipped(const char* stage) {
+  if (g_skips >= RADAR_MAX_SKIPS) return flightFailure(stage);
+  g_skips++;
+  g_stage = stage;
+  return false;
+}
+
 static void flightSuccess(const char* stage = "ok") {
+  g_searching = false; g_searchFails = 0; g_skips = 0;
   g_providerPaused = false;
   g_connectionFailed = false;
   g_stage = stage;
@@ -409,7 +438,7 @@ bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm, uint8_t hideMa
   g_lastHttp = 0;
   if (WiFi.status() != WL_CONNECTED) { trace.stage(DS_NO_WIFI); return flightFailure("kein WLAN"); }
   g_connectionFailed = false;
-  if (!tlsHeapReady(ADSB_LOL_TLS_RX)) { trace.stage(DS_HEAP); return flightFailure("übersprungen: Heap"); }
+  if (!tlsHeapReady(ADSB_LOL_TLS_RX)) { trace.stage(DS_HEAP); return flightSkipped("übersprungen: Heap"); }
   if (!adsbLolResolve(trace)) { g_connectionFailed = true; return flightFailure("Name nicht gefunden"); }
   trace.stage(DS_TLS);
   const uint16_t rx=ADSB_LOL_TLS_RX;
@@ -449,13 +478,13 @@ bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm, uint8_t hideMa
     addAircraftFields(scan ? filter.to<JsonObject>() : filter["ac"][0].to<JsonObject>());
     JsonDocument doc(networkJsonAllocator());
     trace.stage(DS_JSON);
-    if(!jsonFilterReady(filter,trace)){http.end();client.stop();return flightFailure("JSON-Speicher knapp");}
+    if(!jsonFilterReady(filter,trace)){http.end();client.stop();return flightSkipped("übersprungen: JSON-Speicher");}
     AdsbLolBody body(http);
     bool found = false;
     if (!scan) {
       auto err = deserializeJson(doc, body, DeserializationOption::Filter(filter));
       logJsonError(trace,err); filter.clear(); http.end(); client.stop();
-      if (err) return flightFailure("JSON-Fehler");
+      if (err) return err == DeserializationError::NoMemory ? flightSkipped("übersprungen: JSON-Speicher") : flightFailure("JSON-Fehler");
       JsonArrayConst ac = doc["ac"].as<JsonArrayConst>();
       if(ac.isNull()){trace.stage(DS_SCHEMA);return flightFailure("Antwortformat-Fehler");}
       if (ac.size()) {
@@ -475,7 +504,7 @@ bool flightFetch(float homeLat, float homeLon, uint16_t radiusKm, uint8_t hideMa
       if (err) {
         logJsonError(trace,err); filter.clear(); http.end(); client.stop();
         if (err == DeserializationError::InvalidInput && !g_scanned) { trace.stage(DS_SCHEMA); return flightFailure("Antwortformat-Fehler"); }
-        return flightFailure("JSON-Fehler");
+        return err == DeserializationError::NoMemory ? flightSkipped("übersprungen: JSON-Speicher") : flightFailure("JSON-Fehler");
       }
       filter.clear(); http.end(); client.stop();
     }

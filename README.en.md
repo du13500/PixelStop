@@ -6,19 +6,19 @@
 Bought as a small Wi-Fi cube with a rather modest stock firmware – and from day one with the plan to turn it into something of my own.
 
 [![Build](https://github.com/du13500/pixelstop/actions/workflows/build.yml/badge.svg)](https://github.com/du13500/pixelstop/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-v0.5.4.6--dev-orange)
+![Version](https://img.shields.io/badge/version-v0.5.4.7--dev-orange)
 ![Hardware](https://img.shields.io/badge/hardware-ESP8266%20%C2%B7%20SmallTV--Ultra-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Mission](https://img.shields.io/badge/mission-Know%20before%20you%20go-ff5d56)
 
 <p align="center">
-<img src="docs/screens/en/kachel-abfahrten.png?v=0.5.4.6" width="260" alt="Departures">
-<img src="docs/screens/en/kachel-wetter.png?v=0.5.4.6" width="260" alt="Weather">
-<img src="docs/screens/en/kachel-vorhersage.png?v=0.5.4.6" width="260" alt="3-day forecast">
-<img src="docs/screens/en/kachel-flugradar.png?v=0.5.4.6" width="260" alt="Flight radar">
-<img src="docs/screens/en/kachel-flugtracker.png?v=0.5.4.6" width="260" alt="Flight tracker">
-<img src="docs/screens/en/kachel-uhr.png?v=0.5.4.6" width="260" alt="Clock">
-<img src="docs/screens/en/kachel-countdown-tage.png?v=0.5.4.6" width="260" alt="Countdown">
+<img src="docs/screens/en/kachel-abfahrten.png?v=0.5.4.7" width="260" alt="Departures">
+<img src="docs/screens/en/kachel-wetter.png?v=0.5.4.7" width="260" alt="Weather">
+<img src="docs/screens/en/kachel-vorhersage.png?v=0.5.4.7" width="260" alt="3-day forecast">
+<img src="docs/screens/en/kachel-flugradar.png?v=0.5.4.7" width="260" alt="Flight radar">
+<img src="docs/screens/en/kachel-flugtracker.png?v=0.5.4.7" width="260" alt="Flight tracker">
+<img src="docs/screens/en/kachel-uhr.png?v=0.5.4.7" width="260" alt="Clock">
+<img src="docs/screens/en/kachel-countdown-tage.png?v=0.5.4.7" width="260" alt="Countdown">
 </p>
 <p align="center"><sub>Real firmware output with sample data · more images and explanations under <a href="#programs">Programs</a></sub></p>
 
@@ -37,12 +37,12 @@ Expand a program to see what it shows, what you can set and all example images. 
 Live departures of a stop of Verkehrsverbund Oberelbe (VVO, Dresden region): line, destination, minutes to departure, delay (yellow) and cancellation (✕). Three to five departures on one page, or ten on two pages switching every 5 seconds; filter by mode of transport. Destinations can be shown without the town of the stop and abbreviated. Minutes count down between requests – even while VVO cannot be reached.
 
 <p align="center">
-<img src="docs/screens/en/abfahrten.png?v=0.5.4.6" width="260" alt="Departures: Dresden Hbf with a delay and a cancellation">
-<img src="docs/screens/en/abfahrten-ziele.png?v=0.5.4.6" width="260" alt="Short destinations">
-<img src="docs/screens/en/abfahrten-seiten.gif?v=0.5.4.6" width="260" alt="Ten departures on two pages">
-<img src="docs/screens/en/abfahrten-nicht-bedient.png?v=0.5.4.6" width="260" alt="Stop not served">
-<img src="docs/screens/en/abfahrten-fehler.png?v=0.5.4.6" width="260" alt="VVO not reachable">
-<img src="docs/screens/en/abfahrten-unkonfiguriert.png?v=0.5.4.6" width="260" alt="No stop chosen yet">
+<img src="docs/screens/en/abfahrten.png?v=0.5.4.7" width="260" alt="Departures: Dresden Hbf with a delay and a cancellation">
+<img src="docs/screens/en/abfahrten-ziele.png?v=0.5.4.7" width="260" alt="Short destinations">
+<img src="docs/screens/en/abfahrten-seiten.gif?v=0.5.4.7" width="260" alt="Ten departures on two pages">
+<img src="docs/screens/en/abfahrten-nicht-bedient.png?v=0.5.4.7" width="260" alt="Stop not served">
+<img src="docs/screens/en/abfahrten-fehler.png?v=0.5.4.7" width="260" alt="VVO not reachable">
+<img src="docs/screens/en/abfahrten-unkonfiguriert.png?v=0.5.4.7" width="260" alt="No stop chosen yet">
 </p>
 
 </details>
@@ -52,10 +52,10 @@ Live departures of a stop of Verkehrsverbund Oberelbe (VVO, Dresden region): lin
 Current temperature, day/night weather icon, high and low, chance of rain, sunrise and sunset, in °C or °F. The place is chosen by search, on the map or by coordinates; a display name of your own is possible.
 
 <p align="center">
-<img src="docs/screens/en/wetter.png?v=0.5.4.6" width="260" alt="Weather: Berlin by day">
-<img src="docs/screens/en/wetter-nacht.png?v=0.5.4.6" width="260" alt="Weather: Berlin at night">
-<img src="docs/screens/en/wetter-symbole.gif?v=0.5.4.6" width="260" alt="All weather icons in turn">
-<img src="docs/screens/en/wetter-fehler.png?v=0.5.4.6" width="260" alt="Open-Meteo not reachable">
+<img src="docs/screens/en/wetter.png?v=0.5.4.7" width="260" alt="Weather: Berlin by day">
+<img src="docs/screens/en/wetter-nacht.png?v=0.5.4.7" width="260" alt="Weather: Berlin at night">
+<img src="docs/screens/en/wetter-symbole.gif?v=0.5.4.7" width="260" alt="All weather icons in turn">
+<img src="docs/screens/en/wetter-fehler.png?v=0.5.4.7" width="260" alt="Open-Meteo not reachable">
 </p>
 
 </details>
@@ -65,14 +65,14 @@ Current temperature, day/night weather icon, high and low, chance of rain, sunri
 Weekday, weather icon, high and low and chance of rain for the next three days – as a view of its own in the rotation.
 
 <p align="center">
-<img src="docs/screens/en/vorhersage.png?v=0.5.4.6" width="260" alt="3-day forecast for Berlin">
+<img src="docs/screens/en/vorhersage.png?v=0.5.4.7" width="260" alt="3-day forecast for Berlin">
 </p>
 
 </details>
 
 <details><summary><b>✈️ Flight radar</b></summary>
 
-The nearest aircraft within the chosen radius: callsign, airline, route, type, registration, distance and altitude. Between two requests the cube keeps calculating distance and altitude; the footer shows the age of the last request.
+The nearest aircraft within the chosen radius: callsign, airline, route, type, registration, distance and altitude. Between two requests the cube keeps calculating distance and altitude; the footer shows the age of the last request. When the radar comes back in the rotation after a pause and the last data are older than 30 seconds, PixelStop shows no old aircraft but **SEARCHING AIRCRAFT** until the first fresh request is in; if it fails, the search stays on screen (“RETRYING”), and “Request failed” appears only after three failed requests in a row.
 
 The **Flight radar** tab adjusts the view:
 
@@ -86,40 +86,42 @@ The **Flight radar** tab adjusts the view:
 
 <p align="center">
 <sub><b>Flight movements</b></sub><br>
-<img src="docs/screens/en/flugradar.gif?v=0.5.4.6" width="260" alt="Flight radar: Emirates A380 over Dresden">
-<img src="docs/screens/en/radar-steigflug.gif?v=0.5.4.6" width="260" alt="Climbing: ALROSA Tu-154M out of Mirny">
-<img src="docs/screens/en/radar-sinkflug.gif?v=0.5.4.6" width="260" alt="Descending: European Air Charter MD-82 to Varna">
+<img src="docs/screens/en/flugradar.gif?v=0.5.4.7" width="260" alt="Flight radar: Emirates A380 over Dresden">
+<img src="docs/screens/en/radar-steigflug.gif?v=0.5.4.7" width="260" alt="Climbing: ALROSA Tu-154M out of Mirny">
+<img src="docs/screens/en/radar-sinkflug.gif?v=0.5.4.7" width="260" alt="Descending: European Air Charter MD-82 to Varna">
 </p>
 
 <p align="center">
 <sub><b>Display</b></sub><br>
-<img src="docs/screens/en/radar-name.gif?v=0.5.4.6" width="260" alt="Long airline name alternating">
-<img src="docs/screens/en/radar-colone.gif?v=0.5.4.6" width="260" alt="4-character codes (fictional)">
-<img src="docs/screens/en/radar-boden.gif?v=0.5.4.6" width="260" alt="Aircraft on the ground">
-<img src="docs/screens/en/radar-sq26.gif?v=0.5.4.6" width="260" alt="Singapore Airlines SIN – FRA – JFK">
-<img src="docs/screens/en/radar-islandhopper.gif?v=0.5.4.6" width="260" alt="United Island Hopper with 7 airports">
-<img src="docs/screens/en/radar-apollo.gif?v=0.5.4.6" width="260" alt="Military (fictional)">
+<img src="docs/screens/en/radar-name.gif?v=0.5.4.7" width="260" alt="Long airline name alternating">
+<img src="docs/screens/en/radar-colone.gif?v=0.5.4.7" width="260" alt="4-character codes (fictional)">
+<img src="docs/screens/en/radar-boden.gif?v=0.5.4.7" width="260" alt="Aircraft on the ground">
+<img src="docs/screens/en/radar-sq26.gif?v=0.5.4.7" width="260" alt="Singapore Airlines SIN – FRA – JFK">
+<img src="docs/screens/en/radar-islandhopper.gif?v=0.5.4.7" width="260" alt="United Island Hopper with 7 airports">
+<img src="docs/screens/en/radar-apollo.gif?v=0.5.4.7" width="260" alt="Military (fictional)">
 </p>
 
 <p align="center">
 <sub><b>Emergencies · fictional data</b></sub><br>
-<img src="docs/screens/en/radar-galactica.gif?v=0.5.4.6" width="260" alt="Hijack, squawk 7500 (fictional)">
-<img src="docs/screens/en/radar-red2.gif?v=0.5.4.6" width="260" alt="Radio failure, squawk 7600 (fictional)">
-<img src="docs/screens/en/radar-karma.gif?v=0.5.4.6" width="260" alt="Emergency (fictional)">
+<img src="docs/screens/en/radar-galactica.gif?v=0.5.4.7" width="260" alt="Hijack, squawk 7500 (fictional)">
+<img src="docs/screens/en/radar-red2.gif?v=0.5.4.7" width="260" alt="Radio failure, squawk 7600 (fictional)">
+<img src="docs/screens/en/radar-karma.gif?v=0.5.4.7" width="260" alt="Emergency (fictional)">
 </p>
 
 <p align="center">
 <sub><b>Data state</b></sub><br>
-<img src="docs/screens/en/radar-gelb.gif?v=0.5.4.6" width="260" alt="Last data after a failed request">
-<img src="docs/screens/en/radar-pause.gif?v=0.5.4.6" width="260" alt="Paused">
-<img src="docs/screens/en/radar-grau.gif?v=0.5.4.6" width="260" alt="No data any more">
+<img src="docs/screens/en/radar-gelb.gif?v=0.5.4.7" width="260" alt="Last data after a failed request">
+<img src="docs/screens/en/radar-pause.gif?v=0.5.4.7" width="260" alt="Paused">
+<img src="docs/screens/en/radar-grau.gif?v=0.5.4.7" width="260" alt="No data any more">
 </p>
 
 <p align="center">
 <sub><b>No aircraft</b></sub><br>
-<img src="docs/screens/en/radar-leer.png?v=0.5.4.6" width="260" alt="No aircraft within the radius">
-<img src="docs/screens/en/radar-fehler.png?v=0.5.4.6" width="260" alt="Request failed">
-<img src="docs/screens/en/radar-abgelehnt.png?v=0.5.4.6" width="260" alt="adsb.lol: access denied">
+<img src="docs/screens/en/radar-leer.png?v=0.5.4.7" width="260" alt="No aircraft within the radius">
+<img src="docs/screens/en/radar-suche.png?v=0.5.4.7" width="260" alt="Searching after a pause">
+<img src="docs/screens/en/radar-suche-neu.png?v=0.5.4.7" width="260" alt="Searching: retrying">
+<img src="docs/screens/en/radar-fehler.png?v=0.5.4.7" width="260" alt="Request failed">
+<img src="docs/screens/en/radar-abgelehnt.png?v=0.5.4.7" width="260" alt="adsb.lol: access denied">
 </p>
 
 | Radar footer | Meaning |
@@ -128,6 +130,8 @@ The **Flight radar** tab adjusts the view:
 | `LAST DATA 16s` | request failed, the previous data is still shown |
 | `PAUSED 46s` | adsb.lol asks for a pause; age of the last request |
 | `NO AIRCRAFT` | request successful, but nothing within the radius |
+| `SEARCHING` | after a pause: no fresh request yet, the old aircraft stays hidden |
+| `RETRYING` | the first request after the pause failed; the next attempt follows |
 | `ADSB.LOL / Access denied` | adsb.lol refuses (401/403/426); long pause instead of constant retries |
 
 | Dot in the footer | Meaning |
@@ -145,22 +149,22 @@ One specific flight with scheduled and actual times, status, flight time and liv
 
 <p align="center">
 <sub><b>In flight</b></sub><br>
-<img src="docs/screens/en/flugtracker.png?v=0.5.4.6" width="260" alt="Flight tracker LH1178">
-<img src="docs/screens/en/flugtracker-status.gif?v=0.5.4.6" width="260" alt="Status scheduled, in the air, landed">
-<img src="docs/screens/en/flugtracker-umgeleitet.png?v=0.5.4.6" width="260" alt="Flight diverted">
+<img src="docs/screens/en/flugtracker.png?v=0.5.4.7" width="260" alt="Flight tracker LH1178">
+<img src="docs/screens/en/flugtracker-status.gif?v=0.5.4.7" width="260" alt="Status scheduled, in the air, landed">
+<img src="docs/screens/en/flugtracker-umgeleitet.png?v=0.5.4.7" width="260" alt="Flight diverted">
 </p>
 
 <p align="center">
 <sub><b>Special cases</b></sub><br>
-<img src="docs/screens/en/flugtracker-annulliert.png?v=0.5.4.6" width="260" alt="Flight cancelled">
-<img src="docs/screens/en/flugtracker-nicht-gefunden.png?v=0.5.4.6" width="260" alt="Flight not found">
-<img src="docs/screens/en/flugtracker-fehler.png?v=0.5.4.6" width="260" alt="Tracker error">
+<img src="docs/screens/en/flugtracker-annulliert.png?v=0.5.4.7" width="260" alt="Flight cancelled">
+<img src="docs/screens/en/flugtracker-nicht-gefunden.png?v=0.5.4.7" width="260" alt="Flight not found">
+<img src="docs/screens/en/flugtracker-fehler.png?v=0.5.4.7" width="260" alt="Tracker error">
 </p>
 
 <p align="center">
 <sub><b>Setup</b></sub><br>
-<img src="docs/screens/en/flugtracker-ohne-flug.png?v=0.5.4.6" width="260" alt="Flight tracker without flight number">
-<img src="docs/screens/en/flugtracker-ohne-key.png?v=0.5.4.6" width="260" alt="Flight tracker without API key">
+<img src="docs/screens/en/flugtracker-ohne-flug.png?v=0.5.4.7" width="260" alt="Flight tracker without flight number">
+<img src="docs/screens/en/flugtracker-ohne-key.png?v=0.5.4.7" width="260" alt="Flight tracker without API key">
 </p>
 
 </details>
@@ -170,11 +174,11 @@ One specific flight with scheduled and actual times, status, flight time and liv
 Time and date in the chosen time zone – as **Pixel**, as a **clock radio** with segment digits or as **Modern** with frame and day bar. Colour, seconds, blinking colon, date and the afterglow of the segments can be set. The **12 or 24 hour** format applies to all views, including the footers, the flight tracker and the sun times.
 
 <p align="center">
-<img src="docs/screens/en/uhr.png?v=0.5.4.6" width="260" alt="Clock radio with date">
-<img src="docs/screens/en/uhr-blinken.gif?v=0.5.4.6" width="260" alt="Clock radio with blinking colon">
-<img src="docs/screens/en/uhr-12h.png?v=0.5.4.6" width="260" alt="Clock radio in 12-hour format">
-<img src="docs/screens/en/uhr-modern.gif?v=0.5.4.6" width="260" alt="Clock in the Modern style">
-<img src="docs/screens/en/uhr-pixel.png?v=0.5.4.6" width="260" alt="Clock in the Pixel style">
+<img src="docs/screens/en/uhr.png?v=0.5.4.7" width="260" alt="Clock radio with date">
+<img src="docs/screens/en/uhr-blinken.gif?v=0.5.4.7" width="260" alt="Clock radio with blinking colon">
+<img src="docs/screens/en/uhr-12h.png?v=0.5.4.7" width="260" alt="Clock radio in 12-hour format">
+<img src="docs/screens/en/uhr-modern.gif?v=0.5.4.7" width="260" alt="Clock in the Modern style">
+<img src="docs/screens/en/uhr-pixel.png?v=0.5.4.7" width="260" alt="Clock in the Pixel style">
 </p>
 
 </details>
@@ -183,22 +187,24 @@ Time and date in the chosen time zone – as **Pixel**, as a **clock radio** wit
 
 Four independent countdowns in days, in hours : minutes : seconds or in minutes : seconds, each with its own title and colours. The digits look like an LED clock radio; unlit segments glow faintly.
 
+- **Afterglow:** one setting for all four countdowns and both styles; switched off, unlit segments stay dark.
 - **Style:** “Classic” or “Modern” with frame, “T-MINUS”/“T-PLUS” and a progress bar.
 - **Sign:** “−” before the target and “+” after it – or no sign; then the countdown stops at zero.
 - **Start date** (days): sets the progress bar of the “Modern” style; if left empty, today is filled in when the countdown is started.
 
 <p align="center">
 <sub><b>Classic</b></sub><br>
-<img src="docs/screens/en/countdown-tage.png?v=0.5.4.6" width="260" alt="Countdown in days">
-<img src="docs/screens/en/countdown-timer.gif?v=0.5.4.6" width="260" alt="Countdown timer">
-<img src="docs/screens/en/countdown-plus.gif?v=0.5.4.6" width="260" alt="Countdown after the target">
+<img src="docs/screens/en/countdown-tage.png?v=0.5.4.7" width="260" alt="Countdown in days">
+<img src="docs/screens/en/countdown-ohne-nachleuchten.png?v=0.5.4.7" width="260" alt="Countdown without afterglow">
+<img src="docs/screens/en/countdown-timer.gif?v=0.5.4.7" width="260" alt="Countdown timer">
+<img src="docs/screens/en/countdown-plus.gif?v=0.5.4.7" width="260" alt="Countdown after the target">
 </p>
 
 <p align="center">
 <sub><b>Modern</b></sub><br>
-<img src="docs/screens/en/countdown-tage-modern.png?v=0.5.4.6" width="260" alt="Modern in days">
-<img src="docs/screens/en/countdown-modern.gif?v=0.5.4.6" width="260" alt="Modern timer">
-<img src="docs/screens/en/countdown-modern-null.png?v=0.5.4.6" width="260" alt="Modern at the target without a sign">
+<img src="docs/screens/en/countdown-tage-modern.png?v=0.5.4.7" width="260" alt="Modern in days">
+<img src="docs/screens/en/countdown-modern.gif?v=0.5.4.7" width="260" alt="Modern timer">
+<img src="docs/screens/en/countdown-modern-null.png?v=0.5.4.7" width="260" alt="Modern at the target without a sign">
 </p>
 
 </details>
@@ -208,14 +214,14 @@ Four independent countdowns in days, in hours : minutes : seconds or in minutes 
 On first start PixelStop opens the Wi-Fi hotspot **PixelStop-Setup**; at 192.168.4.1 you set up Wi-Fi and everything else. Then the cube connects and briefly shows its address. If the firmware crashes several times in a row, **rescue mode** starts: no requests, but the web interface and firmware update stay reachable.
 
 <p align="center">
-<img src="docs/screens/en/setup.png?v=0.5.4.6" width="260" alt="Setup hotspot">
-<img src="docs/screens/en/start.gif?v=0.5.4.6" width="260" alt="Start and Wi-Fi connection">
-<img src="docs/screens/en/rettung.png?v=0.5.4.6" width="260" alt="Rescue mode">
+<img src="docs/screens/en/setup.png?v=0.5.4.7" width="260" alt="Setup hotspot">
+<img src="docs/screens/en/start.gif?v=0.5.4.7" width="260" alt="Start and Wi-Fi connection">
+<img src="docs/screens/en/rettung.png?v=0.5.4.7" width="260" alt="Rescue mode">
 </p>
 
 </details>
 
-## Status: v0.5.4.6-dev
+## Status: v0.5.4.7-dev
 
 | Area | Status |
 | --- | --- |
@@ -232,6 +238,7 @@ On first start PixelStop opens the Wi-Fi hotspot **PixelStop-Setup**; at 192.168
 | Flight tracker with your own aviationstack key | ⏳ not fully tested on hardware |
 | Countdown in clock-radio style, “Modern” style, selectable sign | ⏳ hardware test pending (v0.5.4.5) |
 | Clock as Pixel, clock radio or Modern, 12/24 h everywhere, web interface in collapsible cards | ⏳ hardware test pending (v0.5.4.6) |
+| Countdown: afterglow can be switched off; the radar shows “searching” after a pause instead of an old aircraft | ⏳ hardware test pending (v0.5.4.7) |
 
 All changes are listed in [`CHANGELOG.md`](CHANGELOG.md) (German), open checks in [`ROADMAP.md`](ROADMAP.md).
 
