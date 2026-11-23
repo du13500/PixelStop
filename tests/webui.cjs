@@ -147,14 +147,14 @@ async function go(page,id){await page.locator(`nav [data-p="${id}"]`).click();as
     await page.route('http://smalltv.test/api/status',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({adsbQuota:{h:[10,135],d:[357,470],w:[357,1900],m:[397,4750]}})}));
     await go(page,'flugradar');await page.evaluate(()=>statusNow());
     await page.waitForFunction(()=>!document.getElementById('fc').classList.contains('hidden'));
-    await page.selectOption('#planePoll','10');
-    await page.evaluate(()=>{for(let i=0;i<10;i++)document.getElementById('modeOn'+i).checked=(i===2);document.getElementById('modeOn2').dispatchEvent(new Event('change',{bubbles:true}))});
-    assert((await page.locator('#fcLine').textContent()).includes('Kontingent'),'Forecast mentions the quota at 10 s');
+    await page.evaluate(()=>{for(let i=0;i<10;i++)document.getElementById('modeOn'+i).checked=(i===2);document.getElementById('planePoll').value='10';radarForecast()});
+    const fast=await page.locator('#fcLine').textContent();
+    assert(fast.toLowerCase().includes('kontingent'),'Forecast mentions the quota at 10 s: '+fast);
     assert.strictEqual(await page.locator('#fcTable tr').count(),5,'Table has header plus four periods');
-    await page.selectOption('#planePoll','180');
-    await page.evaluate(()=>{document.getElementById('modeSec2').value='10';for(let i=0;i<10;i++)document.getElementById('modeOn'+i).checked=(i===2||i===0);document.getElementById('planePoll').dispatchEvent(new Event('change',{bubbles:true}))});
-    assert((await page.locator('#fcLine').textContent()).length>10,'Forecast line is filled for a slow interval');
-    await page.evaluate(()=>{document.getElementById('modeOn2').checked=false;document.getElementById('modeOn2').dispatchEvent(new Event('change',{bubbles:true}))});
+    await page.selectOption('#planePoll','180');   // a real change event updates the forecast
+    const slow=await page.locator('#fcLine').textContent();
+    assert(slow.length>10&&slow!==fast,'Forecast follows the interval: '+slow);
+    await page.evaluate(()=>{document.getElementById('modeOn2').checked=false;radarForecast()});
     assert((await page.locator('#fcLine').textContent()).includes('nicht in der Rotation'),'No requests without the radar in the rotation');
     await page.evaluate(b=>b.forEach((v,i)=>{document.getElementById('modeOn'+i).checked=v[0];document.getElementById('modeSec'+i).value=v[1]}),rotBefore);await page.selectOption('#planePoll',pollBefore);
     // Sigma-delta dimming is gone (it stopped Wi-Fi, v0.5.4).
