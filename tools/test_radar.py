@@ -43,7 +43,7 @@ static uint32_t g_lastPollMs=0,g_lastOkMs=0,g_firstFailureMs=0,g_intervalMs=0;
 static bool g_hasPolled=false,g_providerPaused=false;
 static uint8_t g_consecutiveFailures=0;static bool g_connectionFailed=false;
 static int g_lastHttp=0;
-static bool g_searching=false;static uint8_t g_searchFails=0,g_skips=0;
+static bool g_searching=false;static uint8_t g_searchFails=0,g_skips=0;static uint32_t g_searchStartMs=0;
 static bool adsbLolAccessDenied(int c){return c==401||c==403||c==426;}
 static const char* g_stage="bereit";
 static uint16_t g_scanned=0;
@@ -104,10 +104,12 @@ tests='''int main(){
  assert(!flightFailure("Verbindung fehlgeschlagen"));assert(flightSearching()&&flightSearchRetry()&&g_f.valid&&!g_f.error);
  assert(!flightFailure("HTTP-Fehler"));assert(flightSearching());
  assert(!flightFailure("Abrufpause: Anbieter",true));assert(flightSearching()&&g_searchFails==2);   // a provider pause is no failure
- assert(!flightFailure("JSON-Fehler"));assert(!flightSearching()&&!g_f.valid&&g_f.error);          // third failure in a row: red screen
- g_f={true,false};flightSuccess();clockMs=200000;flightActivated();assert(flightSearching());
+ assert(!flightFailure("JSON-Fehler"));assert(flightSearching()&&g_searchFails==3&&g_f.valid);      // third failure, but searched less than 2 min: keep searching
+ clockMs=249999;assert(!flightFailure("JSON-Fehler"));assert(flightSearching()&&g_f.valid);
+ clockMs=250000;assert(!flightFailure("JSON-Fehler"));assert(!flightSearching()&&!g_f.valid&&g_f.error);   // 3 failures and 2 min: red screen
+ g_f={true,false};flightSuccess();clockMs=280000;flightActivated();assert(flightSearching());
  g_f={true,false};flightSuccess();assert(!flightSearching()&&!g_searchFails);                       // first fresh answer ends the search
- clockMs=300000;flightActivated();assert(flightSearching());g_lastHttp=403;
+ clockMs=310000;flightActivated();assert(flightSearching());g_lastHttp=403;
  assert(!flightFailure("Zugriff abgelehnt"));assert(!flightSearching()&&!g_f.valid&&g_f.error);g_lastHttp=0;   // refused key: no retries
  g_f={};g_lastOkMs=0;flightActivated();assert(!flightSearching());                                 // never any data: nothing to search for
  // Skipped (own memory reserve): no failure, search goes on, next attempt after 10 s instead of 45/180 s

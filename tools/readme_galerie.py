@@ -63,6 +63,7 @@ T = {
          '- **▲▼** zwischen Entfernung und Höhe bei Steig- oder Sinkflug ab 300 ft/min.\n'
          '- **MIL** neben dem Rufzeichen für Militärflugzeuge.\n'
          '- **Routen mit Zwischenstopps:** drei Flughäfen in kleinerer Schrift, längere Ketten auf zwei Zeilen.\n'
+         '- **Hochrechnung im Webinterface:** Unter *Flugradar → Radius und Abruf* zeigt ein Satz, wie lange die Kontingente von adsb.lol beim gewählten Takt reichen, dazu eine aufklappbare Tabelle (Stunde, Tag, Woche, Monat). Die Werte sind eine Schätzung (Routenabfragen ca. +10 %) und kosten keinen Speicher in der Firmware.\n'
          '- **Ausblenden:** Hubschrauber, Kleinflugzeuge, Segler/Ballone/Ultraleicht/Drohnen, Flugzeuge am Boden.\n'
          '- **Immer aktiv:** Notfälle (Squawk 7500/7600/7700) mit rotem Rufzeichen und roter Routenzeile, in der Route und „SQUAWK 7700“ alle 3 s wechseln; zu lange Airline-Namen wechseln ebenfalls alle 3 s.'),
   groups=['Flugbewegungen', 'Anzeige', 'Notfälle · fiktive Daten', 'Datenstand', 'Ohne Flugzeug'], trgroups=['Im Flug', 'Sonderfälle', 'Einrichtung'],
@@ -101,6 +102,7 @@ T = {
          '- **▲▼** between distance and altitude when climbing or descending at 300 ft/min or more.\n'
          '- **MIL** next to the callsign for military aircraft.\n'
          '- **Routes with stops:** three airports in smaller type, longer chains on two lines.\n'
+         '- **Forecast in the web interface:** under *Flight radar → Radius and refresh* one sentence says how long the adsb.lol quotas last at the chosen interval, plus a collapsible table (hour, day, week, month). The values are an estimate (route requests about +10 %) and cost no memory in the firmware.\n'
          '- **Hide:** helicopters, light aircraft, gliders/balloons/ultralights/drones, aircraft on the ground.\n'
          '- **Always on:** emergencies (squawk 7500/7600/7700) with a red callsign and a red route line in which route and “SQUAWK 7700” alternate every 3 s; airline names that are too long alternate every 3 s as well.'),
   groups=['Flight movements', 'Display', 'Emergencies · fictional data', 'Data state', 'No aircraft'], trgroups=['In flight', 'Special cases', 'Setup'],

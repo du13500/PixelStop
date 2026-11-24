@@ -44,12 +44,14 @@ static inline bool radarExpired(uint32_t now, uint32_t lastOk, bool valid) {
 }
 // Back in the rotation after a pause: data older than 30 s is not shown any more.
 // The radar searches until the first fresh answer; the red "no current data" screen
-// comes only after RADAR_SEARCH_FAILS failed requests in a row, at once when the
-// provider refuses the key, or when there never was any data (lastOk == 0).
+// comes only after RADAR_SEARCH_FAILS failed requests in a row and at least
+// RADAR_SEARCH_MIN_MS of searching, at once when the provider refuses the key,
+// or when there never was any data (lastOk == 0).
 static constexpr uint8_t RADAR_SEARCH_FAILS = 3;
+static constexpr uint32_t RADAR_SEARCH_MIN_MS = 120000;
 static inline bool radarStaleOnEntry(uint32_t now, uint32_t lastOk) {
   return lastOk && (uint32_t)(now - lastOk) >= RADAR_MAX_AGE_MS;
 }
-static inline bool radarSearchGivesUp(uint8_t failures, bool accessDenied) {
-  return accessDenied || failures >= RADAR_SEARCH_FAILS;
+static inline bool radarSearchGivesUp(uint8_t failures, bool accessDenied, uint32_t searchedMs) {
+  return accessDenied || (failures >= RADAR_SEARCH_FAILS && searchedMs >= RADAR_SEARCH_MIN_MS);
 }

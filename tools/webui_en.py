@@ -190,6 +190,7 @@ EXACT.update({
  "API-Key und Datenquelle": "API key and data source", "Aktuelles Flugzeug": "Current aircraft", "Darstellung und Abruf": "Display and refresh",
  "Datum": "Date", "Die 3-Tage-Vorhersage nutzt denselben Ort und dieselben Einstellungen.": "The 3-day forecast uses the same place and settings.",
  "Die Aktualisierung ist ein Wunschwert: PixelStop bleibt immer unter den Grenzen von adsb.lol.": "The refresh is a target value: PixelStop always stays within the adsb.lol limits.",
+ "Hochrechnung als Tabelle": "Forecast as a table",
  "Doppelpunkt blinkt": "Blinking colon", "Farbe der Uhrzeit": "Clock colour", "Flug": "Flight", "Format": "Format",
  "Freier Speicher": "Free memory", "Geprüfte Flugzeuge": "Aircraft checked", "Gerät": "Device", "Haltestellen-ID": "Stop ID",
  "Helligkeit": "Brightness", "Live vom Verkehrsverbund Oberelbe (VVO). Haltestelle suchen und Treffer wählen.": "Live from Verkehrsverbund Oberelbe (VVO). Search for a stop and pick a result.",
